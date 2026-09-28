@@ -12,5 +12,9 @@ tmp_*.txt
 .tmp_*.txt
 *_diff.txt
 probe_out.txt
+*.out
+*.trace
+*.rej
+test_summary.txt
 # Archivos internos/locales de Cline
 .cline/

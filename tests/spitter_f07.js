@@ -20,6 +20,7 @@ function mkSpitter(x, y) {
   return {
     x: x, y: y, hp: 22, maxHp: 22, damage: 15, speed: 50, radius: 13, color: '#6dc4c0', shape: 'rock',
     behavior: 'ranged', enemyTypeId: 'spitter', dead: false, knockVelX: 0, knockVelY: 0, knockbackRes: 0.4,
+    stunChance: 0.5, stunDuration: 1.25,
     hostileClass: 'light', contactCd: 0, shootTimer: 0,
   };
 }
@@ -136,7 +137,9 @@ t('ataque usa la familia de proyectiles existente, sin homing', function () {
   if (!b) throw new Error('sin bala');
   if (!b.isEnemy) throw new Error('no es enemiga');
   if (b.sourceEnemy !== e) throw new Error('sourceEnemy');
+  if (b.projectileStyle !== 'stunDroplet') throw new Error('projectileStyle=' + b.projectileStyle);
   if (b.damage !== 15) throw new Error('damage=' + b.damage);
+  if (b.stunChance !== 0.5 || b.stunDuration !== 1.25) throw new Error('stun=' + b.stunChance + '/' + b.stunDuration);
   if (Math.abs(Math.hypot(b.vx, b.vy) - 250) > 1e-6) throw new Error('speed=' + Math.hypot(b.vx, b.vy));
   if (b.homing !== undefined || b.seek !== undefined || b.curve !== undefined) throw new Error('homing presente');
 });
@@ -187,7 +190,7 @@ function mkRenderEnv() {
   const calls = { strokes: 0, styles: [] };
   const base = {
     save() {}, restore() {}, beginPath() {}, moveTo() {}, lineTo() {}, closePath() {},
-    arc() {}, ellipse() {}, fill() {}, translate() {}, setLineDash() {}, fillText() {},
+    arc() {}, ellipse() {}, fill() {}, translate() {}, scale() {}, rotate() {}, quadraticCurveTo() {}, setLineDash() {}, fillText() {},
     stroke() { calls.strokes++; calls.styles.push(store.strokeStyle); },
   };
   const ctx = new Proxy(base, { get(t, k) { if (k in t) return t[k]; return undefined; }, set(t, k, v) { store[k] = v; return true; } });

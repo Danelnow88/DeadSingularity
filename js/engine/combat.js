@@ -82,6 +82,7 @@
     const hpBefore = player.hp;
     if (!Number.isFinite(damage)) {
       player.hp = 0;
+      if (hpBefore > player.hp) player.invuln = Math.max(player.invuln || 0, st.postHitInvuln === undefined ? 0.5 : st.postHitInvuln);
       const result = {
         applied: true, dodged: false, crit: false, damage: Math.max(0, hpBefore),
         hpBefore, hpAfter: player.hp, killed: true, cause, reason: 'invalid-damage',
@@ -90,6 +91,7 @@
       return result;
     }
     player.hp -= damage;
+    if (hpBefore > player.hp) player.invuln = Math.max(player.invuln || 0, st.postHitInvuln === undefined ? 0.5 : st.postHitInvuln);
     const result = {
       applied: true, dodged: false, crit: !!hit.crit, damage,
       hpBefore, hpAfter: player.hp, killed: player.hp <= 0, cause,

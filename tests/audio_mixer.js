@@ -93,13 +93,18 @@ t('duck() no crashea si no hay mixer (headless)', () => {
   try { NV.duck('music', 0.2, 0.1); } catch (e) { throw new Error('cayo en headless: ' + e.message); }
 });
 
-t('duck() programa atenuacion sobre el gain del canal objetivo', () => {
+t('duck() programa atenuación sobre el gain del canal objetivo', () => {
   const NV = loadSynth(); NV.initAudio();
   const g = NV.mixer.music.gain;
-  let capturedTarget = null;
-  g.linearRampToValueAtTime = function (v) { capturedTarget = v; };
+  // El duck nuevo es autónomo: programa el ramp DOWN al nivel pedido y, por la misma
+  // automatización del AudioParam, la restauración al nivel base del canal (sin depender
+  // de updateMusic). Capturamos todos los ramps y validamos ambos tramos.
+  const ramps = [];
+  g.linearRampToValueAtTime = function (v) { ramps.push(v); };
   NV.duck('music', 0.2, 0.18);
-  if (capturedTarget !== 0.2) throw new Error('duck no rampeo a 0.2, capturo=' + capturedTarget);
+  if (ramps[0] !== 0.2) throw new Error('duck no rampeó a 0.2, capturo=' + ramps[0]);
+  // La base real del canal música (MASTER_VOLUME=1 × CHANNELS.music=0.6).
+  if (ramps[ramps.length - 1] !== 0.6) throw new Error('duck no restauró al nivel base, capturo=' + ramps[ramps.length - 1]);
 });
 
 // ---- playToneEx: detune fijo, determinista (Math.random mockeado a 0.5 => detune interno=0) ----

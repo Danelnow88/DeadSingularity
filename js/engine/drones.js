@@ -9,7 +9,7 @@
   NV.findDroneTarget = function (player, enemies, boss, range) {
     let target = null, minDist = range;
     for (const e of enemies) {
-      if (e.dead) continue;
+      if (NV.isEnemyTargetable ? !NV.isEnemyTargetable(e) : e.dead) continue;
       const d = Math.hypot(e.x - player.x, e.y - player.y);
       if (d < minDist) { minDist = d; target = e; }
     }

@@ -151,7 +151,7 @@ t('RENDER: sustitución cartoon rápida — body visible antes y puff fuerte inm
   const g = fs.readFileSync('js/game.js', 'utf8');
   const c = {
     NV: { SPECTRAL_ENEMY_MODE: true, rhythm: null },
-    frame: 3, player: { x: 0, 'y': 0 }, WAVE_CLEANUP_DURATION: 0.4,
+    frame: 3, visualTimeSeconds: 0, frameVisualRhythm: null, player: { x: 0, 'y': 0 }, WAVE_CLEANUP_DURATION: 0.4,
     WAVE_CLEANUP_POP_T: 0.08, WAVE_CLEANUP_POP_SCALE: 1.08,
     isEnemyRenderedByLite: () => false,
   };
@@ -221,7 +221,7 @@ t('GAME: sin cleanup el drawEnemy delega exactamente como antes (sin proxy ni sa
   assert(loop.includes('drawEnemy(e)'), 'el bucle de render cambió de orden');
   const c = {
     NV: { SPECTRAL_ENEMY_MODE: false, drawEnemy: (rctx) => { assert(rctx === c.ctx, 'sin cleanup debe usar ctx directo'); } },
-    frame: 1, player: { x: 0, y: 0 }, isEnemyRenderedByLite: () => false,
+    frame: 1, visualTimeSeconds: 0, frameVisualRhythm: null, player: { x: 0, y: 0 }, isEnemyRenderedByLite: () => false,
   };
   let saves = 0;
   c.ctx = { globalAlpha: 1, save() { saves++; }, restore() {}, translate() {}, scale() {} };
@@ -289,7 +289,7 @@ t('RENDER: puff cartoon render-only — 7 círculos principales + 3 mini-puffs e
   const g = fs.readFileSync('js/game.js', 'utf8');
   const c = {
     NV: { SPECTRAL_ENEMY_MODE: false, drawEnemy: () => {} },
-    frame: 1, player: { x: 0, y: 0 },
+    frame: 1, visualTimeSeconds: 0, frameVisualRhythm: null, player: { x: 0, y: 0 },
     WAVE_CLEANUP_DURATION: 0.4, WAVE_CLEANUP_POP_T: 0.08, WAVE_CLEANUP_POP_SCALE: 1.08,
     isEnemyRenderedByLite: () => false,
   };

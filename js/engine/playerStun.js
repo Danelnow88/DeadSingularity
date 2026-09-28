@@ -33,7 +33,9 @@
     // Sin stack: solo extiende al duration entrante si es mayor que el restante.
     const current = Number.isFinite(player.stun) ? Math.max(0, player.stun) : 0;
     player.stun = Math.max(current, dur);
-    player.stunReapplyLockout = NV.BALANCE.PLAYER_STUN_REAPPLY_LOCKOUT;
+    const lockoutFloor = Number(NV.BALANCE.PLAYER_STUN_REAPPLY_LOCKOUT) || 0;
+    const recoveryGrace = Number(NV.BALANCE.PLAYER_STUN_POST_RECOVERY_GRACE) || 0;
+    player.stunReapplyLockout = Math.max(lockoutFloor, dur + recoveryGrace);
     result.applied = true;
     result.duration = player.stun;
     if (ctx.addFloatText) ctx.addFloatText(player.x, player.y - 30, 'STUN', '#ff0');

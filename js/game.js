@@ -23,34 +23,23 @@
   const canvas = NV.canvas;
   const ctx = NV.ctx;
   const specterCanvas = document.getElementById('specter-overlay');
+  const queryString = (typeof window !== 'undefined' && window.location) ? (window.location.search || '') : '';
+  const runMode = /(?:^|[?&])combatLab=1(?:&|$)/.test(queryString) ? 'combatLab' : 'production';
+  const combatLabMode = runMode === 'combatLab';
   let scaleX = 1, scaleY = 1;
+  let canvasResizeController = null;
 
-  function resizeCanvas() {
-    const rect = canvas.getBoundingClientRect();
-    const dw = Math.round(rect.width), dh = Math.round(rect.height);
-    // DPR efectivo centralizado: en escritorio SIEMPRE 1 (comportamiento original);
-    // en móvil upscale hasta el cap del viewport (nítido sin resolver absurdo).
-    const dpr = (NV.viewport && typeof NV.viewport.getEffectiveDpr === 'function')
-      ? NV.viewport.getEffectiveDpr() : 1;
-    const bdW = Math.round(dw * dpr), bdH = Math.round(dh * dpr);
-    if (specterCanvas) {
-      specterCanvas.style.left = canvas.offsetLeft + 'px';
-      specterCanvas.style.top = canvas.offsetTop + 'px';
-      specterCanvas.style.right = 'auto';
-      specterCanvas.style.bottom = 'auto';
-      specterCanvas.style.width = rect.width + 'px';
-      specterCanvas.style.height = rect.height + 'px';
+  function markCanvasResizeDirty() {
+    if (canvasResizeController) canvasResizeController.markDirty();
+  }
+  function resizeCanvas(force) {
+    if (!canvasResizeController) return false;
+    const result = canvasResizeController.flush(!!force);
+    if (result.metrics) {
+      scaleX = result.metrics.scaleX;
+      scaleY = result.metrics.scaleY;
     }
-    if (canvas.width !== bdW || canvas.height !== bdH) {
-      canvas.width = bdW; canvas.height = bdH;
-      if (specterCanvas && NV.espectroLite && typeof NV.espectroLite.resize === 'function') {
-        NV.espectroLite.resize(dw, dh);
-      }
-    }
-    syncEspectroCamera();
-    const currentViewW = worldMetrics.viewW || REF_W;
-    const currentViewH = worldMetrics.viewH || REF_H;
-    scaleX = canvas.width / currentViewW; scaleY = canvas.height / currentViewH;
+    return result.layoutRead;
   }
   const W = ARENA_W, H = ARENA_H;
   function arenaW() { return worldMetrics.arenaW || REF_W; }
@@ -69,6 +58,19 @@
     camera.bottom = -(viewY() + viewH());
     if (typeof camera.updateProjectionMatrix === 'function') camera.updateProjectionMatrix();
   }
+  canvasResizeController = NV.createCanvasResizeController({
+    canvas,
+    overlay: specterCanvas,
+    getDpr: () => (NV.viewport && typeof NV.viewport.getEffectiveDpr === 'function')
+      ? NV.viewport.getEffectiveDpr() : 1,
+    getView: () => ({ width: viewW(), height: viewH() }),
+    onBackingStoreResize: (dw, dh) => {
+      if (specterCanvas && NV.espectroLite && typeof NV.espectroLite.resize === 'function') {
+        NV.espectroLite.resize(dw, dh);
+      }
+    },
+    onLayoutSync: syncEspectroCamera,
+  });
 
   // === PUENTE ESPECTRO LITE WEBGL ===
   // Totalmente deprecado: Three.js legacy se desactiva por completo. Todos los
@@ -92,7 +94,7 @@
   let forceSpecterType = null;
 
   // === ESTADO ===
-  let state = 'menu', frame = 0, lastTime = 0;
+  let state = 'menu', frame = 0, lastTime = 0, visualTimeSeconds = 0;
   let shake = 0, hitstop = 0, flashColor = null, flashAlpha = 0, specialVFX = null;
   let consumableVfx = [];
   function spawnConsumableVfx(type, opts) {
@@ -458,6 +460,14 @@
   // Evento de oleada activo (null si no hay): modifica la run de esa oleada.
   let waveEvent = null;
   const WAVE_EVENTS = NV.WAVE_EVENTS;
+  const combatLabState = {
+    status: combatLabMode ? 'IDLE' : null,
+    elapsed: 0,
+    duration: null,
+    lastConfig: null,
+    requestedComposition: [],
+    error: null,
+  };
 
   // === INVENTARIO ===
   let inventory = [];
@@ -556,7 +566,16 @@
   // Notifica a la capa móvil cuando cambia el estado de arma/consumible.
   function notifyMobileWeapon() { const cbs = NV.input._onWeaponChange; if (Array.isArray(cbs)) { const info = NV.input.getWeaponInfo(); try { cbs.forEach((cb) => { if (typeof cb === 'function') cb(info); }); } catch (_) { /* defensivo */ } } }
   function notifyMobileConsumable() { const cbs = NV.input._onConsumableChange; if (Array.isArray(cbs)) { const info = NV.input.getConsumableInfo(); try { cbs.forEach((cb) => { if (typeof cb === 'function') cb(info); }); } catch (_) { /* defensivo */ } } }
-  function notifyMobileSpecial() { const cbs = NV.input._onSpecialChange; if (Array.isArray(cbs)) { const info = NV.input.getSpecialInfo(); try { cbs.forEach((cb) => { if (typeof cb === 'function') cb(info); }); } catch (_) { /* defensivo */ } } }
+  let lastMobileSpecialSignature = '';
+  function notifyMobileSpecial() {
+    const cbs = NV.input._onSpecialChange;
+    if (!Array.isArray(cbs) || !cbs.length) return;
+    const info = NV.input.getSpecialInfo();
+    const signature = [info.active ? 1 : 0, info.ready ? 1 : 0, info.progress.toFixed(4), Math.ceil(info.remaining), info.color].join('|');
+    if (signature === lastMobileSpecialSignature) return;
+    lastMobileSpecialSignature = signature;
+    try { cbs.forEach((cb) => { if (typeof cb === 'function') cb(info); }); } catch (_) { /* defensivo */ }
+  }
   NV.input.notifyWeaponChange = notifyMobileWeapon;
   NV.input.notifyConsumableChange = notifyMobileConsumable;
   NV.input.notifySpecialChange = notifyMobileSpecial;
@@ -578,6 +597,7 @@
       dom.mSoundBtn.classList.toggle('off', !enabled);
       dom.mSoundBtn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
     }
+    if (NV.settingsUI && typeof NV.settingsUI.syncMute === 'function') NV.settingsUI.syncMute();
   }
   NV.syncSoundUI = syncSoundUI;
   NV.input.toggleSound = () => {
@@ -620,8 +640,7 @@
   let killCombo = { count: 0, timer: 0 }; // combo de kills (E1)
   let currentAutoTarget = null;
   let densityField = null;
-  let damageFeedback = null, invulnerabilityFeedback = null, previousInvulnerability = 0;
-  const momentumVisual = { shift: false, previousVx: 0, previousVy: 0, previousSpeed: 0 };
+  let damageFeedback = null;
   let heartbeatTimer = 0, heartbeatWasCritical = false;
   let countdownLastSecond = 0;
   // Cadencia determinista (en segundos). fireRate se interpreta como frames a ~60fps.
@@ -782,6 +801,48 @@
     return true;
   }
 
+  NV.initializeRunPlayer = function (target, characterId, options) {
+    const opts = options || {};
+    const char = CHARACTERS[characterId];
+    if (!target || !char) return false;
+    const upgrades = opts.permUpgrades || NV.defaultPermUpgrades();
+    target.character = characterId;
+    target.color = char.color;
+    target.maxCd = char.maxCd;
+    target.x = opts.x == null ? arenaW() / 2 : opts.x;
+    target.y = opts.y == null ? arenaH() - 100 : opts.y;
+    target.maxHp = char.stats.hp + (upgrades.hp || 0) * 20;
+    target.hp = target.maxHp;
+    NV.configurePlayerMovement(target, char.stats.speed, upgrades.speed || 0);
+    NV.configurePlayerDash(target);
+    target.armor = (char.stats.armor || 0) + (upgrades.armor || 0);
+    target.luck = (char.stats.luck || 0) + (upgrades.luck || 0) * 10;
+    target.permCrit = upgrades.crit || 0;
+    target.permDodge = upgrades.dodge || 0;
+    target.permRegen = upgrades.regen || 0;
+    target.permGreed = upgrades.greed || 0;
+    target.specialCd = 0;
+    target.invuln = 0;
+    target.overdrive = 0;
+    target.phase = 0;
+    target.bulwark = 0;
+    target.shield = 0;
+    target.bounty = 0;
+    target.regenTimer = 0;
+    target.stun = 0;
+    target.stunReapplyLockout = 0;
+    target.phantomPossession = null;
+    target.moveVx = 0;
+    target.moveVy = 0;
+    target.agility = 1;
+    target.xp = 0;
+    target.level = 1;
+    target.xpToNext = 100;
+    combatIntent.dashIntent = false;
+    NV.resetDashPauseLatch(target, false);
+    return true;
+  };
+
   function changePilot(direction) {
     const order = NV.CHARACTER_ORDER || [];
     if (!order.length) return false;
@@ -808,7 +869,7 @@
     }
 
     if (NV.rhythmRestorePref) NV.rhythmRestorePref();
-    resizeCanvas();
+    resizeCanvas(true);
     syncGameState();
     NV.renderCharacterCards(dom.charGrid, CHARACTERS, player.character);
     renderMenuSkillIcons();
@@ -831,7 +892,13 @@
     dom.skipWave.addEventListener('click', skipShop);
     if (dom.permBtn) dom.permBtn.addEventListener('click', openPermShop);
     if (dom.permBack) dom.permBack.addEventListener('click', closePermShop);
-    window.addEventListener('resize', resizeCanvas);
+    const requestCanvasResize = () => { markCanvasResizeDirty(); resizeCanvas(); };
+    window.addEventListener('resize', requestCanvasResize);
+    if (NV.viewport && typeof NV.viewport.onChange === 'function') NV.viewport.onChange(requestCanvasResize);
+    if (typeof ResizeObserver === 'function') {
+      const canvasResizeObserver = new ResizeObserver(requestCanvasResize);
+      canvasResizeObserver.observe(canvas);
+    }
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         NV.input.setFire(false);
@@ -942,6 +1009,9 @@
     function togglePause() {
       if (state !== 'playing') return;
       paused = !paused;
+      if (combatLabMode && (combatLabState.status === 'RUNNING' || combatLabState.status === 'PAUSED')) {
+        combatLabState.status = paused ? 'PAUSED' : 'RUNNING';
+      }
       NV.input.setFire(false);
       combatIntent.dashIntent = false;
       // Marcamos la intención actual como consumida por el motor para que
@@ -1003,7 +1073,12 @@
       });
     }
 
-    showMenu();
+    if (combatLabMode) {
+      enterCombatLabIdle();
+      installCombatLabRuntime();
+    } else {
+      showMenu();
+    }
     // Telemetría opt-in F08: se activa con ?playtest=1 (o manualmente en consola
     // con NV.playtest.enable()); snapshot con NV.playtest.snapshot().
     try {
@@ -1084,22 +1159,26 @@
     // Anima el ícono SVG del widget (pulso de beat, color por hue, glow por
     // energía) reutilizando NV.rhythm, actualizado una vez por frame desde el
     // loop del juego. Sin captura activa queda estático (es la señal visual).
+    const rhythmWidgetGlyph = dom.rwIcon ? (dom.rwIcon.querySelector('svg.mn') || dom.rwIcon) : null;
+    function setWidgetStyle(node, key, value) {
+      if (node && node.style && node.style[key] !== value) node.style[key] = value;
+    }
     function updateRhythmWidgetIcon() {
       const icon = dom.rwIcon;
       if (!icon) return;
-      const glyph = icon.querySelector('svg.mn') || icon;
+      const glyph = rhythmWidgetGlyph || icon;
       const r = NV.rhythm;
       if (!r || r.state !== 'listening' || !r.enabled) {
-        glyph.style.transform = '';
+        setWidgetStyle(glyph, 'transform', '');
         icon._smoothScale = 1;
         icon._smoothSkew = 0;
         icon._pulseEnv = 0;
         icon._energyEnv = 0;
         icon._breathPhase = 0;
         icon._smoothT = 0;
-        icon.style.color = '';
-        icon.style.opacity = '';
-        icon.style.filter = '';
+        setWidgetStyle(icon, 'color', '');
+        setWidgetStyle(icon, 'opacity', '');
+        setWidgetStyle(icon, 'filter', '');
         return;
       }
       const hue = (r.hue == null) ? 200 : r.hue;
@@ -1112,12 +1191,13 @@
       const groove = NV.computeRhythmGroove(icon, r, dtMs / 1000, { connected: true });
       const beat = groove.beat;
       const energy = groove.energy;
-      glyph.style.transform = 'scale(' + groove.smoothScale.toFixed(4) + ') skewX(' + groove.smoothSkew.toFixed(2) + 'deg)';
+      const transform = 'scale(' + groove.smoothScale.toFixed(4) + ') skewX(' + groove.smoothSkew.toFixed(2) + 'deg)';
+      setWidgetStyle(glyph, 'transform', transform);
       // Color dinámico por hue calculado (mismo que tiñe el fondo)
-      icon.style.color = 'hsl(' + Math.round(hue) + ',75%,62%)';
+      setWidgetStyle(icon, 'color', 'hsl(' + Math.round(hue) + ',75%,62%)');
       // Brillo/glow fade en función de la energía detectada
-      icon.style.opacity = (0.65 + energy * 0.35).toFixed(3);
-      icon.style.filter = 'drop-shadow(0 0 ' + (2 + energy * 6).toFixed(1) + 'px hsl(' + Math.round(hue) + ',80%,60%))';
+      setWidgetStyle(icon, 'opacity', (0.65 + energy * 0.35).toFixed(3));
+      setWidgetStyle(icon, 'filter', 'drop-shadow(0 0 ' + (2 + energy * 6).toFixed(1) + 'px hsl(' + Math.round(hue) + ',80%,60%))');
       // Diagnóstico opt-in del widget de ritmo: activar con ?rhythmdebug=1.
       if (typeof NV._rhythmDbg === 'undefined') {
         NV._rhythmDbg = (typeof location !== 'undefined') && /[?&]rhythmdebug=1/.test(location.search || '');
@@ -1125,11 +1205,11 @@
       }
       if (NV._rhythmDbg) {
         NV._rhythmDbgMaxBeat = Math.max(NV._rhythmDbgMaxBeat, beat);
-        NV._rhythmDbgLastTr = glyph.style.transform;
+        NV._rhythmDbgLastTr = transform;
         const dnow = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
         if (beat > 0.3 && dnow - NV._rhythmDbgLast > 120) {
           NV._rhythmDbgLast = dnow;
-          console.log('[rhythm-icon] KICK beat=' + beat.toFixed(3) + ' hue=' + Math.round(hue) + ' energy=' + energy.toFixed(3) + ' transform="' + glyph.style.transform + '"');
+          console.log('[rhythm-icon] KICK beat=' + beat.toFixed(3) + ' hue=' + Math.round(hue) + ' energy=' + energy.toFixed(3) + ' transform="' + transform + '"');
         }
         if (dnow - NV._rhythmDbgSumT >= 1000) {
           NV._rhythmDbgSumT = dnow;
@@ -1187,6 +1267,7 @@
   };
 
   function prepareMenuState() {
+    if (NV.clearPhantomPossession) NV.clearPhantomPossession(player, true);
     if (NV.audio && typeof NV.audio.stopAllWeapons === 'function') NV.audio.stopAllWeapons();
     NV.input.setFire(false);
     combatIntent.dashIntent = false;
@@ -1219,6 +1300,305 @@
 
   function showMenu() { showLobby(); }
 
+  function hideCombatLabOverlays() {
+    dom.startScreen.classList.add('hidden');
+    if (dom.characterSelectScreen) dom.characterSelectScreen.classList.add('hidden');
+    dom.shop.classList.add('hidden');
+    dom.gameOver.classList.add('hidden');
+    dom.permScreen.classList.add('hidden');
+  }
+
+  function clearCombatLabTransientState() {
+    clearCombatIntent();
+    if (NV.clearPhantomPossession) NV.clearPhantomPossession(player, true);
+    if (hookSystem && typeof NV.resetHookSystem === 'function') NV.resetHookSystem(hookSystem);
+    if (NV.clearHazards) NV.clearHazards(hazards, minefieldState);
+    if (NV.clearMusicalNotes) NV.clearMusicalNotes();
+    if (NV.audio && typeof NV.audio.stopAllWeapons === 'function') NV.audio.stopAllWeapons();
+    enemies = [];
+    bullets = [];
+    particles = [];
+    pickups = [];
+    floatTexts = [];
+    shockwaves = [];
+    trails = [];
+    weaponPickups = [];
+    drones = [];
+    meteors = [];
+    bossChests = [];
+    hazards = [];
+    flameZones = [];
+    consumableVfx = [];
+    pendingBombImpacts = [];
+    boss = null;
+    hookSystem = NV.createHookSystem ? NV.createHookSystem() : null;
+    minefieldState = NV.createMinefieldState ? NV.createMinefieldState() : minefieldState;
+    currentAutoTarget = null;
+    specialVFX = null;
+    fireTimer = 0;
+    shake = 0;
+    hitstop = 0;
+    flashAlpha = 0;
+    transition = 0;
+    heartbeatTimer = 0;
+    heartbeatWasCritical = false;
+    countdownLastSecond = 0;
+    resetPresentation();
+    clearEspectroBridge();
+  }
+
+  function enterCombatLabIdle() {
+    clearCombatLabTransientState();
+    paused = false;
+    state = 'menu';
+    waveEvent = null;
+    waveTimer = 0;
+    spawnTimer = 0;
+    combatLabState.status = 'IDLE';
+    combatLabState.elapsed = 0;
+    combatLabState.duration = null;
+    combatLabState.requestedComposition = [];
+    combatLabState.error = null;
+    hideCombatLabOverlays();
+    syncGameState();
+    updateHUD();
+  }
+
+  function combatLabCatalog() {
+    return NV.getProductionEnemyDefinitions().map((entry) => ({
+      id: entry.id,
+      name: entry.name,
+      spawnKind: entry.spawnKind,
+      hostileClass: entry.hostileClass,
+      spectral: entry.spectral,
+    }));
+  }
+
+  function combatLabCharacters() {
+    return NV.characterList().map((entry) => ({ id: entry.id, name: entry.data.name }));
+  }
+
+  function combatLabDifficulties() {
+    const selectedId = NV.settings && NV.settings.gameplay ? NV.settings.gameplay.difficulty : null;
+    return (NV.DIFFICULTY_ORDER || []).map((id) => {
+      const data = NV.difficultyGet(id);
+      return { id: data.id, label: data.label || data.id.toUpperCase(), selected: data.id === selectedId };
+    });
+  }
+
+  function combatLabPlacementCandidates(radius) {
+    const margin = Math.max(24, radius + 8);
+    const candidates = [];
+    const steps = [0, 48, 96, 144];
+    for (const inset of steps) {
+      const left = margin + inset;
+      const right = arenaW() - margin - inset;
+      const top = margin + inset;
+      const bottom = arenaH() - margin - inset;
+      if (left > right || top > bottom) continue;
+      const horizontalSlots = Math.max(2, Math.floor((right - left) / 56));
+      const verticalSlots = Math.max(2, Math.floor((bottom - top) / 56));
+      for (let i = 0; i <= horizontalSlots; i++) {
+        const x = left + (right - left) * (i / horizontalSlots);
+        candidates.push({ x, y: top }, { x: right - (x - left), y: bottom });
+      }
+      for (let i = 1; i < verticalSlots; i++) {
+        const y = top + (bottom - top) * (i / verticalSlots);
+        candidates.push({ x: right, y }, { x: left, y: bottom - (y - top) });
+      }
+    }
+    return candidates;
+  }
+
+  function buildCombatLabPositions(requests, characterId) {
+    const placed = [];
+    const character = CHARACTERS[characterId];
+    const playerX = arenaW() / 2;
+    const playerY = arenaH() - 100;
+    const playerRadius = ((character && character.size) || 20) * 0.45;
+    for (const request of requests) {
+      const radius = Math.max(1, NV.productionEnemySpawnRadius(request.descriptor));
+      const candidates = combatLabPlacementCandidates(radius);
+      const position = candidates.find((candidate) => {
+        if (Math.hypot(candidate.x - playerX, candidate.y - playerY) < Math.max(180, radius + playerRadius + 24)) return false;
+        return placed.every((other) => Math.hypot(candidate.x - other.x, candidate.y - other.y) >= radius + other.radius + 12);
+      });
+      if (!position) return null;
+      placed.push({ x: position.x, y: position.y, radius, enemyId: request.enemyId, descriptor: request.descriptor });
+    }
+    return placed;
+  }
+
+  function validateCombatLabConfig(rawConfig) {
+    const config = rawConfig || {};
+    const errors = [];
+    const character = NV.characterList().find((entry) => entry.id === config.characterId);
+    const difficulty = (NV.DIFFICULTY_ORDER || []).indexOf(config.difficultyId) >= 0 ? config.difficultyId : null;
+    const waveValue = Number(config.wave);
+    const waveNumber = Number.isInteger(waveValue) && waveValue >= 1 && waveValue <= 999 ? waveValue : null;
+    const durationMode = config.durationMode === 'infinite' ? 'infinite' : (config.durationMode === 'timed' ? 'timed' : null);
+    const durationValue = Number(config.durationSeconds);
+    if (!character) errors.push('Unknown production character: ' + String(config.characterId || ''));
+    if (!difficulty) errors.push('Difficulty must be one of the production difficulty IDs.');
+    if (waveNumber == null) errors.push('Wave must be an integer from 1 to 999.');
+    if (!durationMode) errors.push('Duration mode must be timed or infinite.');
+    if (durationMode === 'timed' && (!Number.isFinite(durationValue) || durationValue <= 0)) errors.push('Timed duration must be greater than zero seconds.');
+
+    const requested = [];
+    const normalizedComposition = [];
+    const byId = new Map();
+    for (const row of Array.isArray(config.composition) ? config.composition : []) {
+      const descriptor = NV.getProductionEnemyDefinition(row && row.enemyId);
+      const quantity = Number(row && row.quantity);
+      if (!descriptor) {
+        errors.push('Unknown production enemy: ' + String(row && row.enemyId || ''));
+        continue;
+      }
+      if (!Number.isInteger(quantity) || quantity <= 0) {
+        errors.push(descriptor.name + ' quantity must be a positive integer.');
+        continue;
+      }
+      byId.set(descriptor.id, (byId.get(descriptor.id) || 0) + quantity);
+    }
+    for (const [enemyId, quantity] of byId) {
+      const descriptor = NV.getProductionEnemyDefinition(enemyId);
+      normalizedComposition.push({ enemyId, quantity });
+      for (let i = 0; i < quantity; i++) requested.push({ enemyId, descriptor });
+    }
+    if (!requested.length) errors.push('Add at least one enemy to the composition.');
+    const heavy = requested.filter((request) => request.descriptor.hostileClass === 'heavy').length;
+    if (requested.length > MAX_HOSTILES) errors.push('Requested ' + requested.length + ' hostiles; production limit is ' + MAX_HOSTILES + '.');
+    if (heavy > MAX_HEAVY_HOSTILES) errors.push('Requested ' + heavy + ' HEAVY hostiles; production limit is ' + MAX_HEAVY_HOSTILES + '.');
+    if (errors.length) return { ok: false, errors };
+
+    const cleanConfig = {
+      characterId: character.id,
+      wave: waveNumber,
+      difficultyId: difficulty,
+      durationMode,
+      durationSeconds: durationMode === 'timed' ? durationValue : null,
+      composition: normalizedComposition,
+    };
+    const positions = buildCombatLabPositions(requested, cleanConfig.characterId);
+    if (!positions) return { ok: false, errors: ['Not enough valid non-overlapping perimeter positions for this composition.'] };
+    return { ok: true, config: cleanConfig, positions };
+  }
+
+  function startCombatLab(rawConfig) {
+    const validation = validateCombatLabConfig(rawConfig);
+    if (!validation.ok) {
+      combatLabState.error = validation.errors.slice();
+      return validation;
+    }
+    initAudio();
+    clearCombatLabTransientState();
+    permUpgrades = NV.defaultPermUpgrades();
+    metaShards = 0;
+    NV.runDifficulty = validation.config.difficultyId;
+    wave = validation.config.wave;
+    waveEvent = null;
+    score = 0;
+    shards = 0;
+    NV.initializeRunPlayer(player, validation.config.characterId, { permUpgrades });
+    inventory = [];
+    inventory.push(NV.starterWeapon());
+    currentWeapon = inventory[0];
+    consumableItems = [];
+    consumSel = 0;
+    weaponLevels = {};
+    weaponKills = {};
+    weaponFus = {};
+    shopBought = {};
+    upgradeSlots = [];
+    killCombo = { count: 0, timer: 0 };
+    const spawnState = { enemies, boss: null, MAX_HOSTILES, MAX_HEAVY_HOSTILES, wave, W: arenaW(), H: arenaH() };
+    for (const placement of validation.positions) {
+      const result = NV.spawnProductionEnemy(spawnState, placement.enemyId, { position: placement });
+      if (!result.ok) {
+        clearCombatLabTransientState();
+        state = 'menu';
+        combatLabState.status = 'ERROR';
+        combatLabState.error = ['Spawn failed for ' + placement.enemyId + ': ' + result.code];
+        syncGameState();
+        return { ok: false, errors: combatLabState.error.slice() };
+      }
+    }
+    combatLabState.lastConfig = JSON.parse(JSON.stringify(validation.config));
+    combatLabState.requestedComposition = validation.config.composition.map((row) => ({ enemyId: row.enemyId, quantity: row.quantity }));
+    combatLabState.elapsed = 0;
+    combatLabState.duration = validation.config.durationMode === 'timed' ? validation.config.durationSeconds : null;
+    combatLabState.status = 'RUNNING';
+    combatLabState.error = null;
+    waveTimer = combatLabState.duration;
+    spawnTimer = Infinity;
+    paused = false;
+    state = 'playing';
+    hideCombatLabOverlays();
+    syncGameState();
+    updateHUD();
+    notifyMobileWeapon();
+    notifyMobileConsumable();
+    return { ok: true, config: JSON.parse(JSON.stringify(validation.config)) };
+  }
+
+  function combatLabSnapshot() {
+    const activeById = Object.create(null);
+    let activeEnemies = 0;
+    for (const enemy of enemies) {
+      if (enemy.dead) continue;
+      activeEnemies++;
+      const id = enemy.enemyTypeId || enemy.visualId || 'unknown';
+      activeById[id] = (activeById[id] || 0) + 1;
+    }
+    const perf = NV.performanceMonitor && NV.performanceMonitor.getSnapshot ? NV.performanceMonitor.getSnapshot() : null;
+    return {
+      status: combatLabState.status,
+      paused,
+      wave,
+      difficulty: NV.runDifficulty || 'normal',
+      elapsed: combatLabState.elapsed,
+      remaining: combatLabState.duration == null ? null : Math.max(0, combatLabState.duration - combatLabState.elapsed),
+      duration: combatLabState.duration,
+      activeEnemies,
+      activeById,
+      requestedComposition: combatLabState.requestedComposition.map((row) => ({ enemyId: row.enemyId, quantity: row.quantity })),
+      player: { characterId: player.character, hp: player.hp, maxHp: player.maxHp },
+      fps: perf && perf.frame && perf.frame.p50 > 0 ? 1000 / perf.frame.p50 : null,
+      error: combatLabState.error ? combatLabState.error.slice() : null,
+    };
+  }
+
+  function installCombatLabRuntime() {
+    NV.combatLabRuntime = Object.freeze({
+      ready: true,
+      getCatalog: combatLabCatalog,
+      getCharacters: combatLabCharacters,
+      getDifficulties: combatLabDifficulties,
+      start: startCombatLab,
+      reset() { enterCombatLabIdle(); return { ok: true }; },
+      restart() {
+        if (!combatLabState.lastConfig) return { ok: false, errors: ['No validated test has been started yet.'] };
+        return startCombatLab(combatLabState.lastConfig);
+      },
+      pause() {
+        if (state !== 'playing' || combatLabState.status !== 'RUNNING' || paused) return false;
+        NV.input.togglePause();
+        combatLabState.status = 'PAUSED';
+        return true;
+      },
+      resume() {
+        if (state !== 'playing' || combatLabState.status !== 'PAUSED' || !paused) return false;
+        NV.input.togglePause();
+        combatLabState.status = 'RUNNING';
+        return true;
+      },
+      snapshot: combatLabSnapshot,
+    });
+    if (typeof window.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
+      window.dispatchEvent(new CustomEvent('nv-combat-lab-ready'));
+    }
+  }
+
   function startGame() {
     console.log('[START] Iniciando partida...');
     NV.runDifficulty = NV.settings && NV.settings.gameplay && NV.settings.gameplay.difficulty || 'normal';
@@ -1232,20 +1612,10 @@
     dom.gameOver.classList.add('hidden');
     dom.permScreen.classList.add('hidden');
 
-    const char = CHARACTERS[player.character];
-    player.maxCd = char.maxCd;
-    player.x = arenaW() / 2; player.y = arenaH() - 100;
-    player.maxHp = char.stats.hp + permUpgrades.hp * 20;
-    player.hp = player.maxHp;
-    NV.configurePlayerMovement(player, char.stats.speed, permUpgrades.speed);
-    NV.configurePlayerDash(player);
-    player.armor = (char.stats.armor || 0) + (permUpgrades.armor || 0);
-    player.luck = (char.stats.luck || 0) + permUpgrades.luck * 10;
-    player.permCrit = permUpgrades.crit || 0; player.permDodge = permUpgrades.dodge || 0;
-    player.permRegen = permUpgrades.regen || 0; player.permGreed = permUpgrades.greed || 0;
-    player.specialCd = 0; player.invuln = 0; player.overdrive = 0; player.stun = 0; player.stunReapplyLockout = 0;
-    player.moveVx = 0; player.moveVy = 0; combatIntent.dashIntent = false; player.agility = 1;
-    player.xp = 0; player.level = 1; player.xpToNext = 100;
+    NV.initializeRunPlayer(player, player.character, { permUpgrades });
+    // Contrato explícito de restart: además del inicializador compartido, la ruta
+    // productiva deja visible que ningún stun/lockout sobrevive a una run nueva.
+    player.stun = 0; player.stunReapplyLockout = 0;
 
     wave = 1; score = 0; shards = 0;
     waveEvent = null;
@@ -1351,6 +1721,7 @@
     if (player.hp <= 0) { gameOver(); return false; }
     // Hazards no bloquean ni dañan durante la transición a tienda.
     if (NV.clearHazards) NV.clearHazards(hazards, minefieldState); else hazards = [];
+    if (NV.clearPhantomPossession) NV.clearPhantomPossession(player, true);
         clearCombatIntent();
     bullets = [];
     flameZones = [];
@@ -1778,15 +2149,27 @@
       const stacked = NV.consumableCountByType(consumableItems, c.key);
       const stackFull = stacked >= CONSUMABLE_STACK_CAP;
       const typeSlotsFull = stacked === 0 && typeCount >= CONSUMABLE_TYPE_SLOT_CAP;
-      if (bought >= CONSUMABLE_CAP) return; // tope por visita: la oferta desaparece
+      const visitFull = bought >= CONSUMABLE_CAP;
+      // Los dos topes (global por tipo y por visita) comparten el MISMO estado visual:
+      // la tarjeta nunca desaparece, sólo queda `disabled` con su badge "BLOQUEADO".
+      // Prioridad determinística del motivo cuando coinciden: 1) global 10/10,
+      // 2) visita 3/3, 3) slots de tipos 6/6.
       consumables.push({
         kind: 'consumable', consumableType: c.key, name: c.name,
         desc: c.desc,
         badge: (stacked > 0 ? ('Equipado x' + stacked) : 'Nuevo') + ' · ' + bought + '/' + CONSUMABLE_CAP,
         price: c.price,
-        disabled: stackFull || typeSlotsFull,
-        disabledReason: stackFull ? ('Límite ' + CONSUMABLE_STACK_CAP + '/' + CONSUMABLE_STACK_CAP) : ('Slots ' + CONSUMABLE_TYPE_SLOT_CAP + '/' + CONSUMABLE_TYPE_SLOT_CAP),
+        disabled: stackFull || visitFull || typeSlotsFull,
+        disabledReason: stackFull ? ('Límite ' + CONSUMABLE_STACK_CAP + '/' + CONSUMABLE_STACK_CAP)
+          : visitFull ? ('Visita ' + CONSUMABLE_CAP + '/' + CONSUMABLE_CAP)
+          : ('Slots ' + CONSUMABLE_TYPE_SLOT_CAP + '/' + CONSUMABLE_TYPE_SLOT_CAP),
         buy: () => {
+          // Guardia defensiva: aunque la UI quedara desincronizada, la 4ta compra del
+          // mismo tipo en la misma visita nunca se efectúa (no cobra ni agrega stock).
+          if ((consumableBought[c.key] || 0) >= CONSUMABLE_CAP) {
+            showBanner(c.name + ': tope de visita ' + CONSUMABLE_CAP + '/' + CONSUMABLE_CAP, '#ff5f9b');
+            return false;
+          }
           if (!NV.addConsumable(consumableItems, { type: c.key, name: c.name }, CONSUMABLE_STACK_CAP, CONSUMABLE_TYPE_SLOT_CAP)) {
             const reason = NV.consumableCountByType(consumableItems, c.key) >= CONSUMABLE_STACK_CAP
               ? ('límite ' + CONSUMABLE_STACK_CAP + '/' + CONSUMABLE_STACK_CAP)
@@ -1892,9 +2275,11 @@
   function gameOver() {
     if (state === 'player_dying' || state === 'gameover') return false;
     clearCombatIntent();
+    if (NV.clearPhantomPossession) NV.clearPhantomPossession(player, true);
     if (hookSystem && typeof NV.resetHookSystem === 'function') NV.resetHookSystem(hookSystem); // F3: cleanup hook en gameover
     player.stun = 0; player.stunReapplyLockout = 0; // F4: la muerte no deja stun residual
     state = 'player_dying';
+    if (combatLabMode) combatLabState.status = 'PLAYER_DEAD';
     if (NV.clearHazards) NV.clearHazards(hazards, minefieldState); else hazards = [];
     bullets = [];
     flameZones = [];
@@ -1947,6 +2332,7 @@
 
   function beginShopEntrance() {
     if (state !== 'wave_end') return;
+    if (NV.clearPhantomPossession) NV.clearPhantomPossession(player, true);
     const result = NV.collectRemainingNormalShards(pickups);
     pickups = result.pickups;
     shards += result.shards;
@@ -2102,6 +2488,15 @@
       return;
     }
     if (state !== 'playing') return;
+    let completeCombatLabAfterUpdate = false;
+    if (combatLabMode && combatLabState.status === 'RUNNING' && combatLabState.duration != null) {
+      const remaining = Math.max(0, combatLabState.duration - combatLabState.elapsed);
+      dt = Math.min(dt, remaining);
+      combatLabState.elapsed = Math.min(combatLabState.duration, combatLabState.elapsed + dt);
+      completeCombatLabAfterUpdate = combatLabState.elapsed >= combatLabState.duration - 1e-9;
+    } else if (combatLabMode && combatLabState.status === 'RUNNING') {
+      combatLabState.elapsed += dt;
+    }
     if (NV.SPECTER_ENABLED === false) {
       enemies = enemies.filter((e) => e.shape !== 'specter');
     }
@@ -2136,13 +2531,17 @@
     }
 
     const wasDashing = !!player.dashActive;
+    const hookPullActive = !!(hookSystem && hookSystem.phase === 'tether' && hookSystem.srcEnemy && !player.dashActive);
+    const effectiveMoveIntent = NV.phantomPossessionIntent
+      ? NV.phantomPossessionIntent(player, combatIntent.moveX, combatIntent.moveY, hookPullActive)
+      : { x: combatIntent.moveX, y: combatIntent.moveY };
     const dashing = NV.updatePlayerDash(
       player, combatIntent.dashIntent,
       combatIntent.moveX, combatIntent.moveY,
       combatIntent.aimX, combatIntent.aimY, combatIntent.aimActive,
       dt
     );
-    if (!dashing) NV.updatePlayerMovement(player, combatIntent.moveX, combatIntent.moveY, dt);
+    if (!dashing) NV.updatePlayerMovement(player, effectiveMoveIntent.x, effectiveMoveIntent.y, dt);
     // ===== F3: Hook/Pull =====
     // Orden contractual: dash update -> normal movement -> Hook external
     // pull -> arena clamp. El pull vive en NV.applyHookPull (engine testeable);
@@ -2155,8 +2554,6 @@
     if (combatIntent.aimActive) {
       NV.inputIntent.setAimWorld(combatIntent, combatIntent.aimWorldX, combatIntent.aimWorldY, player.x, player.y);
     }
-    momentumVisual.shift = dashing;
-
     // Estela del jugador: densidad decorativa adaptable (visual budget P2).
     if (frame % trailStep() === 0) {
       const char = CHARACTERS[player.character];
@@ -2209,7 +2606,7 @@
 
     const firePolicy = NV.input.getEffectiveFirePolicy();
     const fireActive = firePolicy === 'legacy-auto' || combatIntent.fireIntent;
-    if (currentAutoTarget && (currentAutoTarget.dead || Math.hypot(currentAutoTarget.x - player.x, currentAutoTarget.y - player.y) > (currentWeapon.range || Infinity))) currentAutoTarget = null;
+    if (currentAutoTarget && ((NV.isEnemyTargetable && !NV.isEnemyTargetable(currentAutoTarget)) || currentAutoTarget.dead || Math.hypot(currentAutoTarget.x - player.x, currentAutoTarget.y - player.y) > (currentWeapon.range || Infinity))) currentAutoTarget = null;
     const cadence = NV.inputIntent.advanceFireCadence(
       fireTimer, dt, fireActive, hitstop > 0,
       () => currentWeapon.id === 'flamethrower' || playerBulletCount() < MAX_PLAYER_BULLETS ? shoot(firePolicy) : false,
@@ -2221,13 +2618,12 @@
 
     // Spawns y progreso de oleada SOLO fuera de la transición de victoria: durante la
     // celebración no arranca la oleada siguiente (nada de spawns ni countdown visible).
-    if (transition <= 0) {
+    if (!combatLabMode && transition <= 0) {
         spawnTimer -= dt;
     if (spawnTimer <= 0) {
-      // F1 threat curve: densidad blanda — el refill normal se DETIENE al alcanzar
-      // el objetivo táctico de la oleada (NV.softHostileTarget); MAX_HOSTILES queda
-      // como techo duro de emergencia. Early (w<=10) sin efecto; late opera bajo
-      // el cap en vez de saturarlo. Lote con techo 5 + piso de reposición 0.35s:
+      // Curva de amenaza: el refill normal se DETIENE al alcanzar el objetivo
+      // creciente de la oleada (NV.softHostileTarget); MAX_HOSTILES queda como techo
+      // duro de emergencia. Lote con techo 5 + piso de reposición 0.35s:
       // matar crea una reducción real y temporal de la presión del enjambre.
       const perWave = NV.spawnBatchForWave(wave);
       const budget = NV.getHostileBudget({ enemies, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES });
@@ -2241,7 +2637,8 @@
         if (budget.heavy < NV.BALANCE.SOFT_HEAVY_TARGET) spawnElite();
       }
       if (Math.random() < 0.03 + wave * 0.002) spawnWeaponPickup();
-      spawnTimer = Math.max(NV.BALANCE.LATE_REFILL_FLOOR, (1.3 - wave * 0.035) * NV.waveSpawnFactor(wave, waveEvent)); // oleadas largas: mismo total de spawns
+      // Eventos compensan sólo parte del tiempo extra y conservan actividad adicional.
+      spawnTimer = Math.max(NV.BALANCE.LATE_REFILL_FLOOR, (1.3 - wave * 0.035) * NV.waveSpawnFactor(wave, waveEvent));
     }
 
         waveTimer -= dt;
@@ -2268,10 +2665,12 @@
     // La muerte resuelta por hazards/enemigos/proyectiles tiene prioridad sobre el
     // fin de oleada cuando ambos eventos caen en el mismo frame.
     if (transition <= 0 && waveTimer <= 0 && !boss) {
-      if (player.hp <= 0) { gameOver(); return; }
-      shards += 8 + wave * 2;
-      triggerWaveVictory(false, null, null);
-      return;
+      if (!combatLabMode) {
+        if (player.hp <= 0) { gameOver(); return; }
+        shards += 8 + wave * 2;
+        triggerWaveVictory(false, null, null);
+        return;
+      }
     }
     updateParticles(dt);
     updatePickups(dt);
@@ -2287,9 +2686,11 @@
     if (player.phase > 0) {
       const R = NV.BALANCE.PHASE_AURA_RADIUS, DPS = NV.BALANCE.PHASE_AURA_DPS;
       for (const e of enemies) {
-        if (e.dead) continue;
+        if (NV.isEnemyDamageable ? !NV.isEnemyDamageable(e) : e.dead) continue;
         if (Math.hypot(e.x - player.x, e.y - player.y) < R) {
-          e.hp -= DPS * dt;
+          const rawDamage = DPS * dt;
+          const dealt = NV.guardProtectedDamage ? NV.guardProtectedDamage(e, rawDamage) : rawDamage;
+          e.hp -= dealt;
           e.hitFlash = Math.max(e.hitFlash || 0, 0.10);
           e.phaseAcc = (e.phaseAcc || 0) + DPS * dt; // acumulado para la Detonación Espectral
           if (e.hp <= 0) killEnemy(e);
@@ -2302,6 +2703,13 @@
       }
     }
 
+    if (completeCombatLabAfterUpdate && state === 'playing') {
+      paused = true;
+      combatLabState.status = 'COMPLETE';
+      clearCombatIntent();
+      if (NV.audio && typeof NV.audio.stopAllWeapons === 'function') NV.audio.stopAllWeapons();
+      syncGameState();
+    }
     updateHUD();
   }
 
@@ -2432,7 +2840,7 @@
     const res = NV.updateEnemies(dt, {
       enemies, player, bullets, MAX_BULLETS, MAX_ENEMY_BULLETS, shake,
       enemyBulletCount, applyPlayerDamage, addFloatText, spawnExplosion, waveEvent,
-      wave, hookSystem,
+      wave, hookSystem, hazards, W: arenaW(), H: arenaH(), gameState: state,
       onKill: (e) => killEnemy(e), // autodestrucción de kamikazes: mismo camino que un kill normal
       onPlayerDamaged: recordPlayerDamage,
     });
@@ -2535,6 +2943,7 @@
       player, CHARACTERS, calcEnemyDamage, addFloatText, sfx,
       cause: opts.cause, allowCrit: opts.allowCrit, allowDodge: opts.allowDodge,
       respectInvulnerability: opts.respectInvulnerability,
+      postHitInvuln: opts.postHitInvuln,
       onPlayerDamaged: recordPlayerDamage, event,
     });
     if (r.applied) { killCombo.count = 0; killCombo.timer = 0; }
@@ -2544,8 +2953,8 @@
   // === PROYECTILES Y ATAQUES DISTINTOS POR JEFE ===
   // F4: forward de stun/stunDuration (antes se descartaban y el stun de jefes
   // nunca llegaba a producción). El roll sigue en tryApplyPlayerStun (impacto).
-  function spawnBossProj(b, speed, damage, count, spread, color, radius, _stArg, stun, stunDuration) {
-    return NV.spawnBossProj(b, speed, damage, count, spread, color, radius, { player, bullets, MAX_BULLETS, enemyBulletCount, MAX_ENEMY_BULLETS }, stun, stunDuration);
+  function spawnBossProj(b, speed, damage, count, spread, color, radius, _stArg, stun, stunDuration, projectileStyle) {
+    return NV.spawnBossProj(b, speed, damage, count, spread, color, radius, { player, bullets, MAX_BULLETS, enemyBulletCount, MAX_ENEMY_BULLETS }, stun, stunDuration, projectileStyle);
   }
 
   // Esbirros invocados (funciona incluso durante la pelea con un jefe)
@@ -2582,14 +2991,7 @@
   function recordPlayerDamage(hit) {
     const e = hit.enemy || (hit.projectile && hit.projectile.sourceEnemy) || null;
     const hazard = hit.hazard || null;
-    let sourceX = e ? e.x : (hazard ? hazard.x : player.x), sourceY = e ? e.y : (hazard ? hazard.y : player.y);
-    if (!e && hit.projectile) {
-      const projectileSpeed = Math.max(1, Math.hypot(hit.projectile.vx || 0, hit.projectile.vy || 0));
-      sourceX = player.x - (hit.projectile.vx || 0) / projectileSpeed * 40;
-      sourceY = player.y - (hit.projectile.vy || 0) / projectileSpeed * 40;
-    }
-    damageFeedback = { life: 0.55, sourceX, sourceY, critical: !!hit.crit, cause: hit.cause, flash: 0.05 };
-    invulnerabilityFeedback = { life: 0.5, duration: 0.5, kind: 'start' };
+    damageFeedback = { life: 0.55, critical: !!hit.crit, flash: 0.05 };
     if (!NV.META_DEBUG || !NV.recordMetaDamage) return;
     let within50 = 0, within100 = 0, within170 = 0, aliveEnemies = 0, overlap = 0;
     for (const enemy of enemies) {
@@ -2640,9 +3042,6 @@
 
   function updateDamageReadability(dt) {
     if (damageFeedback) { damageFeedback.life -= dt; if (damageFeedback.life <= 0) damageFeedback = null; }
-    if (invulnerabilityFeedback) { invulnerabilityFeedback.life -= dt; if (invulnerabilityFeedback.life <= 0) invulnerabilityFeedback = null; }
-    if (previousInvulnerability > 0 && player.invuln <= 0) invulnerabilityFeedback = { life: 0.22, duration: 0.22, kind: 'end' };
-    previousInvulnerability = player.invuln || 0;
   }
 
   function prepareDensityReadability() {
@@ -2704,14 +3103,19 @@
 
 
   function updateHUD() {
-    dom.wave.textContent = 'Oleada ' + wave;
-    dom.score.textContent = formatPoints(score);
-    dom.shards.textContent = shards;
-    dom.hpText.textContent = Math.max(0, Math.round(player.hp)) + '/' + player.maxHp;
-    dom.hpFill.style.width = Math.max(0, (player.hp / player.maxHp) * 100) + '%';
+    const waveText = 'Oleada ' + wave;
+    const scoreText = formatPoints(score);
+    const shardsText = String(shards);
+    const hpText = Math.max(0, Math.round(player.hp)) + '/' + player.maxHp;
+    const hpWidth = Math.max(0, (player.hp / player.maxHp) * 100) + '%';
+    if (dom.wave.textContent !== waveText) dom.wave.textContent = waveText;
+    if (dom.score.textContent !== scoreText) dom.score.textContent = scoreText;
+    if (dom.shards.textContent !== shardsText) dom.shards.textContent = shardsText;
+    if (dom.hpText.textContent !== hpText) dom.hpText.textContent = hpText;
+    if (dom.hpFill.style.width !== hpWidth) dom.hpFill.style.width = hpWidth;
     const criticalHealth = player.hp > 0 && player.hp / player.maxHp <= 0.25;
-    dom.hpBar.classList.toggle('critical', criticalHealth);
-    dom.hpFill.classList.toggle('critical', criticalHealth);
+    if (dom.hpBar.classList.contains('critical') !== criticalHealth) dom.hpBar.classList.toggle('critical', criticalHealth);
+    if (dom.hpFill.classList.contains('critical') !== criticalHealth) dom.hpFill.classList.toggle('critical', criticalHealth);
     notifyMobileSpecial();
   }
 
@@ -2725,10 +3129,39 @@
 
 
   // === RENDER ===
+  const RENDER_DIAGNOSTIC_MODES = {
+    full: { backgroundEffects: true, starfield: true, grid: true, metaOverlays: true, decorativeVfx: true },
+    'no-background-effects': { backgroundEffects: false, starfield: false, grid: false, metaOverlays: true, decorativeVfx: true },
+    'no-starfield': { backgroundEffects: true, starfield: false, grid: true, metaOverlays: true, decorativeVfx: true },
+    'no-grid': { backgroundEffects: true, starfield: true, grid: false, metaOverlays: true, decorativeVfx: true },
+    'no-meta-overlays': { backgroundEffects: true, starfield: true, grid: true, metaOverlays: false, decorativeVfx: true },
+    'core-gameplay-only': { backgroundEffects: false, starfield: false, grid: false, metaOverlays: false, decorativeVfx: false },
+  };
+  let renderDiagnosticMode = 'full';
+  NV.setRenderDiagnosticMode = function (mode) {
+    if (!Object.prototype.hasOwnProperty.call(RENDER_DIAGNOSTIC_MODES, mode)) {
+      throw new Error('Modo de diagnóstico de render inválido: ' + mode);
+    }
+    renderDiagnosticMode = mode;
+    return NV.getRenderDiagnostics();
+  };
+  NV.getRenderDiagnostics = function () {
+    return Object.assign({ mode: renderDiagnosticMode }, RENDER_DIAGNOSTIC_MODES[renderDiagnosticMode]);
+  };
+  let frameVisualRhythm = NV.rhythm;
   function draw() {
     resizeCanvas();
     // P2: política visual runtime (solo decorativa; sin visualBudget => todo full).
     const vbp = NV.getVisualBudget ? NV.getVisualBudget() : null;
+    const rhythmVisualDiag = NV.rhythmVisualDiagnostics;
+    const renderDiag = RENDER_DIAGNOSTIC_MODES[renderDiagnosticMode];
+    const drawBackgroundEffects = renderDiag.backgroundEffects;
+    const drawStarfield = drawBackgroundEffects && renderDiag.starfield;
+    const drawGrid = drawBackgroundEffects && renderDiag.grid;
+    const drawMetaOverlays = renderDiag.metaOverlays;
+    const drawDecorativeVfx = renderDiag.decorativeVfx;
+    const drawRhythmBackground = drawBackgroundEffects && (!rhythmVisualDiag || rhythmVisualDiag.background !== false);
+    frameVisualRhythm = (!rhythmVisualDiag || rhythmVisualDiag.auxiliary !== false) ? NV.rhythm : null;
     const heavyShadowOk = vbp ? vbp.heavyShadow : true;
     const meteorTrailAlpha = vbp ? Math.max(0, Math.min(1, vbp.trailDensity)) * 0.4 : 0.4;
     const vw = viewW(), vh = viewH(), vx = viewX(), vy = viewY();
@@ -2752,22 +3185,24 @@
       urgency: (player.hp > 0 && player.hp / player.maxHp <= 0.3) ? 1 : 0,
       gain: 1,
     };
-    prepareDensityReadability();
+    if (drawMetaOverlays) prepareDensityReadability();
 
     // Fondo galaxia más oscuro: mejora el contraste de los visuales rítmicos
     // sin aclarar el campo donde se leen enemigos, balas y HUD.
     ctx.fillStyle = '#01030d';
     ctx.fillRect(cameraLeft, cameraTop, cameraW, cameraH);
-    ctx.save();
-    ctx.translate(cameraLeft, cameraTop);
-    NV.drawStarfield(ctx, cameraW, cameraH, frame, player.x - cameraLeft, player.y - cameraTop, NV.rhythm);
-    if (NV.drawRhythmLayer) {
-      // P2: capa rítmica de fondo es decorativa — se throttlea por tier.
-      const rbDetail = vbp ? vbp.rhythmBackgroundDetail : 1;
-      const rbStep = rbDetail >= 1 ? 1 : rbDetail >= 0.5 ? 2 : 4;
-      if (frame % rbStep === 0) NV.drawRhythmLayer(ctx, cameraW, cameraH, frame);
+    if (drawBackgroundEffects) {
+      ctx.save();
+      ctx.translate(cameraLeft, cameraTop);
+      if (drawStarfield) NV.drawStarfield(ctx, cameraW, cameraH, frame, player.x - cameraLeft, player.y - cameraTop, frameVisualRhythm);
+      if (drawRhythmBackground && NV.drawRhythmLayer) {
+        // P2: capa rítmica de fondo es decorativa — se throttlea por tier.
+        const rbDetail = vbp ? vbp.rhythmBackgroundDetail : 1;
+        const rbStep = rbDetail >= 1 ? 1 : rbDetail >= 0.5 ? 2 : 4;
+        if (frame % rbStep === 0) NV.drawRhythmLayer(ctx, cameraW, cameraH, frame);
+      }
+      ctx.restore();
     }
-    ctx.restore();
 
     if (flashAlpha > 0 && flashColor) {
       ctx.fillStyle = flashColor;
@@ -2776,19 +3211,21 @@
       ctx.globalAlpha = 1;
     }
 
-    const gridAlpha = 0.03 + Math.sin(frame * 0.02) * 0.005;
-    ctx.strokeStyle = `rgba(124, 248, 255, ${gridAlpha})`;
-    ctx.lineWidth = 0.5;
-    const gridStartX = Math.floor(cameraLeft / 40) * 40;
-    const gridEndX = cameraLeft + cameraW;
-    const gridStartY = Math.floor(cameraTop / 40) * 40;
-    const gridEndY = cameraTop + cameraH;
-    for (let x = gridStartX; x < gridEndX; x += 40) { ctx.beginPath(); ctx.moveTo(x, cameraTop); ctx.lineTo(x, cameraTop + cameraH); ctx.stroke(); }
-    for (let y = gridStartY; y < gridEndY; y += 40) { ctx.beginPath(); ctx.moveTo(cameraLeft, y); ctx.lineTo(cameraLeft + cameraW, y); ctx.stroke(); }
+    if (drawGrid) {
+      const gridAlpha = 0.03 + Math.sin(frame * 0.02) * 0.005;
+      ctx.strokeStyle = `rgba(124, 248, 255, ${gridAlpha})`;
+      ctx.lineWidth = 0.5;
+      const gridStartX = Math.floor(cameraLeft / 40) * 40;
+      const gridEndX = cameraLeft + cameraW;
+      const gridStartY = Math.floor(cameraTop / 40) * 40;
+      const gridEndY = cameraTop + cameraH;
+      for (let x = gridStartX; x < gridEndX; x += 40) { ctx.beginPath(); ctx.moveTo(x, cameraTop); ctx.lineTo(x, cameraTop + cameraH); ctx.stroke(); }
+      for (let y = gridStartY; y < gridEndY; y += 40) { ctx.beginPath(); ctx.moveTo(cameraLeft, y); ctx.lineTo(cameraLeft + cameraW, y); ctx.stroke(); }
+    }
 
     // META-VIS-02b: neblina de densidad (capa 1, bajo entidades). Contexto
     // compartido de render: t, saturación por cantidad viva, urgencia por HP.
-    if (NV.drawDensityFog && densityField) {
+    if (drawMetaOverlays && NV.drawDensityFog && densityField) {
       NV.drawDensityFog(ctx, enemies, densityField.info, {
         t: performance.now() / 1000,
         saturation: hostileSaturation,
@@ -2838,15 +3275,17 @@
       ctx.fillText(countText, viewX() + 12, viewY() + (mobilePresentation ? 58 : 43));
     }
 
-    if (specialVFX) drawSpecialVFX(specialVFX);
-    NV.drawShockwaves(ctx, shockwaves);
+    if (drawDecorativeVfx && specialVFX) drawSpecialVFX(specialVFX);
+    if (drawDecorativeVfx) NV.drawShockwaves(ctx, shockwaves);
 
-    for (const t of trails) {
-      ctx.globalAlpha = Math.max(0, t.life / 0.3);
-      ctx.fillStyle = t.color;
-      ctx.beginPath(); ctx.arc(t.x, t.y, t.size, 0, Math.PI * 2); ctx.fill();
+    if (drawDecorativeVfx) {
+      for (const t of trails) {
+        ctx.globalAlpha = Math.max(0, t.life / 0.3);
+        ctx.fillStyle = t.color;
+        ctx.beginPath(); ctx.arc(t.x, t.y, t.size, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
-    ctx.globalAlpha = 1;
 
     for (const wp of weaponPickups) {
       if (wp.dead) continue;
@@ -2938,35 +3377,43 @@
     for (const e of enemies) if (!(e.atkFlash > 0)) drawEnemy(e);
     for (const e of enemies) if (e.atkFlash > 0) drawEnemy(e);
     const autoTargetInRange = currentAutoTarget ? (Math.hypot(currentAutoTarget.x - player.x, currentAutoTarget.y - player.y) <= (currentWeapon.range || Infinity)) : false;
-    if (NV.drawAutofireTarget) NV.drawAutofireTarget(ctx, currentAutoTarget, frame, player, autoTargetInRange, NV.META_DEBUG, metaRenderEnv);
-    for (const e of enemies) if (!e.waveCleanup && NV.drawContactReadability) NV.drawContactReadability(ctx, e, player, NV.META_DEBUG, metaRenderEnv);
-    for (const e of enemies) if (!e.waveCleanup && NV.drawEnemyIntent) NV.drawEnemyIntent(ctx, e, player, metaRenderEnv);
+    if (drawMetaOverlays && NV.drawAutofireTarget) NV.drawAutofireTarget(ctx, currentAutoTarget, frame, player, autoTargetInRange, NV.META_DEBUG, metaRenderEnv);
+    if (drawMetaOverlays) for (const e of enemies) if (!e.waveCleanup && NV.drawContactReadability) NV.drawContactReadability(ctx, e, player, NV.META_DEBUG, metaRenderEnv);
+    if (drawMetaOverlays) for (const e of enemies) if (!e.waveCleanup && NV.drawEnemyIntent) NV.drawEnemyIntent(ctx, e, player, metaRenderEnv);
     if (boss && !boss.dead) drawBoss();
 
     // Partículas decorativas quedan detrás de hazards/proyectiles: un telegraph
     // peligroso nunca debe desaparecer bajo VFX pesado.
-    for (const p of particles) {
-      ctx.globalAlpha = Math.max(0, p.life / (p.fade || 0.5));
-      ctx.fillStyle = p.color;
-      const psz = p.size || 4;
-      ctx.fillRect(p.x - psz / 2, p.y - psz / 2, psz, psz);
+    if (drawDecorativeVfx) {
+      for (const p of particles) {
+        ctx.globalAlpha = Math.max(0, p.life / (p.fade || 0.5));
+        ctx.fillStyle = p.color;
+        const psz = p.size || 4;
+        ctx.fillRect(p.x - psz / 2, p.y - psz / 2, psz, psz);
+      }
+      ctx.globalAlpha = 1;
     }
-    ctx.globalAlpha = 1;
 
     // Hazards sobre partículas y debajo de proyectiles: las minas conservan
     // warning/telegraph legibles y las balas enemigas siguen siendo prioritarias.
-    if (NV.drawHazards) NV.drawHazards(ctx, hazards, NV.rhythm, vbp, !!NV.META_DEBUG, NV.MUSICAL_NOTES, minefieldState.groove);
+    if (NV.drawHazards) NV.drawHazards(ctx, hazards, frameVisualRhythm, vbp, !!NV.META_DEBUG, NV.MUSICAL_NOTES, frameVisualRhythm ? minefieldState.groove : null);
 
     for (const b of bullets) {
       if (b.isEnemy) {
-        // Balas enemigas: se dibujan como antes (círculo con su radio de colisión).
-        ctx.fillStyle = b.color;
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = b.color;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.radius || 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
+        // Balas enemigas: renderer hostil canonico (COLOR = efecto via
+        // stunChance, SHAPE = familia via projectileStyle). Fallback rojo seguro
+        // si el modulo de render no esta disponible (sandbox/headless).
+        if (NV.drawHostileProjectile) {
+          NV.drawHostileProjectile(ctx, b);
+        } else {
+          ctx.fillStyle = '#ff3b4f';
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = '#ff3b4f';
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, b.radius || 5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
         continue;
       }
       if (!b.wid) {
@@ -3012,7 +3459,6 @@
     }
     ctx.globalAlpha = 1;
 
-    if (NV.drawMomentumReadability && state !== 'player_dying' && state !== 'gameover') NV.drawMomentumReadability(ctx, player, momentumVisual, metaRenderEnv);
     // #2: el poof sustituye al cuerpo sin crossfade; residuos terminan antes de FIN.
     if (state === 'gameover') { /* cuerpo fuera: solo overlay FIN */ }
     else if (state === 'player_dying') {
@@ -3021,6 +3467,8 @@
     } else drawPlayer();
     // F3: Hook visuals (world transform activo) — tras enemigos/jugador, ANTES del restore.
     if (NV.drawHookEffects && hookSystem) NV.drawHookEffects(ctx, hookSystem, player);
+    // El feedback de daño usa coordenadas de mundo y la cámara cinematográfica.
+    if (drawMetaOverlays && NV.drawDamageFeedback) NV.drawDamageFeedback(ctx, player, damageFeedback, metaRenderEnv);
     ctx.setTransform(scaleX, 0, 0, scaleY, -vx * scaleX, -vy * scaleY);
     // Retícula Canvas barata: geometría fija, sin glow, partículas ni DOM por frame.
     if (state === 'playing' && !paused && NV.input.getEffectiveFirePolicy() === 'manual' && combatIntent.aimActive) {
@@ -3037,8 +3485,6 @@
       ctx.stroke();
       ctx.restore();
     }
-    if (NV.drawDamageFeedback) NV.drawDamageFeedback(ctx, player, damageFeedback, metaRenderEnv);
-    if (NV.drawInvulnerabilityFeedback) NV.drawInvulnerabilityFeedback(ctx, player, invulnerabilityFeedback, metaRenderEnv);
     // Evento NEBLINA: velo oscuro con viñeta que reduce la visibilidad periférica.
     if (waveEvent === 'fog' && state === 'playing') {
       ctx.save();
@@ -3100,9 +3546,6 @@
     }
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    momentumVisual.previousVx = player.moveVx || 0;
-    momentumVisual.previousVy = player.moveVy || 0;
-    momentumVisual.previousSpeed = Math.hypot(momentumVisual.previousVx, momentumVisual.previousVy);
   }
 
   function drawSpecialVFX(vfx) {
@@ -3357,10 +3800,12 @@
     try {
       if (drawCleanupBody) {
         const ctx = renderCtx;
-        if (NV.SPECTRAL_ENEMY_MODE && typeof NV.drawSpectralEnemy2D === 'function') {
-          NV.drawSpectralEnemy2D(ctx, e, frame, player, NV.rhythm);
+        if (typeof NV.hasCommonEnemyVisual === 'function' && NV.hasCommonEnemyVisual(e.enemyTypeId)) {
+          NV.drawEnemy(ctx, e, frame, player, frameVisualRhythm, visualTimeSeconds);
+        } else if (NV.SPECTRAL_ENEMY_MODE && typeof NV.drawSpectralEnemy2D === 'function') {
+          NV.drawSpectralEnemy2D(ctx, e, frame, player, frameVisualRhythm);
         } else {
-          NV.drawEnemy(ctx, e, frame, player, NV.rhythm);
+          NV.drawEnemy(ctx, e, frame, player, frameVisualRhythm, visualTimeSeconds);
         }
       }
     } finally {
@@ -3477,10 +3922,14 @@
     }
 
     if (hitstop > 0) { hitstop = Math.max(0, hitstop - dt); dt = 0; }
+    if (!paused) visualTimeSeconds += dt;
     if (NV.rhythmTick) {
       const rhythmNow = now / 1000;
       NV.rhythmTick(rhythmNow);
-      if (NV.rhythmShakeBoost) shake = Math.max(shake, NV.rhythmShakeBoost(NV.rhythm, rhythmNow));
+      const rhythmVisualDiag = NV.rhythmVisualDiagnostics;
+      if ((!rhythmVisualDiag || rhythmVisualDiag.auxiliary !== false) && NV.rhythmShakeBoost) {
+        shake = Math.max(shake, NV.rhythmShakeBoost(NV.rhythm, rhythmNow));
+      }
       if (NV.updateRhythmWidgetIcon) NV.updateRhythmWidgetIcon();
     }
 
@@ -3533,14 +3982,21 @@
   if (NV.performanceMonitor) {
     NV.performanceMonitor.setTelemetryProvider(() => {
       let light = 0, medium = 0, heavy = 0;
+      let hydraFamily = 0, specializedCommon = 0, otherSpectral = 0;
+      const byEnemyTypeId = Object.create(null);
       for (const e of enemies) {
         if (e.dead) continue;
+        const typeId = e.enemyTypeId || 'unknown';
+        byEnemyTypeId[typeId] = (byEnemyTypeId[typeId] || 0) + 1;
+        if (typeof NV.isHydraEnemyFamily === 'function' && NV.isHydraEnemyFamily(e)) hydraFamily++;
+        else if (typeof NV.hasCommonEnemyVisual === 'function' && NV.hasCommonEnemyVisual(e.enemyTypeId)) specializedCommon++;
+        else otherSpectral++;
         const c = e.hostileClass || 'light';
         if (c === 'heavy') heavy++;
         else if (c === 'medium') medium++;
         else light++;
       }
-      if (boss && !boss.dead) heavy++; // el jefe consume un slot heavy
+      if (boss && !boss.dead) { heavy++; otherSpectral++; } // el jefe consume un slot heavy
       let playerBullets = 0, enemyBullets = 0;
       for (const b of bullets) {
         if (b.dead) continue;
@@ -3552,6 +4008,10 @@
         lightHostiles: light,
         mediumHostiles: medium,
         heavyHostiles: heavy,
+        hydraFamilyHostiles: hydraFamily,
+        specializedCommonHostiles: specializedCommon,
+        otherSpectralHostiles: otherSpectral,
+        byEnemyTypeId,
         playerBullets,
         enemyBullets,
         particles: particles.length,

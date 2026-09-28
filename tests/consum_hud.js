@@ -15,12 +15,73 @@ t('groupConsumables: agrupa por tipo con conteo y orden de aparición', () => {
   if (g.length !== 2 || g[0].type !== 'potion' || g[0].count !== 2 || g[1].count !== 1) throw new Error(JSON.stringify(g));
 });
 
-t('consumeByType: quita el PRIMER ítem del tipo elegido, no el primero de la cola', () => {
+t('consumeByType: quita la ÚLTIMA instancia del tipo elegido y preserva la primera aparición', () => {
   const items = [{ type: 'potion', id: 1 }, { type: 'potion', id: 2 }, { type: 'shield', id: 3 }];
   const got = NV.consumeByType(items, 'shield');
   if (!got || got.id !== 3) throw new Error('no quitó el shield');
   if (items.length !== 2 || items[0].id !== 1) throw new Error('mutación incorrecta');
   if (NV.consumeByType([], 'potion') !== null) throw new Error('vacío debería dar null');
+  // Contrato de slots: consumir un tipo con varias unidades no mueve su primera aparición.
+  const interleaved = [{ type: 'potion', id: 1 }, { type: 'shield', id: 2 }, { type: 'potion', id: 3 }];
+  const removed = NV.consumeByType(interleaved, 'potion');
+  if (!removed || removed.id !== 3) throw new Error('debería consumir la última instancia');
+  if (interleaved[0].id !== 1) throw new Error('la primera aparición se movió');
+});
+
+t('P1: array intercalado [potion, shield, bomb, potion, shield, potion] conserva el orden de grupos', () => {
+  const items = [
+    { type: 'potion', name: 'Poción' }, { type: 'shield', name: 'Escudo' }, { type: 'bomb', name: 'Bomba' },
+    { type: 'potion', name: 'Poción' }, { type: 'shield', name: 'Escudo' }, { type: 'potion', name: 'Poción' },
+  ];
+  const expected = 'potion,shield,bomb';
+  if (NV.groupConsumables(items).map((x) => x.type).join(',') !== expected) throw new Error('orden inicial');
+  // 2 consumos: quedan 1 potion, 2 shield, 1 bomb => el orden no puede cambiar.
+  for (let use = 0; use < 2; use++) {
+    if (!NV.consumeByType(items, 'potion')) throw new Error('no consumió potion en el uso ' + (use + 1));
+    const order = NV.groupConsumables(items).map((x) => x.type).join(',');
+    if (order !== expected) throw new Error('uso ' + (use + 1) + ' reordenó: ' + order);
+    if (NV.groupConsumables(items)[0].count !== 2 - use) throw new Error('conteo de potion incorrecto en uso ' + (use + 1));
+  }
+  // El último consumo de potion vacía el tipo: recién ahí su slot desaparece y los
+  // restantes se reconcilian (shield pasa a 0, bomb a 1) sin tocar su orden relativo.
+  if (!NV.consumeByType(items, 'potion')) throw new Error('no consumió la última potion');
+  const after = NV.groupConsumables(items).map((x) => x.type).join(',');
+  if (after !== 'shield,bomb') throw new Error('tras vaciar el tipo: ' + after);
+  if (NV.consumableCountByType(items, 'potion') !== 0) throw new Error('quedaron pociones');
+});
+
+t('P1: con los 6 slots de tipo ocupados y stacks múltiples, spamear no reordena slots', () => {
+  const types = ['potion', 'overdrive', 'shield', 'bomb', 'freeze', 'magnet'];
+  const items = [];
+  // Alta intercalada (como compras en visitas sucesivas): 3 unidades por tipo.
+  for (let round = 0; round < 3; round++) types.forEach((type) => NV.addConsumable(items, { type, name: type }, 10, 6));
+  const expected = types.join(',');
+  if (NV.groupConsumables(items).map((x) => x.type).join(',') !== expected) throw new Error('orden inicial');
+  for (let use = 0; use < 8; use++) {
+    const type = types[use % types.length];
+    if (!NV.consumeByType(items, type)) throw new Error('no consumió ' + type);
+    const order = NV.groupConsumables(items).map((x) => x.type).join(',');
+    if (order !== expected) throw new Error('uso ' + (use + 1) + ' reordenó los slots: ' + order);
+  }
+  if (NV.consumableTypeCount(items) !== 6) throw new Error('se perdió un tipo');
+});
+
+t('P1: consumir la última unidad de un tipo lo elimina y reconcilia sin huecos ni saltos', () => {
+  const items = [
+    { type: 'potion', name: 'Poción' }, { type: 'shield', name: 'Escudo' },
+    { type: 'bomb', name: 'Bomba' }, { type: 'potion', name: 'Poción' },
+  ];
+  if (NV.groupConsumables(items).map((x) => x.type).join(',') !== 'potion,shield,bomb') throw new Error('orden inicial');
+  NV.consumeByType(items, 'potion');
+  if (NV.groupConsumables(items).map((x) => x.type).join(',') !== 'potion,shield,bomb') throw new Error('se movió antes de tiempo');
+  NV.consumeByType(items, 'potion');
+  const order = NV.groupConsumables(items);
+  if (order.map((x) => x.type).join(',') !== 'shield,bomb') throw new Error('no se reconcilió al vaciar el tipo');
+  if (order.some((x) => !x.type || x.count !== 1)) throw new Error('grupo inválido tras reconciliar: ' + JSON.stringify(order));
+  if (items.length !== 2) throw new Error('longitud incorrecta: ' + items.length);
+  // El tipo liberado puede volver como tipo nuevo al final del orden de aparición.
+  NV.addConsumable(items, { type: 'potion', name: 'Poción' }, 10, 6);
+  if (NV.groupConsumables(items).map((x) => x.type).join(',') !== 'shield,bomb,potion') throw new Error('reingreso mal ubicado');
 });
 
 t('tope acumulado de consumibles por tipo: addConsumable bloquea al llegar a 10', () => {
@@ -72,14 +133,17 @@ t('game.js conecta Q (ciclar), F (usar seleccionado) y click en slot', () => {
   if (!g.includes('NV.consumeByType(consumableItems')) throw new Error('F no usa el tipo seleccionado');
 });
 
-t('P1.5: reconciliación determinista de selección al consumir', () => {
+t('P1.5: selección preservada por identidad de tipo tras consumir (no salta a otro stack)', () => {
   const g = fs.readFileSync('js/game.js', 'utf8');
-  if (!g.includes('function reconcileConsumSel()')) throw new Error('helper de reconciliación ausente');
-  if (!g.includes('consumSel = n === 0 ? 0 : (consumSel >= n ? 0 :')) throw new Error('sin wrap a primero ni reset a vacío');
-  // Se reconcilia después de consumir y en el caso de item faltante.
-  const useBlock = g.slice(g.indexOf('function useConsumable()'), g.indexOf('function reconcileConsumSel') === -1 ? undefined : g.indexOf('// === TIENDA DE MEJORAS PERMANENTES'));
-  if ((useBlock.match(/reconcileConsumSel\(\);/g) || []).length < 2) throw new Error('reconciliación no llamada tras consumir');
+  if (!g.includes('function reconcileConsumSel')) throw new Error('helper de reconciliación ausente');
+  if (!g.includes('preserveType')) throw new Error('reconcileConsumSel no preserva tipo');
+  if (!g.includes('findIndex')) throw new Error('no reubica por identidad de tipo');
+  if (!g.includes('reconcileConsumSel(selectedType)')) throw new Error('no preserva tipo tras consumir');
   if (g.includes('consumSel = Math.max(0, consumSel - 1);')) throw new Error('heurística vieja de selección presente');
+  const h = fs.readFileSync('js/render/hud.js', 'utf8');
+  if (h.includes('wItem.fuseLevel')) throw new Error('HUD aún lee fuseLevel de instancia');
+  if (!h.includes('fusionFor(wItem.id)')) throw new Error('HUD no consume estado central de fusión');
+  if (!g.includes('weaponFusionLevelFor')) throw new Error('game.js no pasa callback de fusión al HUD');
 });
 
 console.log('RESULT consum_hud: pass=' + pass + ' fail=' + fail);

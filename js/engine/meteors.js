@@ -23,10 +23,11 @@
       if (m.y > H + 20) { m.dead = true; continue; }
       // Impacto
       for (const e of enemies) {
-        if (e.dead) continue;
+        if (NV.isEnemyDamageable ? !NV.isEnemyDamageable(e) : e.dead) continue;
         const d = Math.hypot(e.x - m.x, e.y - m.y);
         if (d < m.radius + e.radius) {
-          e.hp -= 40;
+          const dealt = NV.guardProtectedDamage ? NV.guardProtectedDamage(e, 40) : 40;
+          e.hp -= dealt;
           e.hitFlash = Math.max(e.hitFlash || 0, 0.10);
           if (e.hp <= 0) killEnemy(e);
           applyKnockback(e, m.x, m.y, 150);

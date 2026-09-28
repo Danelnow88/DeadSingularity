@@ -64,39 +64,81 @@
   // relativos y prioridad. Se crea de forma perezosa dentro de initAudio() para
   // no romper los tests headless (audioCtx es null hasta COMENZAR).
   //  - music:        música base / capas musicales
-  //  - sfxUI:        UI, tienda, pickups, wheel, victoria
-  //  - sfxPlayer:    disparos, habilidad, recibir daño, heartbeat
+  //  - sfxUI:        UI, tienda, pickups, wheel, level-up
+  //  - sfxPlayer:    recibir daño, heartbeat, muerte, victoria, consumibles
   //  - sfxEnemies:   muerte de enemigos, ataques de jefe
-  //  - sfxAmbient:   eventos de Tanda C, cofres, combos
-  const CHANNELS = { music:0.6, sfxUI:0.7, sfxPlayer:0.9, sfxEnemies:0.8, sfxAmbient:0.6 };
-  // Volubilidad maestra por canal (0..1), configurable futuro -> sliders.
-  const MASTER_VOLUME = { music:1, sfxUI:1, sfxPlayer:1, sfxEnemies:1, sfxAmbient:1 };
-  const SFX_CHANNELS = ['sfxUI', 'sfxPlayer', 'sfxEnemies', 'sfxAmbient'];
+  //  - sfxAmbient:   eventos de oleada, cofres, combos, explosiones auxiliares
+  //  - weapons:      salida propia del submix de armas (weaponSfx.js). Estar fuera
+  //                  de sfxPlayer es lo que hace independientes weaponsVolume y
+  //                  playerVolume; conserva la mezcla relativa previa (0.9).
+  const CHANNELS = { music:0.6, sfxUI:0.7, sfxPlayer:0.9, sfxEnemies:0.8, sfxAmbient:0.6, weapons:0.9 };
+  // Volumen de categoría (0..1) por canal: es lo que gobiernan los ajustes de audio.
+  const MASTER_VOLUME = { music:1, sfxUI:1, sfxPlayer:1, sfxEnemies:1, sfxAmbient:1, weapons:1 };
+  // Mapa canal del mixer -> clave persistida en NV.settings.audio. Es el contrato
+  // entre el backend de ajustes y el routing real.
+  const AUDIO_CHANNEL_SETTINGS = {
+    music: 'musicVolume',
+    weapons: 'weaponsVolume',
+    sfxUI: 'uiVolume',
+    sfxPlayer: 'playerVolume',
+    sfxEnemies: 'enemiesVolume',
+    sfxAmbient: 'ambientVolume',
+  };
+  // Buses que gobierna el agregado SFX heredado (sfxVolume) para que el control
+  // actual de la UI siga afectando exactamente lo mismo que antes (las armas
+  // viajaban dentro de sfxPlayer, por eso se incluyen).
+  const LEGACY_SFX_CHANNELS = ['sfxUI', 'sfxPlayer', 'sfxEnemies', 'sfxAmbient', 'weapons'];
   let masterGain = null;
+  // Salida principal (0..1). El mute es INDEPENDIENTE: la salida efectiva es
+  // masterOutputVolume con sonido activo y 0 al mutear, así desmutear restaura
+  // el volumen general elegido y no fuerza 1.
+  let masterOutputVolume = 1;
+  // Duración de los tramos de la automatización de duck.
+  const DUCK_RAMP_IN = 0.01;
+  const DUCK_RAMP_OUT = 0.12;
 
-  // Ducking: un canal puede ser atenuado temporalmente por un evento de otro canal.
-  // Usado por SFX importantes (daño, victoria, combo) para bajar la música.
-  const ducking = {}; // canal -> { original, target, until }
+  // Ganancia base real de un canal: mezcla deliberada del mixer × volumen de la
+  // categoría. La relación interna entre buses (0.6/0.7/0.9/0.8/0.6/0.9) se
+  // conserva intacta; lo que cambia por categoría es solo el factor de volumen.
+  function channelBaseGain(name) {
+    return MASTER_VOLUME[name] * CHANNELS[name];
+  }
+
+  function settingsAudio() {
+    return (NV.settings && NV.settings.audio) ? NV.settings.audio : null;
+  }
+
+  // Normaliza un volumen a [0,1] con fallback (mismo criterio que core/settings.js).
+  function readVolume(value, fallback) {
+    if (typeof value === 'number') return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : fallback;
+    if (typeof value === 'string' && value.trim() !== '') {
+      const n = Number(value);
+      if (Number.isFinite(n)) return Math.max(0, Math.min(1, n));
+    }
+    return fallback;
+  }
 
   // Crea y expone el mixer. Llamado por initAudio(); si audioCtx ya no existe
   // (modo headless/test) simplemente no hace nada → fallback a destination directo.
+  // Materializa el ESTADO ACTUAL del mixer (MASTER_VOLUME + masterOutputVolume),
+  // que ya viene sembrado desde las preferencias persistidas. Por eso funciona
+  // igual si los settings se cargaron antes o después de inicializar Web Audio.
   function createMixer() {
     if (!NV.audioCtx) return;
     if (NV.mixer && masterGain) return;
     const ctx = NV.audioCtx;
     const mixer = {};
     masterGain = ctx.createGain();
-    masterGain.gain.value = NV.soundOn ? 1 : 0;
+    masterGain.gain.value = NV.soundOn ? masterOutputVolume : 0;
     masterGain.connect(ctx.destination);
     for (const ch in CHANNELS) {
       const g = ctx.createGain();
-      g.gain.value = CHANNELS[ch];
+      g.gain.value = channelBaseGain(ch);
       g.connect(masterGain);
       mixer[ch] = g;
     }
     NV.mixer = mixer;
     NV.audioMasterGain = masterGain;
-    applySfxVolume(NV.settings && NV.settings.audio ? NV.settings.audio.sfxVolume : 1);
   }
 
   // Enruta un GainNode a su canal; si no hay mixer (headless), cae a destination.
@@ -122,61 +164,101 @@
     }
   }
 
+  // Fija el volumen de UNA categoría (0..1) en su bus real. Si el mixer todavía no
+  // existe, solo actualiza el estado interno: createMixer() lo materializará.
   function setChannelVolume(name, value) {
     if (!Object.prototype.hasOwnProperty.call(MASTER_VOLUME, name)) return;
-    MASTER_VOLUME[name] = Math.max(0, Math.min(1, value));
-    if (NV.mixer && NV.mixer[name]) NV.mixer[name].gain.value = MASTER_VOLUME[name] * CHANNELS[name];
+    const level = readVolume(value, MASTER_VOLUME[name]);
+    MASTER_VOLUME[name] = level;
+    const g = NV.mixer && NV.mixer[name];
+    if (!g) return level;
+    const base = channelBaseGain(name);
+    // Cancelar la automatización pendiente: si había un duck en curso, el volumen
+    // de la categoría manda sobre su restauración programada.
+    if (NV.audioCtx && typeof g.gain.cancelScheduledValues === 'function') {
+      const now = NV.audioCtx.currentTime;
+      g.gain.cancelScheduledValues(now);
+      g.gain.setValueAtTime(base, now);
+    }
+    g.gain.value = base;
+    return level;
   }
 
+  // Volumen general (salida principal). Independiente del mute: aplicarlo NO altera
+  // NV.soundOn y desmutear restaura este valor en lugar de forzar 1.
+  function applyMasterVolume(value) {
+    masterOutputVolume = readVolume(value, 1);
+    if (masterGain && NV.audioCtx) {
+      const gain = masterGain.gain;
+      const now = NV.audioCtx.currentTime;
+      const target = NV.soundOn ? masterOutputVolume : 0;
+      if (typeof gain.cancelScheduledValues === 'function') gain.cancelScheduledValues(now);
+      gain.setValueAtTime(target, now);
+      gain.value = target;
+    }
+    return masterOutputVolume;
+  }
+
+  // Aplica al mixer un objeto de preferencias de audio (NV.settings.audio).
+  // Idempotente y seguro antes o después de inicializar Web Audio. Si una categoría
+  // no existe (settings previos o synth cargado sin settings.js), los buses de
+  // efectos heredan `sfxVolume` para no alterar la mezcla anterior.
+  function applyAudioSettings(audio) {
+    const src = audio || settingsAudio() || {};
+    const legacySfx = readVolume(src.sfxVolume, 1);
+    applyMasterVolume(src.masterVolume);
+    for (const ch in AUDIO_CHANNEL_SETTINGS) {
+      const key = AUDIO_CHANNEL_SETTINGS[ch];
+      const fallback = key === 'musicVolume' ? 1 : legacySfx;
+      setChannelVolume(ch, readVolume(src[key], fallback));
+    }
+    return src;
+  }
+
+  // Agregado SFX heredado (sfxVolume): mantiene el comportamiento del único control
+  // que la UI expone hoy. Escala todos los buses de efectos, armas incluidas.
   function applySfxVolume(value) {
-    value = Number(value);
-    if (!Number.isFinite(value)) value = 1;
-    value = Math.max(0, Math.min(1, value));
-    for (const name of SFX_CHANNELS) setChannelVolume(name, value);
-    return value;
+    const level = readVolume(value, 1);
+    for (const name of LEGACY_SFX_CHANNELS) setChannelVolume(name, level);
+    return level;
   }
 
   function setSoundEnabled(enabled) {
     NV.soundOn = !!enabled;
     if (masterGain && NV.audioCtx) {
       const t = NV.audioCtx.currentTime;
+      const target = NV.soundOn ? masterOutputVolume : 0;
       masterGain.gain.cancelScheduledValues(t);
       masterGain.gain.setValueAtTime(masterGain.gain.value, t);
-      masterGain.gain.linearRampToValueAtTime(NV.soundOn ? 1 : 0, t + 0.025);
+      masterGain.gain.linearRampToValueAtTime(target, t + 0.025);
     }
     if (!NV.soundOn && NV.audio && typeof NV.audio.stopAllWeapons === 'function') NV.audio.stopAllWeapons();
     if (typeof NV.syncSoundUI === 'function') NV.syncSoundUI();
     return NV.soundOn;
   }
 
-  // Ducking temporal: atenúa `byChannel` a `to` hasta `until` segundos de audioCtx.
+  // Ducking temporal: atenúa `byChannel` a `to` durante `secs` segundos de audioCtx.
+  // La bajada Y la restauración se programan en la propia automatización del
+  // AudioParam, así que se cumplen solas sin depender de ningún update por frame.
+  // Antes la restauración vivía en restoreDucking(), invocado solo desde
+  // updateMusic(): durante wave_end / player_dying / gameover ese update no corre y
+  // la música quedaba atenuada mucho más de lo pedido (victoria duckea 0.8s y la
+  // transición dura 2.1s+). La restauración siempre vuelve al volumen de la
+  // categoría vigente, no a un valor capturado.
   function duck(byChannel, to, secs) {
-    if (!NV.mixer) return;
+    const g = NV.mixer && NV.mixer[byChannel];
+    if (!g || !NV.audioCtx) return;
+    const gain = g.gain;
     const now = NV.audioCtx.currentTime;
-    const g = NV.mixer[byChannel];
-    if (!g) return;
-    const cur = g.gain.value;
-    ducking[byChannel] = ducking[byChannel] || { original: cur };
-    ducking[byChannel].original = cur;
-    ducking[byChannel].target = to;
-    ducking[byChannel].until = now + (secs || 0.15);
-    g.gain.setValueAtTime(cur, now);
-    g.gain.linearRampToValueAtTime(to, now + 0.01);
-  }
-  // Restaura gains al volumen maestro correspondiente (llamado cada frame de música).
-  function restoreDucking() {
-    if (!NV.mixer) return;
-    const now = NV.audioCtx.currentTime;
-    for (const ch in ducking) {
-      const d = ducking[ch];
-      if (now >= d.until) {
-        const target = MASTER_VOLUME[ch] * CHANNELS[ch];
-        NV.mixer[ch].gain.cancelScheduledValues(now);
-        NV.mixer[ch].gain.setValueAtTime(d.target, now);
-        NV.mixer[ch].gain.linearRampToValueAtTime(target, now + 0.12);
-        delete ducking[ch];
-      }
-    }
+    const base = channelBaseGain(byChannel);
+    const level = readVolume(to, base);
+    const hold = Math.max(0, Number(secs) || 0.15);
+    const until = now + hold;
+    if (typeof gain.cancelScheduledValues === 'function') gain.cancelScheduledValues(now);
+    gain.setValueAtTime(base, now);
+    gain.linearRampToValueAtTime(level, now + DUCK_RAMP_IN);
+    gain.setValueAtTime(level, until);
+    gain.linearRampToValueAtTime(base, until + DUCK_RAMP_OUT);
   }
 
   function initAudio() {
@@ -217,8 +299,13 @@
     osc.connect(filter); filter.connect(gain); gain.connect(channelFor('music'));
     osc.start(); osc.stop(NV.audioCtx.currentTime + dur);
   }
-  function scheduleNoise(dur, vol) {
+  // opts?: { channel, freq } → banda y bus opcionales. Sin opts mantiene la banda
+  // ambiental 200-400 Hz en `sfxAmbient` que usan todos los callers históricos
+  // (armas, ataques de jefe, explosiones, combo). El rediseño del daño del piloto
+  // necesita además un crack AGUDO entrando por `sfxPlayer`.
+  function scheduleNoise(dur, vol, opts) {
     if (!NV.audioCtx || !NV.soundOn) return;
+    opts = opts || {};
     const buffer = NV.audioCtx.createBuffer(1, NV.audioCtx.sampleRate * dur, NV.audioCtx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
@@ -227,10 +314,10 @@
     const gain = NV.audioCtx.createGain();
     src.buffer = buffer;
     filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(200 + Math.random() * 200, NV.audioCtx.currentTime);
+    filter.frequency.setValueAtTime(opts.freq || 200 + Math.random() * 200, NV.audioCtx.currentTime);
     gain.gain.setValueAtTime(vol || 0.04, NV.audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, NV.audioCtx.currentTime + dur);
-    src.connect(filter); filter.connect(gain); gain.connect(channelFor('sfxAmbient'));
+    src.connect(filter); filter.connect(gain); gain.connect(channelFor(opts.channel || 'sfxAmbient'));
     src.start(); src.stop(NV.audioCtx.currentTime + dur);
   }
   function scheduleDrum(type, dur, vol) {
@@ -295,9 +382,9 @@
       const droneFreq = layers.chordRoots[Math.floor(NV.getFrame() / 120) % layers.chordRoots.length] * (isMenuLike ? 2 : 4);
       createDrone(droneFreq, NV.audioCtx.currentTime, isMenuLike ? 3.4 : 2.5);
     }
-
-    // Restaurar ducking si venció su duración (audio adaptativo de capas - Tarea 1)
-    restoreDucking();
+    // Nota: el ducking ya no se restaura acá. Su bajada y su vuelta viven en la
+    // automatización del AudioParam (ver duck()), así que no dependen de que este
+    // update corra (no corre durante wave_end / player_dying / gameover).
   }
   function playTone(freq, dur, type, vol, channel, opts) {
     if (!NV.audioCtx || !NV.soundOn) return;
@@ -324,6 +411,94 @@
     const det = typeof opts.detune === 'number' ? opts.detune : ((Math.random() * 2 - 1) * 0.008);
     const f = freq * (1 + det);
     return playTone(f, dur, type, vol, opts.channel, opts);
+  }
+
+  // Golpe con BARRIDO de frecuencia: mismo enrutado (connectOutput), mismo detune
+  // anti-fatiga y mismo envelope de ataque instantáneo que playTone, pero el pitch
+  // viaja de f1 a f2 durante `dur`. Es el gesto de "impacto" (descendente), opuesto
+  // a los SFX positivos del juego, que suben (pickup/tienda/level-up/victoria).
+  function playToneSweep(f1, f2, dur, type, vol, channel, opts) {
+    if (!NV.audioCtx || !NV.soundOn) return;
+    const ctx = NV.audioCtx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const detune = (Math.random() * 2 - 1) * 0.008;
+    osc.type = type || 'sawtooth';
+    osc.frequency.setValueAtTime(f1 * (1 + detune), ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(20, f2 * (1 + detune)), ctx.currentTime + dur);
+    gain.gain.setValueAtTime(vol || 0.05, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    osc.connect(gain);
+    connectOutput(gain, channel, opts);
+    osc.start();
+    osc.stop(ctx.currentTime + dur);
+  }
+  // Helpers con OFFSET temporal para gestos multi-etapa (rediseño daño piloto).
+  // Reusan el mismo enrutado (connectOutput → sfxPlayer + paneo opcional) y el
+  // mismo envelope de ataque instantáneo + decaimiento exponencial que el resto
+  // del proyecto. Los nodos opcionales (WaveShaper) usan guards defensivos como
+  // en weaponSfx.js, así que en headless/tests simplemente se omiten.
+  function toneAt(freq, dur, type, vol, channel, delay, opts) {
+    if (!NV.audioCtx || !NV.soundOn) return;
+    const ctx = NV.audioCtx;
+    const t0 = ctx.currentTime + (delay || 0);
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const detune = (Math.random() * 2 - 1) * 0.008;
+    osc.type = type || 'square';
+    osc.frequency.setValueAtTime(freq * (1 + detune), t0);
+    gain.gain.setValueAtTime(vol || 0.03, t0);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    let out = osc;
+    if (typeof ctx.createWaveShaper === 'function' && opts && opts.drive) {
+      const sh = ctx.createWaveShaper();
+      const n = 256, curve = new Float32Array(n);
+      const k = 2 + opts.drive * 20;
+      for (let i = 0; i < n; i++) { const x = (i * 2) / n - 1; curve[i] = Math.tanh(x * k); }
+      sh.curve = curve;
+      osc.connect(sh); out = sh;
+    }
+    out.connect(gain);
+    connectOutput(gain, channel, opts);
+    osc.start(t0);
+    osc.stop(t0 + dur);
+  }
+  function sweepAt(f1, f2, dur, type, vol, channel, delay, opts) {
+    if (!NV.audioCtx || !NV.soundOn) return;
+    const ctx = NV.audioCtx;
+    const t0 = ctx.currentTime + (delay || 0);
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const detune = (Math.random() * 2 - 1) * 0.008;
+    osc.type = type || 'sawtooth';
+    osc.frequency.setValueAtTime(f1 * (1 + detune), t0);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(20, f2 * (1 + detune)), t0 + dur);
+    gain.gain.setValueAtTime(vol || 0.05, t0);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    osc.connect(gain);
+    connectOutput(gain, channel, opts);
+    osc.start(t0);
+    osc.stop(t0 + dur);
+  }
+  function noiseSweepAt(dur, vol, f1, f2, channel, delay) {
+    if (!NV.audioCtx || !NV.soundOn) return;
+    const ctx = NV.audioCtx;
+    const t0 = ctx.currentTime + (delay || 0);
+    const buffer = ctx.createBuffer(1, Math.max(16, Math.floor(ctx.sampleRate * dur)), ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+    const src = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+    src.buffer = buffer;
+    filter.type = 'bandpass';
+    filter.Q.value = 1.1;
+    filter.frequency.setValueAtTime(f1, t0);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(40, f2), t0 + dur);
+    gain.gain.setValueAtTime(vol || 0.04, t0);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    src.connect(filter); filter.connect(gain); gain.connect(channelFor(channel || 'sfxPlayer'));
+    src.start(t0); src.stop(t0 + dur);
   }
   const rapidFireFatigue = {};
   function rapidFireVolume(id, baseVol) {
@@ -373,7 +548,35 @@
     shopSell: () => { playTone(780, 0.08, 'triangle', 0.04, 'sfxUI'); playTone(520, 0.09, 'square', 0.03, 'sfxUI'); },
     wheelSelect: () => playTone(1180, 0.045, 'square', 0.03, 'sfxUI'),
     damage: () => { duck('music', 0.2, 0.18); playTone(80, 0.15, 'square', 0.07, 'sfxPlayer'); },
-    playerHit: () => { duck('music', 0.32, 0.12); playTone(135, 0.11, 'sawtooth', 0.075, 'sfxPlayer'); playTone(82, 0.18, 'triangle', 0.045, 'sfxPlayer'); },
+    // Daño recibido por el piloto — SEGUNDO REDISEÑO: "ALARMA DE CASCO ROTO".
+    // Ruptura total con el gesto anterior (crack agudo simultáneo + sweep grave
+    // corto <0.2s). Ahora es un gesto SECUENCIAL de ~0.55s en 4 etapas
+    // desacopladas, todo por `sfxPlayer` con duck largo de música:
+    //  E1 CRUNCH (0.00s): ruido bandpass medio-bajo con barrido 900→240 Hz
+    //     (0.10s) + square 140 Hz con drive leve: rotura, no brillo agudo.
+    //  E2 SUB-DROP (0.02s): sine 150→38 Hz durante 0.30s: peso corporal que el
+    //     diseño anterior no tenía (su sweep grave duraba 0.17s y moría solo).
+    //  E3 ALARMA (0.14/0.26/0.38s): 3 pulsos square 620→470 Hz con paneo
+    //     alterno L/R/centro: urgencia/peligro, capa inexistente antes.
+    //  E4 COLA (0.16s): ruido bandpass 2400→500 Hz, 0.38s: resolución/chisporroteo.
+    // Timbre, envelope, duración, estructura temporal, dinámica, movimiento y
+    // estéreo cambian a la vez: comparación A/B obvia. El golpe letal sigue por
+    // sfx.damage/deathTone; esto es solo daño no fatal (ver combat.js).
+    playerHit: () => {
+      duck('music', 0.14, 0.55);
+      // E1 — crunch de rotura.
+      noiseSweepAt(0.10, 0.11, 900, 240, 'sfxPlayer', 0);
+      toneAt(140, 0.09, 'square', 0.075, 'sfxPlayer', 0, { drive: 0.35 });
+      // E2 — caída corporal grave y larga.
+      sweepAt(150, 38, 0.30, 'sine', 0.12, 'sfxPlayer', 0.02);
+      // E3 — triple pulso de alarma con contraste estéreo.
+      toneAt(620, 0.07, 'square', 0.05, 'sfxPlayer', 0.14, { pan: -0.55 });
+      toneAt(545, 0.07, 'square', 0.05, 'sfxPlayer', 0.26, { pan: 0.55 });
+      toneAt(470, 0.10, 'square', 0.055, 'sfxPlayer', 0.38, { pan: 0 });
+      sweepAt(620, 470, 0.10, 'square', 0.04, 'sfxPlayer', 0.38);
+      // E4 — cola de chisporroteo descendente.
+      noiseSweepAt(0.38, 0.05, 2400, 500, 'sfxPlayer', 0.16);
+    },
     special: () => playTone(660, 0.4, 'triangle', 0.05, 'sfxPlayer'),
     playerLevelUp: () => { duck('music', 0.3, 0.14); playTone(523, 0.1, 'square', 0.05, 'sfxUI'); playTone(784, 0.13, 'triangle', 0.04, 'sfxUI'); },
     wave: () => playTone(440, 0.3, 'triangle', 0.06, 'sfxUI'),
@@ -427,16 +630,43 @@
   sfx.countdown = (sec) => { playTone(660 - sec * 60, 0.12, 'square', 0.04, 'sfxAmbient'); };
   sfx.bossEnter = () => { duck('music', 0.1, 0.4); playTone(90, 0.6, 'sawtooth', 0.12, 'sfxEnemies'); };
   sfx.victory = (wave, opts) => {
-    opts = opts || {};
-    const big = !!opts.milestone || (wave && (wave % 25 === 0 || wave % 10 === 0 || wave % 5 === 0));
-    duck('music', big ? 0.12 : 0.25, big ? 0.38 : 0.2);
-    playTone(660, 0.16, 'triangle', 0.055, 'sfxUI');
-    playTone(880, 0.18, 'triangle', 0.05, 'sfxUI');
-    if (big) {
-      playTone(523, 0.26, 'sawtooth', 0.07, 'sfxUI');
-      playTone(1046, 0.32, 'square', 0.05, 'sfxAmbient');
-      scheduleNoise(0.22, 0.035);
-    }
+    // SFX ÚNICO DE OLEADA SUPERADA — "RESPIRO LUMINOSO" (v2 con presencia).
+    // Una sola identidad para TODA victoria de oleada (normal, hito o boss):
+    // se ignora wave/milestone a propósito para que cada vez que suena
+    // signifique exactamente "OLEADA SUPERADA".
+    //  Por qué la v1 se perdía: bus sfxUI (0.7, el más bajo de SFX) + ataque
+    //  blando (triangle/sine sin transitorio) + duck leve de música + arranque
+    //  en 523Hz (zona media ya saturada por música/disparos). Todo sumaba a
+    //  "hay algo ahí si presto atención".
+    //  Qué cambia en v2 (misma melodía, otra presencia):
+    //  E0 GOLPE (0.00s): transitorio percusivo grave+brillo que MARCA el corte
+    //     "SE TERMINÓ EL COMBATE" antes de que la melodía respire.
+    //  E1 APERTURA (0.02-0.28s): misma quinta, más densa y con ataque (square
+    //     con drive + triangle), paneo amplio: ya no compite, lidera.
+    //  E2 RESPUESTA (0.16-0.52s): confirma una octava arriba, abre el estéreo.
+    //  E3 ASENTAMIENTO (0.40-0.85s): tónica que aterriza + brillo que se apaga
+    //     dentro del wave_end (2.10s): deja espacio para recoger y la tienda.
+    //  Mezcla: bus `sfxPlayer` (0.9, el más alto de SFX) + duck PROFUNDO y
+    //  corto de música (0.10/0.8s): la música se aparta, la victoria manda,
+    //  y vuelve sola para el respiro/tienda. Volumen por voz comedido: golpe
+    //  único, sin fanfarra larga ni estridencia que canse en la oleada 50.
+    void wave; void opts;
+    duck('music', 0.10, 0.8);
+    // E0 — golpe de corte: peso grave + crack que anuncia el fin del combate.
+    sweepAt(180, 55, 0.22, 'sine', 0.14, 'sfxPlayer', 0);
+    toneAt(1560, 0.05, 'square', 0.06, 'sfxPlayer', 0, { drive: 0.4, pan: -0.5 });
+    noiseSweepAt(0.14, 0.09, 2400, 500, 'sfxPlayer', 0);
+    // E1 — apertura: misma quinta, con cuerpo y ataque.
+    toneAt(523.25, 0.16, 'square', 0.075, 'sfxPlayer', 0.02, { drive: 0.3, pan: -0.45 });
+    toneAt(523.25, 0.16, 'triangle', 0.06, 'sfxPlayer', 0.02, { pan: -0.45 });
+    toneAt(784.00, 0.20, 'square', 0.075, 'sfxPlayer', 0.10, { drive: 0.3, pan: 0.45 });
+    toneAt(784.00, 0.20, 'triangle', 0.06, 'sfxPlayer', 0.10, { pan: 0.45 });
+    // E2 — respuesta: confirma una octava arriba, abre el estéreo.
+    toneAt(1046.50, 0.22, 'triangle', 0.06, 'sfxPlayer', 0.18, { pan: -0.45 });
+    toneAt(1318.51, 0.26, 'triangle', 0.055, 'sfxPlayer', 0.28, { pan: 0.45 });
+    // E3 — asentamiento: tónica que aterriza + brillo que se apaga.
+    toneAt(261.63, 0.34, 'sine', 0.075, 'sfxPlayer', 0.42);
+    noiseSweepAt(0.30, 0.03, 3200, 900, 'sfxPlayer', 0.48);
   };
   // Firma sonora de transición de fase de jefe (Tarea 3, idea 6): golpe grave + swell
   // ascendente distinto del bossEnter, para que "entró en fase 2" se sienta único.
@@ -454,12 +684,42 @@
     swarm: { death: [330, 220], stable: [440, 880], deathType: 'square', stableType: 'sine' }
   };
 
+  sfx.playerDeath = () => {
+    // SFX MUERTE DEL PERSONAJE — "COLAPSO + CORTE + HUNDIMIENTO".
+    // Evento único de ~0.80s que cabe justo en la transición player_dying→FIN
+    // (0.82s): arranca ANTES del overlay FIN y resuelve hacia él.
+    //  E1 IMPACTO/COLAPSO (0.00-0.12s): crack agudo + crunch descendente +
+    //     ruido de impacto: marca inequívoca "MORÍ" (nada que ver con el
+    //     gesto de alarma del playerHit no letal).
+    //  E2 CORTE/INTERRUPCIÓN (0.22s): silencio funcional de ~60ms + barrido
+    //     descendente que "apaga" la acción (la anti-alarma: donde playerHit
+    //     pondría su 2º pulso, acá hay vacío).
+    //  E3 HUNDIMIENTO/RESOLUCIÓN (0.30-0.80s): pedal grave + sub que cae a
+    //     30-38 Hz + cola de ruido que se apaga: conduce al FIN.
+    // Todo por `sfxPlayer` con duck profundo y largo de música (0.08/0.9s):
+    // la música se retira para que la muerte mande, y vuelve sola para el FIN.
+    duck('music', 0.08, 0.9);
+    // E1 — colapso: rotura brillante que se desploma al grave.
+    toneAt(720, 0.07, 'square', 0.09, 'sfxPlayer', 0, { drive: 0.5, pan: -0.4 });
+    sweepAt(320, 70, 0.32, 'sawtooth', 0.11, 'sfxPlayer', 0, { pan: 0.4 });
+    noiseSweepAt(0.30, 0.10, 1600, 220, 'sfxPlayer', 0);
+    // E1b — peso corporal que se viene abajo (núcleo + sub).
+    sweepAt(210, 48, 0.55, 'sine', 0.13, 'sfxPlayer', 0.05);
+    sweepAt(110, 30, 0.60, 'triangle', 0.10, 'sfxPlayer', 0.08, { pan: -0.25 });
+    // E2 — corte: tras ~60ms de aire, barrido que interrumpe en seco.
+    toneAt(1100, 0.03, 'square', 0.045, 'sfxPlayer', 0.22, { pan: 0.4 });
+    sweepAt(880, 110, 0.06, 'sawtooth', 0.07, 'sfxPlayer', 0.22);
+    // E3 — hundimiento: pedal grave + sub final + cola que se disuelve a FIN.
+    toneAt(55, 0.34, 'sine', 0.11, 'sfxPlayer', 0.30);
+    sweepAt(82, 38, 0.48, 'sine', 0.10, 'sfxPlayer', 0.32);
+    noiseSweepAt(0.42, 0.045, 900, 120, 'sfxPlayer', 0.38);
+  };
+
   sfx.deathTone = (pilotId) => {
-    const tone = PILOT_TRANSITION_TONES[pilotId] || PILOT_TRANSITION_TONES.boti;
-    duck('music', 0.28, 0.22);
-    playTone(tone.death[0], 0.28, tone.deathType, 0.055, 'sfxPlayer');
-    playTone(tone.death[1], 0.42, 'triangle', 0.035, 'sfxAmbient');
-    if (pilotId === 'nova' || pilotId === 'rook') scheduleNoise(0.16, 0.025);
+    // Compat: la firma por piloto quedó obsoleta; el SFX de muerte es único
+    // para que "morí" siempre se lea igual. Se ignora pilotId a propósito.
+    void pilotId;
+    sfx.playerDeath();
   };
 
   sfx.stabilizeTone = (pilotId, isBoss) => {
@@ -495,10 +755,14 @@
     if (NV.audio && typeof NV.audio.weaponFire === 'function') {
       return NV.audio.weaponFire((weapon && weapon.id) || 'pistol', opts);
     }
+    // Fallback sintetizado (sin weaponSfx.js disponible): las armas entran por su
+    // propio bus para que weaponsVolume siga siendo independiente de playerVolume.
+    // Un opts.channel explícito del caller se respeta tal cual.
+    const fallbackOpts = opts.channel ? opts : Object.assign({}, opts, { channel: 'weapons' });
     const fus = opts.fusion > 0 ? 1 + opts.fusion * 0.05 : 1; // pitch ↑ +5% por nivel de fusión
     const vol = (opts.crit ? 1.15 : 1) * (opts.fusion ? 1 + opts.fusion * 0.03 : 1);
     const handler = WEAPON_SOUND_HANDLERS[weapon.id] || defaultWeaponSound;
-    handler(weapon, opts, fus, vol);
+    handler(weapon, fallbackOpts, fus, vol);
   }
 
   NV.WEAPON_SOUND_HANDLERS = WEAPON_SOUND_HANDLERS;
@@ -517,18 +781,28 @@
     rage: () => { scheduleNoise(0.05, 0.06); playTone(190, 0.06, 'square', 0.07); },
   };
 
+  // Siembra del estado del mixer desde las preferencias persistidas. Si settings.js
+  // todavía no cargó, queda en defaults y settings.js lo reaplicará en su arranque.
+  applyAudioSettings(settingsAudio());
+
   // Exportar API pública
   NV.initAudio = initAudio;
   NV.updateMusic = updateMusic;
   NV.playWeaponSound = playWeaponSound;
   NV.playToneEx = playToneEx;
+  NV.playToneSweep = playToneSweep;
   NV.duck = duck;
   NV.channelFor = channelFor;
   NV.panForX = panForX;
   NV.setChannelVolume = setChannelVolume;
+  NV.applyMasterVolume = applyMasterVolume;
+  NV.applyAudioSettings = applyAudioSettings;
   NV.applySfxVolume = applySfxVolume;
   NV.setSoundEnabled = setSoundEnabled;
   NV.mixerChannels = CHANNELS;
+  // Volumen de categoría por canal del mixer (mapa canal -> 0..1).
   NV.masterVolume = MASTER_VOLUME;
+  // Contrato canal del mixer -> clave persistida en NV.settings.audio.
+  NV.audioChannelSettings = AUDIO_CHANNEL_SETTINGS;
   NV.sfx = sfx;
 })();

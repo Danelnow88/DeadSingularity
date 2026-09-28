@@ -8,6 +8,7 @@
   NV.findTarget = function ({ player, enemies, boss }) {
     let target = null, minDist = Infinity;
     for (const e of enemies) {
+      if (NV.isEnemyTargetable && !NV.isEnemyTargetable(e)) continue;
       const d = Math.hypot(e.x - player.x, e.y - player.y);
       if (d < minDist) { minDist = d; target = e; }
     }
@@ -20,6 +21,7 @@
 
   // Empuje físico sobre un enemigo tras un impacto.
   NV.applyKnockback = function (e, bx, by, strength) {
+    if (NV.isEnemyDamageable && !NV.isEnemyDamageable(e)) return;
     const angle = Math.atan2(e.y - by, e.x - bx);
     const kb = strength * (1 - (e.knockbackRes || 0));
     e.knockVelX = (e.knockVelX || 0) + Math.cos(angle) * kb;

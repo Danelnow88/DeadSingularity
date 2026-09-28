@@ -9,6 +9,10 @@
 
   const WINDOW = 240;               // ~4s de historia a 60fps
   const COMPUTE_INTERVAL_MS = 250;  // percentiles recalculados máx 4 veces/segundo
+  const MS_6_06 = 1000 / 165;
+  const MS_6_94 = 1000 / 144;
+  const MS_8_33 = 1000 / 120;
+  const MS_11_11 = 1000 / 90;
   const MS_16_7 = 1000 / 60;
   const MS_25 = 25;
   const MS_33 = 1000 / 30;
@@ -81,9 +85,13 @@
       if (cached && now - lastCompute < COMPUTE_INTERVAL_MS) return cached;
       lastCompute = now;
       const count = sampleN;
-      let a16 = 0, a25 = 0, a33 = 0;
+      let a6 = 0, a7 = 0, a8 = 0, a11 = 0, a16 = 0, a25 = 0, a33 = 0;
       for (let i = 0; i < count; i++) {
         const v = frameBuf[i];
+        if (v > MS_6_06) a6++;
+        if (v > MS_6_94) a7++;
+        if (v > MS_8_33) a8++;
+        if (v > MS_11_11) a11++;
         if (v > MS_33) { a33++; a25++; a16++; }
         else if (v > MS_25) { a25++; a16++; }
         else if (v > MS_16_7) { a16++; }
@@ -94,6 +102,10 @@
         frame: stats(frameBuf, count),
         update: stats(updateBuf, count),
         draw: stats(drawBuf, count),
+        framesAbove6_06: a6,
+        framesAbove6_94: a7,
+        framesAbove8_33: a8,
+        framesAbove11_11: a11,
         framesAbove16_7: a16,
         framesAbove25: a25,
         framesAbove33: a33,

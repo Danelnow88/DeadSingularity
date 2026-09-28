@@ -42,7 +42,7 @@ t('game.js dibuja el starfield conectado a la vista dinámica/cinematográfica',
   const g = fs.readFileSync('js/game.js', 'utf8');
   const starfieldCall = g.match(/NV\.drawStarfield\([^;]+\);/);
   if (!starfieldCall) throw new Error('starfield no conectado');
-  if (!/frame/.test(starfieldCall[0]) || !/NV\.rhythm/.test(starfieldCall[0])) throw new Error('starfield sin tiempo/ritmo');
+  if (!/frame/.test(starfieldCall[0]) || !/frameVisualRhythm/.test(starfieldCall[0])) throw new Error('starfield sin tiempo/ritmo visual');
   if (!/(player\.[xy]|cinematic\.(centerX|centerY)|view[XY])/.test(starfieldCall[0])) throw new Error('starfield no conectado a vista dinámica');
   if (!g.includes("spawnExplosion(player.x - (player.moveVx || 0)")) throw new Error('polvo de slide ausente');
 });

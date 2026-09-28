@@ -16,6 +16,38 @@
     for (const h of hazards || []) if (h && h.type === 'speakerMine' && h.state !== 'dead') n++;
     return n;
   }
+  function aliveCoreZoneCount(hazards, ownerId) {
+    let n = 0;
+    for (const h of hazards || []) {
+      if (!h || h.type !== 'coreZone' || h.state === 'dead') continue;
+      if (ownerId == null || h.ownerId === ownerId) n++;
+    }
+    return n;
+  }
+
+  NV.canSpawnCoreZone = function (hazards, ownerId) {
+    const cfg = NV.SPECTER_CORE_ZONE;
+    if (!cfg || ownerId == null) return false;
+    return aliveCoreZoneCount(hazards) < cfg.maxGlobal
+      && aliveCoreZoneCount(hazards, ownerId) < cfg.maxPerOwner;
+  };
+
+  NV.spawnCoreZone = function (hazards, owner, x, y) {
+    const cfg = NV.SPECTER_CORE_ZONE;
+    if (!hazards || !owner || !cfg || !NV.canSpawnCoreZone(hazards, owner.coreZoneOwnerId)) return null;
+    const damage = Number.isFinite(owner.damage) ? Math.max(0, owner.damage * cfg.damageMult) : 0;
+    const zone = {
+      type: 'coreZone', state: 'arming', stateTime: 0, simTime: 0,
+      x, y, spawnX: x, spawnY: y,
+      radius: cfg.radius, armTime: cfg.armTime, activeTime: cfg.activeTime,
+      tickInterval: cfg.tickInterval, tickTimer: 0,
+      damage,
+      ownerId: owner.coreZoneOwnerId,
+      ownerType: 'specter_core',
+    };
+    hazards.push(zone);
+    return zone;
+  };
   function sectorFor(x, y, player) {
     let a = Math.atan2(y - player.y, x - player.x);
     if (a < 0) a += TAU;
@@ -222,7 +254,7 @@
     if (ctx) {
       if (ctx.spawnExplosion) ctx.spawnExplosion(mine.x, mine.y, 34, '#ff3d8d', 1.05);
       if (ctx.spawnShockwave) {
-        ctx.spawnShockwave(mine.x, mine.y, { maxRadius: 105, color: '#ff4da6', width: 6 });
+        ctx.spawnShockwave(mine.x, mine.y, { maxRadius: 105, color: '#ffffff', width: 6 });
         ctx.spawnShockwave(mine.x, mine.y, { maxRadius: 70, color: '#ffd35a', width: 3, secondary: true });
       }
       // P3.1: notas musicales minimalistas tras la detonación. Decorativas: respetan el
@@ -243,10 +275,18 @@
     state.active = active;
     // Fin de wave/shop/boss/evento distinto: desarmado silencioso. Nunca explota durante
     // una transición ni conserva una mina de la wave anterior.
-    if (!active && (ctx.transitioning || ctx.waveEvent !== 'mines' || ctx.boss)) {
+    if (!active && (ctx.transitioning || ctx.boss)) {
       hazards.length = 0;
       if (typeof ctx.clearMusicalNotes === 'function') ctx.clearMusicalNotes();
       return { hazards, state, shake: ctx.shake || 0 };
+    }
+    if (!active && ctx.waveEvent !== 'mines') {
+      let keep = 0;
+      for (let i = 0; i < hazards.length; i++) {
+        if (hazards[i] && hazards[i].type !== 'speakerMine' && hazards[i].state !== 'dead') hazards[keep++] = hazards[i];
+      }
+      hazards.length = keep;
+      if (typeof ctx.clearMusicalNotes === 'function') ctx.clearMusicalNotes();
     }
     if (active) {
       const target = NV.speakerMineTargetCount(ctx.wave);
@@ -294,6 +334,43 @@
         }
       } else if (mine.state === 'detonating' && mine.stateTime >= bal('SPEAKER_MINE_DETONATE_TIME', 0.12)) {
         mine.state = 'dead';
+      }
+    }
+    for (const zone of hazards) {
+      if (!zone || zone.type !== 'coreZone' || zone.state === 'dead') continue;
+      zone.simTime += dt;
+      zone.stateTime += dt;
+      if (zone.state === 'arming') {
+        if (zone.stateTime >= zone.armTime) {
+          zone.state = 'active';
+          zone.stateTime = 0;
+          zone.tickTimer = 0;
+        }
+        continue;
+      }
+      if (zone.state === 'active') {
+        zone.tickTimer = Math.max(0, zone.tickTimer - dt);
+        if (ctx.player && zone.tickTimer <= 1e-9
+            && Math.hypot(ctx.player.x - zone.x, ctx.player.y - zone.y) <= zone.radius) {
+          const hit = ctx.applyPlayerDamage
+            ? ctx.applyPlayerDamage(zone.damage, {
+              cause: 'specter-core-zone', hazard: zone,
+              allowCrit: false, allowDodge: false, respectInvulnerability: true,
+              // La zona ya limita el daño a un tick cada 0.50 s; no prolongar
+              // la invulnerabilidad global con cada tick periódico.
+              postHitInvuln: 0,
+            })
+            : { applied: false, killed: false };
+          zone.tickTimer = zone.tickInterval;
+          if (hit && hit.applied) ctx.shake = Math.max(ctx.shake || 0, 0.12);
+          if (hit && hit.killed && ctx.onPlayerKilled) ctx.onPlayerKilled(hit);
+        }
+        if (zone.stateTime >= zone.activeTime) {
+          zone.state = 'expiring';
+          zone.stateTime = 0;
+        }
+      } else if (zone.state === 'expiring' && zone.stateTime >= 0.18) {
+        zone.state = 'dead';
       }
     }
     let w = 0;

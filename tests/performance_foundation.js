@@ -37,6 +37,16 @@ t('monitor: ring buffer acotado — windowFrames nunca excede 240 y reset limpia
   const s = m.getSnapshot();
   if (s.frames !== 0 || s.frame.p95 !== 0 || s.framesAbove16_7 !== 0) throw new Error('reset incompleto');
 });
+t('monitor: umbrales de 165/144/120/90 Hz usan el intervalo rAF existente', () => {
+  const sbx = mkNV(); load('js/engine/performanceMonitor.js', sbx);
+  const m = sbx.window.NV.performanceMonitor;
+  for (const ms of [6, 6.5, 7, 9, 12, 17, 26, 34]) m.record(ms, 0, 0);
+  const s = m.getSnapshot();
+  const actual = [s.framesAbove6_06, s.framesAbove6_94, s.framesAbove8_33, s.framesAbove11_11, s.framesAbove16_7, s.framesAbove25, s.framesAbove33];
+  const expected = [7, 6, 5, 4, 3, 2, 1];
+  if (actual.join() !== expected.join()) throw new Error('umbrales=' + JSON.stringify(actual));
+  if (s.frame.p50 !== 12 || Math.abs((1000 / s.frame.p50) - 83.333333) > 0.001) throw new Error('mediana rAF no disponible');
+});
 t('monitor: sin shift() por frame y buffers preasignados (Float32Array)', () => {
   const src = fs.readFileSync('js/engine/performanceMonitor.js', 'utf8');
   if (src.includes('.shift(')) throw new Error('shift por frame');
@@ -186,14 +196,20 @@ t('shockwave secundaria: se omite solo con visual budget y solo la marcada decor
   NV.spawnShockwave(arr3, 0, 0, { maxRadius: 110 });
   if (arr3.length !== 1) throw new Error('la onda principal nunca se omite');
 });
-t('game.js: gates decorativos conectados y balas enemigas intactas', () => {
+t('game.js: gates decorativos conectados y balas enemigas delegadas al renderer hostil', () => {
   const g = fs.readFileSync('js/game.js', 'utf8');
   if (!g.includes('function trailStep()')) throw new Error('trailStep ausente');
   if (!g.includes('frame % trailStep()')) throw new Error('trail no usa el budget');
   if (!g.includes('rbStep')) throw new Error('rhythm layer sin throttle');
   if (!g.includes('heavyShadowOk')) throw new Error('heavyShadow gate ausente');
   if (!g.includes('meteorTrailAlpha')) throw new Error('estela de meteoros sin gate');
-  if (!g.includes('Balas enemigas: se dibujan como antes')) throw new Error('dibujo de balas enemigas alterado');
+  // La rama hostil delega en el renderer canonico y conserva fallback rojo.
+  if (!g.includes('NV.drawHostileProjectile(ctx, b)')) throw new Error('balas enemigas sin renderer hostil');
+  const start = g.indexOf('if (b.isEnemy) {');
+  if (start < 0) throw new Error('rama isEnemy ausente');
+  const branch = g.slice(start, start + 700);
+  if (!branch.includes('#ff3b4f')) throw new Error('fallback hostil no es rojo');
+  if (branch.indexOf('drawBulletShape') >= 0) throw new Error('la rama de jugador se mezclo con la hostil');
   const sp = fs.readFileSync('js/engine/special.js', 'utf8');
   if (!sp.includes('secondary: true')) throw new Error('anillo secundario sin marca');
 });

@@ -11,17 +11,23 @@
   NV.BALANCE = {
     // Tope de buffers de entidad
     MAX_HOSTILES: 30, MAX_HEAVY_HOSTILES: 7,
-    // F1 threat curve: densidad blanda + reposición + composición (oleadas tardías).
+    // Curva de amenaza: densidad blanda + reposición + composición.
     // MAX_HOSTILES/MAX_HEAVY_HOSTILES siguen siendo el TECHO DURO de emergencia;
     // el refill ordinario ahora se detiene antes (objetivo blando) para que el
     // late game opere visiblemente por debajo del cap en vez de saturarlo.
     LATE_BATCH_CAP: 5,            // lote normal máx en oleadas tardías (antes 8)
     LATE_REFILL_FLOOR: 0.35,      // piso de reposición tardía (antes 0.25s)
-    SOFT_DENSITY_START: 10,       // oleada desde la que baja el objetivo blando
-    SOFT_DENSITY_FLOOR: 16,       // objetivo blando mínimo (normal, pre-ajuste dificultad)
-    SOFT_DENSITY_SLOPE: 0.4,      // enemigos menos por oleada tras SOFT_DENSITY_START
-    SOFT_DENSITY_DIFF_SCALE: 20,  // (spawnMult-1)*SCALE → easy -3 / hard +3
-    SOFT_DENSITY_MIN: 12,         // piso absoluto (cualquier dificultad)
+    SOFT_DENSITY_EARLY_BASE: 18,  // w1 normal
+    SOFT_DENSITY_EARLY_END: 5,
+    SOFT_DENSITY_EARLY_RATE: 0.5, // w5 = 20
+    SOFT_DENSITY_MID_END: 15,
+    SOFT_DENSITY_MID_RATE: 0.4,   // w10 = 22, w15 = 24
+    SOFT_DENSITY_LATE_END: 25,
+    SOFT_DENSITY_LATE_RATE: 0.2,  // w20 = 25, w25 = 26
+    SOFT_DENSITY_CAP: 26,         // objetivo ordinario máximo en normal
+    SOFT_DENSITY_DIFF_SCALE: 14,  // spawnMult -> easy -2 / hard +2
+    SOFT_DENSITY_MIN: 16,         // piso absoluto con dificultad
+    SOFT_DENSITY_MAX: 28,         // difícil tampoco opera pegado al cap duro 30
     SOFT_HEAVY_TARGET: 4,         // los élites dejan de rellenar al llegar (de 7)
     TACTICAL_BOOST_START: 14,     // oleada desde la que sube el peso táctico
     TACTICAL_BOOST_MAX: 2.0,      // multiplicador máximo del peso táctico
@@ -123,37 +129,58 @@
     // cualquier fuente) puede aplicar/extender/resetear stun durante este
     // lockout global. El daño normal de esos ataques SIEMPRE aplica.
     PLAYER_STUN_REAPPLY_LOCKOUT: 1.5,
+    // Ventana mínima de recuperación tras stuns cuya duración supera el suelo
+    // global. Evita reaplicaciones antes de que el jugador recupere control.
+    PLAYER_STUN_POST_RECOVERY_GRACE: 0.35,
 
-    // Duración de oleada normal (segundos, cuenta regresiva): 25 - wave*0.4, piso 15.
-    // ÚNICA fuente de verdad: nextWave y la barra de progreso leen de acá.
-    WAVE_TIME_BASE: 25,
-    WAVE_TIME_DECAY: 0.4,
-    WAVE_TIME_MIN: 15,
+    // Duración de oleada normal por tramos. Bosses conservan su final por muerte.
+    WAVE_TIME_EARLY_BASE: 15,
+    WAVE_TIME_EARLY_END: 5,
+    WAVE_TIME_EARLY_RATE: 0.75,
+    WAVE_TIME_MID_END: 15,
+    WAVE_TIME_MID_RATE: 0.8,
+    WAVE_TIME_LATE_RATE: 0.6,
+    WAVE_TIME_CAP: 35,
+    WAVE_EVENT_DURATION_MULT: 1.15,
+    WAVE_EVENT_TIME_CAP: 40.25,
+    // Compensa sólo la mitad de la extensión: queda actividad adicional moderada.
+    WAVE_EVENT_SPAWN_COMPENSATION: 0.5,
   };
-  // Duración base de la oleada (sin bonus de evento). Fórmula original fiel:
-  // max(15, 25 - wave*0.4). ÚNICA fuente de verdad: nextWave y la barra de
-  // progreso leen de acá (elimina la duplicación que era bug latente).
+  // Duración base creciente por tramos. Única fuente de verdad para nextWave y HUD.
+  NV.baseWaveDuration = function (wave) {
+    const B = NV.BALANCE;
+    const w = Math.max(1, wave || 1);
+    if (w <= B.WAVE_TIME_EARLY_END) {
+      return B.WAVE_TIME_EARLY_BASE + (w - 1) * B.WAVE_TIME_EARLY_RATE;
+    }
+    const earlyEnd = B.WAVE_TIME_EARLY_BASE + (B.WAVE_TIME_EARLY_END - 1) * B.WAVE_TIME_EARLY_RATE;
+    if (w <= B.WAVE_TIME_MID_END) {
+      return earlyEnd + (w - B.WAVE_TIME_EARLY_END) * B.WAVE_TIME_MID_RATE;
+    }
+    const midEnd = earlyEnd + (B.WAVE_TIME_MID_END - B.WAVE_TIME_EARLY_END) * B.WAVE_TIME_MID_RATE;
+    return Math.min(B.WAVE_TIME_CAP, midEnd + (w - B.WAVE_TIME_MID_END) * B.WAVE_TIME_LATE_RATE);
+  };
+
   NV.waveDuration = function (wave, waveEvent) {
-    const base = Math.max(15, 25 - wave * 0.4);
-    // Eventos de oleada (Tanda C): +25s para disfrutar el modificador (cap 90s).
-    const bonus = waveEvent ? 25 : 0;
-    return Math.min(90, base + bonus);
+    const B = NV.BALANCE;
+    const base = NV.baseWaveDuration(wave);
+    return waveEvent ? Math.min(B.WAVE_EVENT_TIME_CAP, base * B.WAVE_EVENT_DURATION_MULT) : base;
   };
 
-
-  // Compensación económica (PASO 3): factor para escalar el intervalo de spawn en
-  // oleadas largas, manteniendo la cantidad total de spawns (y score/shards) por oleada.
+  // Compensación parcial: el evento dura 15% más, pero sólo ralentiza 7.5% el refill.
   NV.waveSpawnFactor = function (wave, waveEvent) {
-    return NV.waveDuration(wave, waveEvent) / NV.waveDuration(wave);
+    if (!waveEvent) return 1;
+    const B = NV.BALANCE;
+    const durationRatio = NV.waveDuration(wave, waveEvent) / NV.baseWaveDuration(wave);
+    return 1 + (durationRatio - 1) * B.WAVE_EVENT_SPAWN_COMPENSATION;
   };
 
   // ===== B1: escalado de HP enemigo =====
   // Curva ORIGINAL: 1 + 0.30*wave (lineal) — crecía más rápido que el poder del
   // jugador y generaba la espiral descendente que mataba la partida antes de la 30.
   // F1: idéntica hasta la oleada 10 (onboarding intacto); pendiente 0.28 a partir
-  // de ahí (continua en w=10: 4.0 = 1 + 0.30*10). Sube desde 0.22 para que las
-  // oleadas tardías —con MENOS enemigos simultáneos (densidad blanda F1)— sigan
-  // amenazando: w30=9.6 (+14%), w50=15.2 (+27%); siempre bajo el lineal original.
+  // de ahí (continua en w=10: 4.0 = 1 + 0.30*10). Esta intervención no modifica
+  // la curva: w30=9.6, w50=15.2; siempre bajo el lineal original.
   // Pura y testeable; spawnEnemy (enemies.js) es su único consumidor.
   NV.enemyHpScale = function (wave) {
     const w = Math.max(1, wave || 1);
@@ -161,20 +188,27 @@
     return 4 + (w - 10) * 0.28;
   };
 
-  // ===== F1: curva de amenaza tardía (funciones puras y testeables) =====
-  // Densidad blanda: objetivo de enemigos simultáneos. El refill normal se DETIENE
-  // al alcanzarlo; MAX_HOSTILES sigue siendo el techo duro. Early (w<=10) = 30
-  // (sin efecto en onboarding); luego baja ~0.4/oleada hasta el piso 16 (normal).
-  // La dificultad ajusta: easy -3 (menos densidad) / hard +3 (algo más densa, pero
-  // NUNCA vuelve a saturar el cap 30). Consumidor: game.js (spawn loop).
+  // Densidad blanda creciente y acotada. Normal progresa 18 -> 20 -> 24 -> 26;
+  // dificultad aplica aproximadamente +/-2 y MAX_HOSTILES=30 queda como techo duro.
   NV.softHostileTarget = function (wave, diffId) {
     const B = NV.BALANCE;
     const w = Math.max(1, wave || 1);
-    const decline = Math.max(0, w - B.SOFT_DENSITY_START) * B.SOFT_DENSITY_SLOPE;
+    let base;
+    if (w <= B.SOFT_DENSITY_EARLY_END) {
+      base = B.SOFT_DENSITY_EARLY_BASE + (w - 1) * B.SOFT_DENSITY_EARLY_RATE;
+    } else {
+      const earlyEnd = B.SOFT_DENSITY_EARLY_BASE + (B.SOFT_DENSITY_EARLY_END - 1) * B.SOFT_DENSITY_EARLY_RATE;
+      if (w <= B.SOFT_DENSITY_MID_END) {
+        base = earlyEnd + (w - B.SOFT_DENSITY_EARLY_END) * B.SOFT_DENSITY_MID_RATE;
+      } else {
+        const midEnd = earlyEnd + (B.SOFT_DENSITY_MID_END - B.SOFT_DENSITY_EARLY_END) * B.SOFT_DENSITY_MID_RATE;
+        base = midEnd + (w - B.SOFT_DENSITY_MID_END) * B.SOFT_DENSITY_LATE_RATE;
+      }
+    }
+    base = Math.min(B.SOFT_DENSITY_CAP, Math.round(base));
     const spawnMult = NV.difficultySafeMult('spawn', diffId) || 1;
     const diffAdj = Math.round((spawnMult - 1) * B.SOFT_DENSITY_DIFF_SCALE);
-    const base = Math.max(B.SOFT_DENSITY_FLOOR, Math.min(B.MAX_HOSTILES, Math.round(B.MAX_HOSTILES - decline)));
-    return Math.max(B.SOFT_DENSITY_MIN, Math.min(B.MAX_HOSTILES, base + diffAdj));
+    return Math.max(B.SOFT_DENSITY_MIN, Math.min(B.SOFT_DENSITY_MAX, base + diffAdj));
   };
   // Lote de refill normal: early idéntico al actual (2 en w1, 3 en w2, 4 en w4,
   // 5 en w6) con techo 5 en oleadas tardías (antes 8). Consumidor: game.js.
@@ -256,13 +290,13 @@
   // Constantes de balance para el sistema de gancho. Autoridad única: NV.BALANCE.
   // (Asignadas al objeto antes del Object.freeze de abajo: quedan congeladas igual.)
   NV.BALANCE.HOOK_UNLOCK_WAVE = 15;
-  NV.BALANCE.HOOK_WINDUP_TIME = 0.65;
-  NV.BALANCE.HOOK_PROJECTILE_SPEED = 525;
-  NV.BALANCE.HOOK_PROJECTILE_MAX_RANGE = 360;
-  NV.BALANCE.HOOK_PULL_DURATION = 0.375;
-  NV.BALANCE.HOOK_PULL_EXTERNAL_SPEED = 240;
-  NV.BALANCE.HOOK_TETHER_MAX_RANGE = 400;
-  NV.BALANCE.HOOK_GLOBAL_LOCKOUT_POST_RELEASE = 0.75;
+  NV.BALANCE.HOOK_WINDUP_TIME = 0.55;
+  NV.BALANCE.HOOK_PROJECTILE_SPEED = 560;
+  NV.BALANCE.HOOK_PROJECTILE_MAX_RANGE = 430;
+  NV.BALANCE.HOOK_PULL_DURATION = 0.50;
+  NV.BALANCE.HOOK_PULL_EXTERNAL_SPEED = 255;
+  NV.BALANCE.HOOK_TETHER_MAX_RANGE = 470;
+  NV.BALANCE.HOOK_GLOBAL_LOCKOUT_POST_RELEASE = 0.85;
   NV.BALANCE.HOOK_DIRECT_DAMAGE = 0;
   // F3 visibilidad: el specter_archer es la ÚNICA fuente del Hook y su peso base
   // (0.12 en gameData) lo dejaba ~8x más raro que los demás roles tácticos (1.0),

@@ -17,6 +17,32 @@
 
   const RHYTHM_STORAGE_KEY = 'neonVoidRhythm';
 
+  // Diagnóstico A/B de coste visual, solo en memoria y solo de render.
+  // No cambia captura, análisis, audio, simulación ni preferencia persistida.
+  const RHYTHM_VISUAL_DIAGNOSTIC_MODES = {
+    full: { background: true, auxiliary: true },
+    'no-background': { background: false, auxiliary: true },
+    'background-only': { background: true, auxiliary: false },
+  };
+  const rhythmVisualDiagnostics = {
+    mode: 'full',
+    background: true,
+    auxiliary: true,
+  };
+
+  NV.rhythmVisualDiagnostics = rhythmVisualDiagnostics;
+  NV.setRhythmVisualDiagnosticMode = function (mode) {
+    const next = RHYTHM_VISUAL_DIAGNOSTIC_MODES[mode];
+    if (!next) throw new Error('Modo visual rítmico inválido: ' + mode);
+    rhythmVisualDiagnostics.mode = mode;
+    rhythmVisualDiagnostics.background = next.background;
+    rhythmVisualDiagnostics.auxiliary = next.auxiliary;
+    return Object.assign({}, rhythmVisualDiagnostics);
+  };
+  NV.getRhythmVisualDiagnostics = function () {
+    return Object.assign({}, rhythmVisualDiagnostics);
+  };
+
   const DEFAULT_STATE = {
     enabled: false,          // preferencia persistida: usar música propia + visuales
     state: 'off',            // 'off'|'starting'|'listening'|'denied'|'unsupported'|'stopping'
@@ -43,6 +69,7 @@
     lastAlpha: 0,            // alfa del último draw (verificación/medición)
     _phase: 0,               // fase contra la grilla de tempo (PLL simple)
     _lastNow: 0,
+    _nextAnalysisAt: 0,      // deadline temporal: el análisis no necesita seguir rAF >60 Hz
     lastBeatAt: 0, lastOnsetAt: 0,
     lastShakeAt: -99,
     thresholdRel: 1.22,      // energía de graves vs. línea base P55 para disparar beat
@@ -492,12 +519,25 @@
     return r;
   };
 
-  // Muestreo del AnalyserNode (se llama una vez por frame desde game.js en Bloque 3).
+  // Muestreo del AnalyserNode. El loop puede correr a 165 Hz, pero FFT, percentiles
+  // y peak-picking están calibrados para ~60 muestras/s. Los valores publicados se
+  // conservan entre muestras y todos los renderers siguen dibujando cada rAF.
+  const ANALYSIS_INTERVAL_SEC = 1 / 60;
   NV.rhythmTick = function (nowSec) {
     const r = NV.rhythm;
-    if (r.state !== 'listening' || !r.analyser) return r;
+    if (!r.enabled || r.state !== 'listening' || !r.analyser) return r;
+    const now = Number.isFinite(nowSec) ? nowSec : 0;
+    if (r._nextAnalysisAt > 0 && now >= 0 && now < r._nextAnalysisAt) return r;
+    // Mantener el deadline ideal evita caer a 55 Hz por cuantización en monitores
+    // de 165 Hz. Tras una pausa larga se resincroniza para no intentar recuperar
+    // cientos de muestras inexistentes.
+    if (!(r._nextAnalysisAt > 0) || now < 0 || now - r._nextAnalysisAt > 0.25) {
+      r._nextAnalysisAt = now + ANALYSIS_INTERVAL_SEC;
+    } else {
+      r._nextAnalysisAt += ANALYSIS_INTERVAL_SEC;
+    }
     r.analyser.getByteFrequencyData(r.data);
-    NV.rhythmAnalyze(r, r.data, nowSec || 0);
+    NV.rhythmAnalyze(r, r.data, now);
     return r;
   };
 

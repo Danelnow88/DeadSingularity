@@ -4,21 +4,29 @@ let pass = 0, fail = 0;
 function t(desc, fn) { try { fn(); pass++; console.log('  ok  ' + desc); } catch (e) { fail++; console.log('  FAIL ' + desc + ' -> ' + e.message); } }
 
 function makeSandbox() {
-  const freqs = [], ramps = [];
+  const freqs = [], ramps = [], noiseBands = [], channels = [], stops = [];
   const gainApi = () => ({ value: 0.6, setValueAtTime(){}, linearRampToValueAtTime(v){ ramps.push(v); }, exponentialRampToValueAtTime(){}, cancelScheduledValues(){} });
+  // Frecuencias de oscilador: registra arranque y destino del barrido (playToneSweep).
+  const oscFreq = () => ({ value: 0, setValueAtTime(v){ freqs.push(v); }, linearRampToValueAtTime(){}, exponentialRampToValueAtTime(v){ freqs.push(v); } });
+  // Frecuencias de filtro: registra la banda de cada burst de ruido (scheduleNoise).
+  const filterFreq = () => ({ value: 0, setValueAtTime(v){ noiseBands.push(v); }, linearRampToValueAtTime(){}, exponentialRampToValueAtTime(){} });
+  const sink = (list) => ({ start(){}, stop(t){ list.push(t); } });
   const ctx = {
-    createOscillator: () => ({ connect(){}, start(){}, stop(){}, type:'', frequency: { setValueAtTime(v){ freqs.push(v); } } }),
-    createGain: () => ({ connect(){}, gain: gainApi() }),
-    createBiquadFilter: () => ({ connect(){}, type:'', Q:{value:0}, frequency: gainApi() }),
+    createOscillator: () => Object.assign({ connect(){}, type:'', frequency: oscFreq() }, sink(stops)),
+    createGain: () => ({ connect(t){ if (t && t._channel) channels.push(t._channel); }, gain: gainApi() }),
+    createBiquadFilter: () => ({ connect(){}, type:'', Q:{value:0}, frequency: filterFreq() }),
     createBuffer: () => ({ getChannelData: () => new Float32Array(4410) }),
-    createBufferSource: () => ({ connect(){}, start(){}, stop(){}, buffer:null }),
+    createBufferSource: () => Object.assign({ connect(){}, buffer:null }, sink(stops)),
     destination: {}, currentTime: 0, sampleRate: 44100, state: 'suspended', resume: () => Promise.resolve(),
   };
-  const sb = { console, Math, Object, Array, Number, String, Boolean, Proxy, Reflect, window:{}, globalThis:{}, AudioContext: function () { return ctx; } };
+  const sb = { console, Math, Object, Array, Number, String, Boolean, Proxy, Reflect, Float32Array, window:{}, globalThis:{}, AudioContext: function () { return ctx; } };
   sb.window.AudioContext = sb.AudioContext; sb.window.NV = { getBoss: () => null, getState: () => 'playing', getFrame: () => 0 };
-  sb._freqs = freqs; sb._ramps = ramps; return sb;
+  sb._freqs = freqs; sb._ramps = ramps; sb._noiseBands = noiseBands; sb._channels = channels; sb._stops = stops;
+  return sb;
 }
 function loadSynth() { const sb = makeSandbox(); vm.runInNewContext(fs.readFileSync('js/audio/synth.js', 'utf8'), sb, { filename: 'synth.js' }); return { NV: sb.window.NV, sb }; }
+// Nombra los GainNode del mixer para poder verificar a qué bus entra cada capa de SFX.
+function tagChannels(NV) { for (const k in NV.mixer) { if (NV.mixer[k]) NV.mixer[k]._channel = k; } return NV; }
 
 t('sfx.enemyDeath y sfx.playerHit existen y no crashean', () => {
   const { NV } = loadSynth(); NV.initAudio();
@@ -35,12 +43,35 @@ t('enemyDeath usa firmas distintas para normal/elite/boss', () => {
   if (sig(elite.sb) === sig(boss.sb)) throw new Error('elite y boss suenan igual');
 });
 
-t('playerHit es no fatal: distinto de sfx.damage y con ducking más suave', () => {
-  const hit = loadSynth(); hit.NV.initAudio(); hit.NV.sfx.playerHit();
+// Rediseño de identidad sonora (Tarea 3 — 2º rediseño): el daño del piloto debe
+// leerse como ALARMA DE CASCO ROTO, no como click/golpe corto. Se valida el
+// GESTO (propiedades estructurales), no números rígidos de síntesis, para no
+// congelar futuras iteraciones de sonido.
+t('playerHit: gesto largo multi-etapa en sfxPlayer, distinto de damage (game over)', () => {
+  const hit = loadSynth(); hit.NV.initAudio(); tagChannels(hit.NV); hit.NV.sfx.playerHit();
   const dmg = loadSynth(); dmg.NV.initAudio(); dmg.NV.sfx.damage();
   const sig = (sb) => sb._freqs.map((x) => Math.round(x)).join(',');
   if (sig(hit.sb) === sig(dmg.sb)) throw new Error('playerHit igual a damage/game over');
-  if (!hit.sb._ramps.includes(0.32)) throw new Error('playerHit no duckea a 0.32');
+  // Todo el gesto entra por el bus del jugador: ninguna capa se cuela en otro canal.
+  if (!hit.sb._channels.length || hit.sb._channels.some((c) => c !== 'sfxPlayer')) throw new Error('canales del golpe = ' + hit.sb._channels);
+  // Evento perceptiblemente largo: gesto completo entre 0.35 y 0.70s (ni click
+  // corto ni drone de segundos). Los stops registran t0+dur de cada capa.
+  const maxStop = Math.max.apply(null, hit.sb._stops);
+  if (!(maxStop >= 0.35 && maxStop <= 0.70)) throw new Error('playerHit fuera de 0.35-0.70s: ' + hit.sb._stops);
+  // Multi-etapa desacoplada: varias capas con stops escalonados, no un único
+  // golpe simultáneo. Al menos 5 voces y al menos 3 instantes de fin distintos.
+  if (hit.sb._stops.length < 5) throw new Error('playerHit sin capas suficientes: ' + hit.sb._stops);
+  const uniqStops = Array.from(new Set(hit.sb._stops.map((s) => Math.round(s * 100)))).sort();
+  if (uniqStops.length < 3) throw new Error('playerHit sin etapas escalonadas: ' + hit.sb._stops);
+  // Ducking largo y propio (difiere del 0.22 corto anterior) para dar aire al gesto.
+  if (!hit.sb._ramps.includes(0.14)) throw new Error('playerHit no usa su duck propio a 0.14');
+  // Estructura temporal + técnicas del nuevo diseño (verificadas en fuente para
+  // no congelar frecuencias exactas): etapas con delay, barrido de filtro en
+  // el ruido, pulsos de alarma y contraste estéreo.
+  const src = fs.readFileSync('js/audio/synth.js', 'utf8');
+  for (const pat of ['noiseSweepAt', 'sweepAt', 'toneAt', 'filter.frequency.exponentialRampToValueAtTime', 'pan: -0.55', 'pan: 0.55', "duck('music', 0.14, 0.55)"]) {
+    if (!src.includes(pat)) throw new Error('falta técnica del nuevo diseño: ' + pat);
+  }
 });
 
 t('enemies.js conecta muerte por tipo y delega daño al pipeline único', () => {

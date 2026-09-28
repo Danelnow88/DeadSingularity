@@ -11,6 +11,67 @@
   NV.canvas = canvas;
   NV.ctx = ctx;
 
+  // El render loop puede consultar este controlador en cada rAF: mientras no haya
+  // una señal de resize, flush() no lee layout ni escribe el backing store/overlay.
+  // Se exporta la fábrica para probar el contrato sin arrancar game.js completo.
+  NV.createCanvasResizeController = function (options) {
+    const o = options || {};
+    const target = o.canvas;
+    const overlay = o.overlay || null;
+    let dirty = true;
+    let last = null;
+
+    function setStyleIfChanged(style, key, value) {
+      if (style && style[key] !== value) style[key] = value;
+    }
+
+    return {
+      markDirty() { dirty = true; },
+      isDirty() { return dirty; },
+      flush(force) {
+        if (!target || (!dirty && !force)) return { changed: false, layoutRead: false, metrics: last };
+        dirty = false;
+        const rect = target.getBoundingClientRect();
+        const cssWidth = Math.max(1, Number(rect.width) || 0);
+        const cssHeight = Math.max(1, Number(rect.height) || 0);
+        const dpr = Math.max(0.1, Number(typeof o.getDpr === 'function' ? o.getDpr() : 1) || 1);
+        const displayWidth = Math.round(cssWidth);
+        const displayHeight = Math.round(cssHeight);
+        const backingWidth = Math.max(1, Math.round(displayWidth * dpr));
+        const backingHeight = Math.max(1, Math.round(displayHeight * dpr));
+        const offsetLeft = Number(target.offsetLeft) || 0;
+        const offsetTop = Number(target.offsetTop) || 0;
+        const view = typeof o.getView === 'function' ? o.getView() : null;
+        const viewWidth = Math.max(1, Number(view && view.width) || backingWidth);
+        const viewHeight = Math.max(1, Number(view && view.height) || backingHeight);
+        const sizeChanged = target.width !== backingWidth || target.height !== backingHeight;
+
+        if (overlay) {
+          setStyleIfChanged(overlay.style, 'left', offsetLeft + 'px');
+          setStyleIfChanged(overlay.style, 'top', offsetTop + 'px');
+          setStyleIfChanged(overlay.style, 'right', 'auto');
+          setStyleIfChanged(overlay.style, 'bottom', 'auto');
+          setStyleIfChanged(overlay.style, 'width', cssWidth + 'px');
+          setStyleIfChanged(overlay.style, 'height', cssHeight + 'px');
+        }
+        if (sizeChanged) {
+          target.width = backingWidth;
+          target.height = backingHeight;
+          if (typeof o.onBackingStoreResize === 'function') o.onBackingStoreResize(displayWidth, displayHeight);
+        }
+
+        last = {
+          cssWidth, cssHeight, displayWidth, displayHeight,
+          backingWidth, backingHeight, dpr,
+          scaleX: backingWidth / viewWidth,
+          scaleY: backingHeight / viewHeight,
+        };
+        if (typeof o.onLayoutSync === 'function') o.onLayoutSync(last, sizeChanged);
+        return { changed: sizeChanged, layoutRead: true, metrics: last };
+      },
+    };
+  };
+
   // Campo de estrellas determinista con PARALLAX: se desplaza levemente contra la
   // posición del jugador para dar profundidad al mundo. Puro y testeable.
   const STARS = [];

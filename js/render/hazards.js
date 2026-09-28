@@ -10,12 +10,14 @@
     const pulse = 0.5 + 0.5 * Math.sin(mine.simTime * 18 + mine.phaseOffset);
     ctx.save();
     // Anillo de warning que pulsa (visible incluso con partículas pesadas).
+    // Frontera peligrosa = rojo hostil de warning (misma familia que la zona del Core).
     ctx.globalAlpha = 0.35 + pulse * 0.4;
-    ctx.strokeStyle = '#ffcf5a'; ctx.lineWidth = 2.6;
+    ctx.strokeStyle = '#ff6474'; ctx.lineWidth = 2.6;
     ctx.beginPath(); ctx.arc(mine.x, mine.y, 18 + p * 14, 0, Math.PI * 2); ctx.stroke();
     // Concentric warning waves: marcación rítmica de zona peligrosa.
+    // Capa decorativa: conserva la identidad rosa del parlante, no el cian amigo.
     ctx.globalAlpha = 0.14 + p * 0.18;
-    ctx.strokeStyle = '#00f0ff'; ctx.lineWidth = 1.7;
+    ctx.strokeStyle = '#ff4da6'; ctx.lineWidth = 1.7;
     for (let i = 1; i <= 4; i++) {
       const r = 16 + p * (12 + i * 5);
       ctx.beginPath(); ctx.arc(mine.x, mine.y, r, 0, Math.PI * 2); ctx.stroke();
@@ -45,9 +47,9 @@
     ctx.fillRect(-12 + pose.feet, 12, 7, 5);
     ctx.fillRect(5 + pose.feet, 12, 7, 5);
 
-    // Caja oscura + borde warning fijo: no parece pickup/enemigo/proyectil.
+    // Caja oscura + borde de peligro: armed = frontera roja activa, resto = identidad.
     ctx.fillStyle = '#090b13';
-    ctx.strokeStyle = mine.state === 'armed' ? '#ffcf5a' : '#ff4da6';
+    ctx.strokeStyle = mine.state === 'armed' ? '#ff3b4f' : '#ff4da6';
     ctx.lineWidth = 2.4;
     ctx.beginPath();
     ctx.moveTo(-14, -14); ctx.lineTo(12, -14); ctx.lineTo(15, -10);
@@ -68,6 +70,33 @@
     if (full) {
       ctx.fillStyle = '#7cf8ff';
       for (const x of [-10, 10]) for (const y of [-9, 10]) { ctx.beginPath(); ctx.arc(x, y, 1, 0, Math.PI * 2); ctx.fill(); }
+    }
+    ctx.restore();
+  }
+
+  function drawCoreZone(ctx, zone, debugHitbox) {
+    const arming = zone.state === 'arming';
+    const expiring = zone.state === 'expiring';
+    const armProgress = arming ? Math.max(0, Math.min(1, zone.stateTime / Math.max(0.001, zone.armTime))) : 1;
+    const fade = expiring ? Math.max(0, 1 - zone.stateTime / 0.18) : 1;
+    const pulse = 0.5 + 0.5 * Math.sin(zone.simTime * 9);
+    const r = zone.radius * (arming ? 0.30 + armProgress * 0.70 : 1);
+    ctx.save();
+    ctx.globalAlpha = fade * (arming ? 0.18 + armProgress * 0.22 : 0.34 + pulse * 0.12);
+    ctx.fillStyle = arming ? '#b51f31' : '#ff3b4f';
+    ctx.beginPath(); ctx.arc(zone.x, zone.y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = fade * (arming ? 0.68 : 0.90);
+    ctx.strokeStyle = arming ? '#ff6474' : '#ff3b4f';
+    ctx.lineWidth = arming ? 2.5 : 3.5;
+    ctx.setLineDash(arming ? [7, 6] : []);
+    ctx.beginPath(); ctx.arc(zone.x, zone.y, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = fade * (0.30 + pulse * 0.30);
+    ctx.strokeStyle = '#8f1223'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(zone.x, zone.y, Math.max(5, r * (0.35 + pulse * 0.18)), 0, Math.PI * 2); ctx.stroke();
+    if (debugHitbox) {
+      ctx.globalAlpha = 0.8; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2); ctx.stroke();
     }
     ctx.restore();
   }
@@ -102,7 +131,9 @@
 
   NV.drawHazards = function (ctx, hazards, rhythm, visualPolicy, debugHitbox, notes, groove) {
     for (const mine of hazards || []) {
-      if (!mine || mine.type !== 'speakerMine' || mine.state === 'dead') continue;
+      if (!mine || mine.state === 'dead') continue;
+      if (mine.type === 'coreZone') { drawCoreZone(ctx, mine, debugHitbox); continue; }
+      if (mine.type !== 'speakerMine') continue;
       if (mine.state === 'spawning') drawTelegraph(ctx, mine);
       drawBody(ctx, mine, rhythm, visualPolicy, groove);
       if (debugHitbox) {

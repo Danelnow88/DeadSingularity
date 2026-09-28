@@ -32,6 +32,7 @@
 
   // Aplica burn (DOT) a una entidad. No stacking: refresca duración, nunca acumula DPS.
   NV.applyBurn = function (entity, burnDamage, burnDuration) {
+    if (NV.isEnemyDamageable && !NV.isEnemyDamageable(entity)) return;
     if (entity.burn) {
       // Ya tiene burn: refresca duración, mantiene el DPS más alto (no multiplicativo)
       entity.burn.remaining = Math.max(entity.burn.remaining, burnDuration);
@@ -46,8 +47,10 @@
   NV.updateBurns = function (dt, ctx) {
     const { enemies, boss, killEnemy, spawnExplosion } = ctx;
     const apply = (e) => {
-      if (!e || e.dead || !e.burn) return;
-      e.hp -= e.burn.dps * dt;
+      if (!e || e.dead || !e.burn || (NV.isEnemyCombatActive && !NV.isEnemyCombatActive(e))) return;
+      const rawDamage = e.burn.dps * dt;
+      const dealt = !e.isBoss && NV.guardProtectedDamage ? NV.guardProtectedDamage(e, rawDamage) : rawDamage;
+      e.hp -= dealt;
       e.burn.remaining -= dt;
       if (e.burn.remaining <= 0 || e.hp <= 0) {
         if (e.hp <= 0 && !e.isBoss) {
@@ -111,15 +114,17 @@
 
     // Enemigos normales/élites
     for (const e of enemies) {
-      if (e.dead || z.hitTargets.indexOf(e) !== -1) continue;
+      if ((NV.isEnemyDamageable ? !NV.isEnemyDamageable(e) : (e.dead || e.wispPhaseTargetable === false)) || z.hitTargets.indexOf(e) !== -1) continue;
       if (!inCone(e.x, e.y, e.radius)) continue;
       z.hitTargets.push(e);
-      const dealt = Math.max(1, z.damage - (e.resist || 0));
+      const resisted = Math.max(1, z.damage - (e.resist || 0));
+      const dealt = NV.guardProtectedDamage ? NV.guardProtectedDamage(e, resisted) : resisted;
       e.hp -= dealt;
       if (e.isElite) e.stun = 0.25;
       e.hitFlash = Math.max(e.hitFlash || 0, 0.10);
       NV.applyBurn(e, z.burnDamage, z.burnDuration);
-      if (addFloatText) addFloatText(e.x, e.y - e.radius - 6, String(dealt), '#fb923c', 13);
+      const damageText = NV.formatDamageText ? NV.formatDamageText(dealt) : String(Math.round(dealt * 100) / 100);
+      if (addFloatText && damageText !== null) addFloatText(e.x, e.y - e.radius - 6, damageText, '#fb923c', 13, { damageValue: dealt });
       if (e.hp <= 0 && killEnemy) killEnemy(e);
       if (applyKnockback) applyKnockback(e, z.x, z.y, 30);
     }

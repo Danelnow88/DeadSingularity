@@ -19,7 +19,7 @@ function spawnOf(typeId) {
   return out[0];
 }
 
-t('specter_lite (RB2, 0.75): hitbox 12 -> 11.25', () => {
+t('specter_lite (RB2, ×0.65): hitbox 12 -> 7.3125', () => {
   // Contrato vigente (auditado): la convención del roster es 0-based
   // (modelIndex 0..5 = RB1..RB6, como drawLabSpecterEnemy y labPoseIndex).
   // specter_lite está REMAPEADO a RB2 (Ameba Coronada) junto a specter_grunt;
@@ -28,35 +28,36 @@ t('specter_lite (RB2, 0.75): hitbox 12 -> 11.25', () => {
   // case 1 de drawLabEnemyModel (RB2 - Ameba Coronada), el test
   // specter_threejs_integration (exige el literal specter_lite: 1) y
   // spectral_enemies_render (factores 0-based [0.875, 0.9375, 1, 1, 1.025, 1.0625]).
-  // Hitbox = radiusDatos × (factorVisual / 0.8) = 12 × (0.75/0.8) = 11.25:
-  // el MISMO ratio que encoge el dibujo (labScale 0.8 -> 0.75), de modo que
-  // la detección coincide con la silueta a su nuevo tamaño.
+  // Hitbox = radiusDatos × (factorVisual / 0.8) × body scale 0.65
+  // = 12 × (0.75/0.8) × 0.65 = 7.3125: el MISMO ×0.65 que encoge el dibujo
+  // (scoped por enemyTypeId), de modo que la detección sigue coincidiendo
+  // con la silueta a su nuevo tamaño sin dejar shell vacío en el exterior.
   const e = spawnOf('specter_lite');
   if (!e) throw new Error('no spawneó');
-  if (Math.abs(e.radius - 11.25) > 0.01) throw new Error('radius=' + e.radius);
+  if (Math.abs(e.radius - 12 * 0.9375 * 0.65) > 0.01) throw new Error('radius=' + e.radius);
 });
 
-t('specter_grunt (RB2, 0.75): hitbox 10 -> 9.375', () => {
+t('specter_grunt (RB2, ×0.65): hitbox 10 -> 6.09375', () => {
   const e = spawnOf('specter_grunt');
-  if (Math.abs(e.radius - 9.375) > 0.01) throw new Error('radius=' + e.radius);
+  if (Math.abs(e.radius - 6.09375) > 0.01) throw new Error('radius=' + e.radius);
 });
 
-t('specter_core (RB3, 0.80): hitbox 16 -> 16', () => {
+t('specter_core (RB3, ×0.65): hitbox 16 -> 10.4', () => {
   const e = spawnOf('specter_core');
-  if (Math.abs(e.radius - 16) > 0.01) throw new Error('radius=' + e.radius);
+  if (Math.abs(e.radius - 16 * 1 * 0.65) > 0.01) throw new Error('radius=' + e.radius);
 });
 
-t('specter_archer (RB4, 0.80): hitbox 12 -> 12', () => {
+t('specter_archer (RB4, ×0.65): hitbox 12 -> 7.8', () => {
   const e = spawnOf('specter_archer');
-  if (Math.abs(e.radius - 12) > 0.01) throw new Error('radius=' + e.radius);
+  if (Math.abs(e.radius - 12 * 1 * 0.65) > 0.01) throw new Error('radius=' + e.radius);
 });
 
-t('specter_guard (RB5, 0.82): hitbox 18 -> 18.45', () => {
+t('specter_guard (RB5, ×0.65): hitbox 18 -> 11.9925', () => {
   const e = spawnOf('specter_guard');
-  if (Math.abs(e.radius - 18.45) > 0.01) throw new Error('radius=' + e.radius);
+  if (Math.abs(e.radius - 11.9925) > 0.01) throw new Error('radius=' + e.radius);
 });
 
-t('spawnElite adapta la hitbox de las élites base (modelo 5, ×1.0625)', () => {
+t('spawnElite adapta la hitbox Hydra de las élites base (modelo 5, ×1.0625 ×0.65)', () => {
   const out = [];
   NV.spawnElite({
     enemies: out, MAX_ENEMIES: 40, boss: null, wave: 3, waveEvent: null,
@@ -64,8 +65,8 @@ t('spawnElite adapta la hitbox de las élites base (modelo 5, ×1.0625)', () => 
   });
   if (out.length !== 2) throw new Error('élites=' + out.length);
   // wave 3 -> startIndex 1: RÁPIDO (radius 14) y TANQUE (radius 30), modelo 5.
-  if (Math.abs(out[0].radius - 14 * 1.0625) > 0.01) throw new Error('rápido=' + out[0].radius);
-  if (Math.abs(out[1].radius - 30 * 1.0625) > 0.01) throw new Error('tanque=' + out[1].radius);
+  if (Math.abs(out[0].radius - 14 * 1.0625 * 0.65) > 0.01) throw new Error('rápido=' + out[0].radius);
+  if (Math.abs(out[1].radius - 30 * 1.0625 * 0.65) > 0.01) throw new Error('tanque=' + out[1].radius);
 });
 
 t('sin renderer cargado: radio de datos intacto (fallback seguro)', () => {
@@ -79,18 +80,20 @@ t('sin renderer cargado: radio de datos intacto (fallback seguro)', () => {
   if (!out[0] || out[0].radius !== 10) throw new Error('radius=' + (out[0] && out[0].radius));
 });
 
-t('CONTRATO: hitbox spawn = radiusDatos × labModelHitboxFactor(roster 0-based), ratio = visual/0.8', () => {
+t('CONTRATO: hitbox spawn = radiusDatos × labModelHitboxFactor(modelo, id); ratio = visual/0.8 × 0.65', () => {
   // Documenta el contrato visual/hitbox del Visual Lab: el radio de datos se
   // adapta al spawn con el MISMO ratio que escala el dibujo por modelo
-  // (labScale = MODEL_SCALE_FACTORS[poseIdx], antes uniforme 0.8). Autoridad:
+  // (labScale = MODEL_SCALE_FACTORS[poseIdx], antes uniforme 0.8) y con el
+  // MISMO body scale ×0.65 que encoge el cuerpo de los cinco espectros de
+  // producción (spectralBodyScale(typeId), scoped por enemyTypeId). Autoridad:
   // spectralEnemies2D.js (labPoseIndex + drawLabSpecterEnemy + factores) y
   // spectral_enemies_render.js (factores esperados por índice 0-based).
   const expectedHitbox = {
-    specter_lite: 12 * 0.9375,   // RB2 (0.75)
-    specter_grunt: 10 * 0.9375,  // RB2 (0.75)
-    specter_core: 16 * 1,        // RB3 (0.80)
-    specter_archer: 12 * 1,      // RB4 (0.80)
-    specter_guard: 18 * 1.025,   // RB5 (0.82)
+    specter_lite: 12 * 0.9375 * 0.65,   // RB2 (0.75 × 0.65)
+    specter_grunt: 10 * 0.9375 * 0.65,  // RB2 (0.75 × 0.65)
+    specter_core: 16 * 1 * 0.65,        // RB3 (0.80 × 0.65)
+    specter_archer: 12 * 1 * 0.65,      // RB4 (0.80 × 0.65)
+    specter_guard: 18 * 1.025 * 0.65,   // RB5 (0.82 × 0.65)
   };
   for (const [id, expected] of Object.entries(expectedHitbox)) {
     const e = spawnOf(id);
@@ -100,6 +103,10 @@ t('CONTRATO: hitbox spawn = radiusDatos × labModelHitboxFactor(roster 0-based),
   // Jerarquía de hitboxes preservada: grunt < lite < archer/core < guard.
   const lite = spawnOf('specter_lite'), grunt = spawnOf('specter_grunt'), guard = spawnOf('specter_guard');
   if (!(grunt.radius < lite.radius && lite.radius < guard.radius)) throw new Error('jerarquía invertida');
+  // El factor por MODELO sin typeId sigue intacto (la tabla no se alteró).
+  if (Math.abs(NV.labModelHitboxFactor(1) - 0.9375) > 1e-9 || Math.abs(NV.labModelHitboxFactor(4) - 1.025) > 1e-9) {
+    throw new Error('tabla por modelo alterada');
+  }
 });
 
 console.log('\nRESULT lab_model_hitbox: pass=' + pass + ' fail=' + fail);

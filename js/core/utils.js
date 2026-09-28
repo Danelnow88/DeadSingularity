@@ -42,11 +42,21 @@
     return ((i + (dir > 0 ? 1 : -1)) % len + len) % len;
   };
 
-  // Quita el PRIMER ítem del tipo dado y lo devuelve (null si no hay). No muta si falta.
+  // Quita el ÚLTIMO ítem del tipo dado y lo devuelve (null si no hay). No muta si falta.
+  // Por qué el último y no el primero: groupConsumables fija el slot de cada tipo por su
+  // PRIMERA aparición en el array. Al consumir desde el final, el índice de primera
+  // aparición de todos los tipos queda intacto mientras queden unidades del tipo
+  // consumido, así que usar un consumible nunca reordena los slots del HUD. Cuando cae la
+  // última unidad, el tipo desaparece y los demás se reconcilian (comportamiento esperado).
+  // Las instancias de un mismo tipo son intercambiables: sólo llevan { type, name } y el
+  // efecto se resuelve por type, sin estado por instancia.
   NV.consumeByType = function (items, type) {
-    const idx = (items || []).findIndex((it) => it.type === type);
-    if (idx === -1) return null;
-    return items.splice(idx, 1)[0];
+    const list = items || [];
+    // Loop inverso explícito (sin findLastIndex) para compatibilidad de runtime.
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i] && list[i].type === type) return list.splice(i, 1)[0];
+    }
+    return null;
   };
 
   NV.consumableCountByType = function (items, type) {

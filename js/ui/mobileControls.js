@@ -274,14 +274,18 @@
     const progress = Math.max(0, Math.min(1, Number(info.progress) || 0));
     const ready = !!info.ready;
     if (specialBtn.style && typeof specialBtn.style.setProperty === 'function') {
-      specialBtn.style.setProperty('--special-progress', progress.toFixed(4));
-      specialBtn.style.setProperty('--special-color', info.color || '#7cf8ff');
+      const progressValue = progress.toFixed(4);
+      const colorValue = info.color || '#7cf8ff';
+      if (specialBtn.style.getPropertyValue('--special-progress') !== progressValue) specialBtn.style.setProperty('--special-progress', progressValue);
+      if (specialBtn.style.getPropertyValue('--special-color') !== colorValue) specialBtn.style.setProperty('--special-color', colorValue);
     }
-    specialBtn.classList.toggle('is-ready', ready);
-    specialBtn.classList.toggle('is-charging', !!info.active && !ready);
+    const charging = !!info.active && !ready;
+    if (specialBtn.classList.contains('is-ready') !== ready) specialBtn.classList.toggle('is-ready', ready);
+    if (specialBtn.classList.contains('is-charging') !== charging) specialBtn.classList.toggle('is-charging', charging);
     const status = ready ? 'LISTO' : (info.active ? Math.ceil(Math.max(0, info.remaining || 0)) + 's' : '—');
-    if (specialStatus) specialStatus.textContent = status;
-    specialBtn.setAttribute('aria-label', ready ? 'Especial listo' : 'Especial cargando, ' + status + ' restantes');
+    if (specialStatus && specialStatus.textContent !== status) specialStatus.textContent = status;
+    const ariaLabel = ready ? 'Especial listo' : 'Especial cargando, ' + status + ' restantes';
+    if (specialBtn.getAttribute('aria-label') !== ariaLabel) specialBtn.setAttribute('aria-label', ariaLabel);
   }
   if (input._onWeaponChange === undefined || input._onWeaponChange === null) input._onWeaponChange = [];
   if (input._onConsumableChange === undefined || input._onConsumableChange === null) input._onConsumableChange = [];

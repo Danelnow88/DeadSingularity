@@ -64,6 +64,178 @@
     ctx.restore();
   }
 
+  const reducedMotionQuery = typeof window.matchMedia === 'function'
+    ? window.matchMedia('(prefers-reduced-motion: reduce)')
+    : null;
+
+  function drawFivePointStar(ctx, outerRadius, innerRadius) {
+    ctx.beginPath();
+    for (let point = 0; point < 10; point++) {
+      const angle = -Math.PI / 2 + point * Math.PI / 5;
+      const radius = point % 2 === 0 ? outerRadius : innerRadius;
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      if (point === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+  }
+
+  NV.drawPlayerStunStars = function (ctx, player, char, frame) {
+    if (!player || !(player.stun > 0) || !char) return false;
+
+    const effectScale = Math.max(20, Number(char.size) || 20);
+    const centerY = -effectScale * 2.05;
+    const orbitX = effectScale * 0.74;
+    const orbitY = effectScale * 0.26;
+    const baseStarSize = effectScale * 0.24;
+    const timeSeconds = (Number(frame) || 0) / 60;
+    const reducedMotion = !!(reducedMotionQuery && reducedMotionQuery.matches);
+    const orbitSpeed = reducedMotion ? 0.35 : 1.75;
+    const pulseAmplitude = reducedMotion ? 0.02 : 0.06;
+
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(255, 225, 120, 0.14)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(0, centerY, orbitX, orbitY, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    for (let i = 0; i < 5; i++) {
+      const angle = timeSeconds * orbitSpeed + i * Math.PI * 2 / 5;
+      const depthScale = 0.86 + Math.sin(angle) * 0.14;
+      const pulse = 1 + Math.sin(timeSeconds * 4 + i * 1.7) * pulseAmplitude;
+      const starSize = baseStarSize * depthScale * pulse;
+      const x = Math.cos(angle) * orbitX;
+      const y = centerY + Math.sin(angle) * orbitY;
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle * 1.8 + i * 0.35);
+      ctx.fillStyle = i % 2 === 0 ? '#f7c55b' : '#e9ae40';
+      ctx.strokeStyle = '#8a6130';
+      ctx.lineWidth = Math.max(1.35, effectScale * 0.075);
+      ctx.shadowColor = 'rgba(247, 197, 91, 0.22)';
+      ctx.shadowBlur = 2;
+      drawFivePointStar(ctx, starSize, starSize * 0.48);
+      ctx.fill();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0)';
+      const highlightOuter = starSize * 0.42;
+      ctx.fillStyle = 'rgba(255, 241, 190, 0.85)';
+      drawFivePointStar(ctx, highlightOuter, highlightOuter * 0.48);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.restore();
+    return true;
+  };
+
+  NV.drawPlayerPhantomPossession = function (ctx, player, char, frame) {
+    const possession = player && player.phantomPossession;
+    if (!possession || !possession.active || !char) return false;
+    const reducedMotion = !!(reducedMotionQuery && reducedMotionQuery.matches);
+    const angle = Number.isFinite(possession.forceAngle) ? possession.forceAngle : (Number(possession.entryAngle) || 0);
+    const size = Math.max(18, Number(char.size) || 20);
+    const pulse = reducedMotion ? 0 : Math.sin((Number(frame) || 0) * 0.11) * 1.8;
+
+    ctx.save();
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    // Silueta espectral desplazada detrás del piloto.
+    ctx.globalAlpha = 0.22;
+    ctx.strokeStyle = '#b8efff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(-5, -4, size + 7 + pulse, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 0.15;
+    ctx.strokeStyle = '#e879f9';
+    ctx.beginPath();
+    ctx.arc(5, 2, size + 10 - pulse * 0.5, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Dos ojos fijos, distintos de la corona de stun.
+    ctx.globalAlpha = 0.82;
+    ctx.fillStyle = '#d9fbff';
+    ctx.strokeStyle = '#d946ef';
+    ctx.lineWidth = 1.4;
+    for (let side = -1; side <= 1; side += 2) {
+      ctx.beginPath();
+      ctx.ellipse(side * size * 0.34, -size * 1.32, size * 0.22, size * 0.11, side * 0.08, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#35134f';
+      ctx.beginPath();
+      ctx.arc(side * size * 0.34 + Math.cos(angle) * 1.5, -size * 1.32 + Math.sin(angle) * 1.5, size * 0.055, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#d9fbff';
+    }
+
+    // Wisps ornamentales; se reducen, pero no desaparecen los indicadores útiles.
+    if (!reducedMotion) {
+      ctx.globalAlpha = 0.30;
+      ctx.strokeStyle = '#c9f8ff';
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 4; i++) {
+        const a = i * Math.PI * 0.5 + 0.35;
+        const r = size * (1.15 + (i & 1) * 0.18);
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * r, Math.sin(a) * r, size * 0.16, a, a + 1.4);
+        ctx.stroke();
+      }
+    }
+
+    // Chevron direccional: autoridad visual exacta del forceAngle.
+    ctx.rotate(angle);
+    ctx.translate(size + (possession.dangerActive ? 29 : 24), 0);
+    ctx.globalAlpha = possession.dangerActive ? 1 : 0.95;
+    ctx.strokeStyle = '#b8efff';
+    ctx.fillStyle = 'rgba(217, 70, 239, 0.22)';
+    ctx.lineWidth = possession.dangerActive ? 3.6 : 3;
+    ctx.beginPath();
+    ctx.moveTo(9, 0);
+    ctx.lineTo(-7, -9);
+    ctx.lineTo(-3, 0);
+    ctx.lineTo(-7, 9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    // Entrada visible durante los primeros 0.35 s de posesión.
+    const transition = Math.max(0, Number(possession.transition) || 0);
+    const owner = possession.owner;
+    if (transition > 0 && owner) {
+      const progress = 1 - transition / 0.35;
+      const sx = (Number(owner.phantomEntryStartX) || player.x) - player.x;
+      const sy = (Number(owner.phantomEntryStartY) || player.y) - player.y;
+      ctx.save();
+      ctx.strokeStyle = '#b8efff';
+      ctx.lineWidth = reducedMotion ? 1.5 : 2.2;
+      for (let i = 0; i < (reducedMotion ? 3 : 5); i++) {
+        const band = (i - 2) * 4;
+        ctx.globalAlpha = (1 - progress) * (0.25 + i * 0.08);
+        ctx.beginPath();
+        ctx.moveTo(sx, sy + band);
+        ctx.quadraticCurveTo(sx * 0.45, sy * 0.45 - band, 0, 0);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = (1 - progress) * 0.75;
+      ctx.strokeStyle = '#e879f9';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, size * (0.65 + progress * 0.65), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+    return true;
+  };
+
   NV.drawPlayer = function (ctx, player, CHARACTERS, frame, presentation) {
     const char = CHARACTERS[player.character];
     ctx.save();
@@ -114,6 +286,8 @@
         ctx.restore();
       }
     }
+
+    NV.drawPlayerPhantomPossession(ctx, player, char, frame);
 
     const invulnBlink = player.invuln > 0 && Math.floor(player.invuln * 20) % 2 === 0;
     const stunBlink = player.stun > 0 && Math.floor(player.stun * 20) % 2 === 0;
@@ -219,16 +393,6 @@
       ctx.shadowBlur = 0;
     }
 
-    // F4: cue claro de stun activo. Un solo trazo amarillo (sin shadowBlur,
-    // sin gradientes, misma pasada de render) complementa el blink existente.
-    if (player.stun > 0) {
-      ctx.strokeStyle = '#ff0';
-      ctx.globalAlpha = 0.85;
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(0, 0, char.size + 11, 0, Math.PI * 2); ctx.stroke();
-      ctx.globalAlpha = invulnBlink ? 0.4 : 1;
-    }
-
     // F09.4: el aura pulsante genérica alrededor del jugador fue ELIMINADA.
     // Era el contorno redundante visible en gameplay y en el preview del
     // lobby (se confundía con el indicador de cooldown de la habilidad).
@@ -308,6 +472,7 @@
     ctx.beginPath(); ctx.arc(-5, -1, 1.2, 0, Math.PI * 2); ctx.arc(5, -1, 1.2, 0, Math.PI * 2); ctx.fill();
 
     ctx.shadowBlur = 0;
+    NV.drawPlayerStunStars(ctx, player, char, frame);
     ctx.restore();
   };
 })();

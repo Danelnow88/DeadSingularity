@@ -256,41 +256,83 @@
         </div>
       </div>
 
-      <div id="settingsPanel" class="settings-overlay hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="settingsTitle">
-        <section class="settings-panel">
+      <div id="settingsPanel" class="settings-overlay hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="settingsTitle" tabindex="-1">
+        <section id="settingsPanelBody" class="settings-panel" aria-label="Ajustes">
           <header class="settings-head">
             <div><span class="settings-kicker">SISTEMA</span><h2 id="settingsTitle">AJUSTES</h2></div>
             <button id="settingsClose" class="settings-close" type="button" aria-label="Cerrar ajustes">×</button>
           </header>
-          <div class="settings-section">
-            <h3>AUDIO</h3>
-            <label class="settings-range" for="settingsSfxVolume">
-              <span><b>Efectos de sonido</b><small>Armas, enemigos, interfaz y ambiente.</small></span>
-              <output id="settingsSfxVolumeValue" for="settingsSfxVolume">100%</output>
-              <input id="settingsSfxVolume" type="range" min="0" max="100" step="1" value="100" aria-label="Volumen de efectos de sonido" />
-            </label>
-          </div>
-          <div class="settings-section">
-            <h3>CONTROLES</h3>
-            <div class="quality-options" role="radiogroup" aria-label="Política de disparo en escritorio">
-              <label><input type="radio" name="firePolicy" value="manual" /><span><b>Manual</b><small>Apunta con el mouse y mantén LMB para disparar.</small></span></label>
-              <label><input type="radio" name="firePolicy" value="legacy-auto" /><span><b>Auto clásico</b><small>Dispara al objetivo más cercano como hasta ahora.</small></span></label>
+          <nav id="settingsTabs" class="settings-tabs" role="tablist" aria-label="Secciones de ajustes">
+            <button id="tabAudio" class="settings-tab active" type="button" role="tab" aria-selected="true" aria-controls="panelAudio" data-tab="audio">AUDIO</button>
+            <button id="tabControls" class="settings-tab" type="button" role="tab" aria-selected="false" aria-controls="panelControls" data-tab="controls" tabindex="-1">CONTROLES</button>
+            <button id="tabGraphics" class="settings-tab" type="button" role="tab" aria-selected="false" aria-controls="panelGraphics" data-tab="graphics" tabindex="-1">GRÁFICOS</button>
+          </nav>
+          <div id="settingsTabPanels" class="settings-tab-panels">
+            <div id="panelAudio" class="settings-tab-panel" role="tabpanel" aria-labelledby="tabAudio" aria-hidden="false" data-tab="audio">
+              <div class="settings-mute-row">
+                <button id="settingsMuteToggle" type="button" class="settings-mute-btn" aria-pressed="true">🔊 SONIDO</button>
+                <span class="settings-mute-note">Mute transitorio: no se guarda.</span>
+              </div>
+              <div class="settings-volume-list">
+                <label class="settings-range" for="settingsMasterVolume">
+                  <span><b>Volumen general</b><small>Controla toda la salida de audio.</small></span>
+                  <output id="settingsMasterVolumeValue" for="settingsMasterVolume" aria-live="polite">100%</output>
+                  <input class="settings-volume" id="settingsMasterVolume" type="range" min="0" max="100" step="1" value="100" data-setting="masterVolume" aria-label="Volumen general" />
+                </label>
+                <label class="settings-range" for="settingsMusicVolume">
+                  <span><b>Música</b><small>Temas y banda sonora del juego.</small></span>
+                  <output id="settingsMusicVolumeValue" for="settingsMusicVolume" aria-live="polite">100%</output>
+                  <input class="settings-volume" id="settingsMusicVolume" type="range" min="0" max="100" step="1" value="100" data-setting="musicVolume" aria-label="Volumen de música" />
+                </label>
+                <label class="settings-range" for="settingsWeaponsVolume">
+                  <span><b>Armas</b><small>Disparos, explosiones y efectos de armas.</small></span>
+                  <output id="settingsWeaponsVolumeValue" for="settingsWeaponsVolume" aria-live="polite">100%</output>
+                  <input class="settings-volume" id="settingsWeaponsVolume" type="range" min="0" max="100" step="1" value="100" data-setting="weaponsVolume" aria-label="Volumen de armas" />
+                </label>
+                <label class="settings-range" for="settingsUiVolume">
+                  <span><b>Interfaz y pickups</b><small>UI, menús y recogida de objetos.</small></span>
+                  <output id="settingsUiVolumeValue" for="settingsUiVolume" aria-live="polite">100%</output>
+                  <input class="settings-volume" id="settingsUiVolume" type="range" min="0" max="100" step="1" value="100" data-setting="uiVolume" aria-label="Volumen de interfaz y pickups" />
+                </label>
+                <label class="settings-range" for="settingsPlayerVolume">
+                  <span><b>Jugador y avisos</b><small>Daño, disparo propio y notificaciones.</small></span>
+                  <output id="settingsPlayerVolumeValue" for="settingsPlayerVolume" aria-live="polite">100%</output>
+                  <input class="settings-volume" id="settingsPlayerVolume" type="range" min="0" max="100" step="1" value="100" data-setting="playerVolume" aria-label="Volumen de jugador y avisos" />
+                </label>
+                <label class="settings-range" for="settingsEnemiesVolume">
+                  <span><b>Enemigos</b><small>Sonidos de hostiles y sus ataques.</small></span>
+                  <output id="settingsEnemiesVolumeValue" for="settingsEnemiesVolume" aria-live="polite">100%</output>
+                  <input class="settings-volume" id="settingsEnemiesVolume" type="range" min="0" max="100" step="1" value="100" data-setting="enemiesVolume" aria-label="Volumen de enemigos" />
+                </label>
+                <label class="settings-range" for="settingsAmbientVolume">
+                  <span><b>Ambiente y eventos</b><small>Música ambiental y eventos del mundo.</small></span>
+                  <output id="settingsAmbientVolumeValue" for="settingsAmbientVolume" aria-live="polite">100%</output>
+                  <input class="settings-volume" id="settingsAmbientVolume" type="range" min="0" max="100" step="1" value="100" data-setting="ambientVolume" aria-label="Volumen de ambiente y eventos" />
+                </label>
+              </div>
+              <p class="settings-note">El volumen general controla toda la salida. El mute es transitorio y afecta a todo el audio.</p>
             </div>
-            <p class="settings-note">En móvil se conserva el auto clásico hasta una futura iteración twin-stick.</p>
-          </div>
-          <div class="settings-section">
-            <h3>GRÁFICOS / RENDIMIENTO</h3>
-            <div class="quality-options" role="radiogroup" aria-label="Calidad visual">
-              <label><input type="radio" name="graphicsQuality" value="auto" /><span><b>Auto</b><small>Equilibra detalle cuando hay muchas élites.</small></span></label>
-              <label><input type="radio" name="graphicsQuality" value="high" /><span><b>Alta</b><small>Calidad visual completa actual.</small></span></label>
-              <label><input type="radio" name="graphicsQuality" value="performance" /><span><b>Rendimiento</b><small>Simplifica VFX secundarios antes.</small></span></label>
+            <div id="panelControls" class="settings-tab-panel" role="tabpanel" aria-labelledby="tabControls" aria-hidden="true" data-tab="controls" hidden>
+              <div class="quality-options" role="radiogroup" aria-label="Política de disparo en escritorio">
+                <label><input type="radio" name="firePolicy" value="manual" /><span><b>Manual</b><small>Apunta con el mouse y mantén LMB para disparar.</small></span></label>
+                <label><input type="radio" name="firePolicy" value="legacy-auto" /><span><b>Auto clásico</b><small>Dispara al objetivo más cercano como hasta ahora.</small></span></label>
+              </div>
+              <p class="settings-note">En móvil se conserva el auto clásico hasta una futura iteración twin-stick.</p>
             </div>
-            <label class="settings-toggle"><input id="settingsParticles" type="checkbox" /><span><b>Partículas mejoradas</b><small>Partículas decorativas de enemigos.</small></span></label>
-            <label class="settings-toggle"><input id="settingsHeavyVfx" type="checkbox" /><span><b>VFX intensos de élites</b><small>Halos y geometría secundaria de la familia Hidra.</small></span></label>
+            <div id="panelGraphics" class="settings-tab-panel" role="tabpanel" aria-labelledby="tabGraphics" aria-hidden="true" data-tab="graphics" hidden>
+              <div class="quality-options" role="radiogroup" aria-label="Calidad visual">
+                <label><input type="radio" name="graphicsQuality" value="auto" /><span><b>Auto</b><small>Equilibra detalle cuando hay muchas élites.</small></span></label>
+                <label><input type="radio" name="graphicsQuality" value="high" /><span><b>Alta</b><small>Calidad visual completa actual.</small></span></label>
+                <label><input type="radio" name="graphicsQuality" value="performance" /><span><b>Rendimiento</b><small>Simplifica VFX secundarios antes.</small></span></label>
+              </div>
+              <label class="settings-toggle"><input id="settingsParticles" type="checkbox" /><span><b>Partículas mejoradas</b><small>Partículas decorativas de enemigos.</small></span></label>
+              <label class="settings-toggle"><input id="settingsHeavyVfx" type="checkbox" /><span><b>VFX intensos de élites</b><small>Halos y geometría secundaria de la familia Hidra.</small></span></label>
+              <p class="settings-note">Los ajustes gráficos no cambian enemigos, daño, vida, spawns ni dificultad.</p>
+            </div>
           </div>
-          <p class="settings-note">El volumen de efectos es independiente del mute. Los ajustes gráficos no cambian enemigos, daño, vida, spawns ni dificultad.</p>
         </section>
       </div>
+
 
       <div id="rotateOverlay" class="rotate-overlay" role="alert" aria-live="assertive">
         <svg class="rotate-ico" viewBox="0 0 64 64" focusable="false" aria-hidden="true">
@@ -340,6 +382,7 @@
     <script src="js/engine/consumables.js"></script>
     <script src="js/engine/metaDiagnostics.js"></script>
     <script src="js/engine/hostileBudget.js"></script>
+    <script src="js/engine/enemySpawnRegistry.js"></script>
     <script src="js/engine/performanceMonitor.js"></script>
     <script src="js/engine/hazards.js"></script>
     <script src="js/engine/enemies.js"></script>

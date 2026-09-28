@@ -372,9 +372,10 @@
   }
 
 
-  NV.drawWeaponHUD = function (ctx, W, H, CHARACTERS, RARITY_COLORS, player, currentWeapon, currentWeaponLevel, inventory, consumGroups, consumSel, showHUD, weaponLevelFor) {
+    NV.drawWeaponHUD = function (ctx, W, H, CHARACTERS, RARITY_COLORS, player, currentWeapon, currentWeaponLevel, inventory, consumGroups, consumSel, showHUD, weaponLevelFor, weaponFusionLevelFor) {
     if (!showHUD) return;
     var lvlFor = weaponLevelFor || function () { return 1; };
+    var fusionFor = weaponFusionLevelFor || function () { return 0; };
     var char = CHARACTERS[player.character];
     var weapon = currentWeapon;
     var iconColor = RARITY_COLORS[weapon.rarity];
@@ -385,7 +386,7 @@
     ctx.textAlign = 'left';
     // Loadout real: los slots visuales son exactamente las posiciones del inventario
     // (hotkeys 1-6 y dock de la tienda comparten este mismo orden).
-    var wEntries = inventory.slice(0, 6).map(function (wItem) { return { weapon: wItem, color: RARITY_COLORS[wItem.rarity], glow: GLOW_BY_RARITY[wItem.rarity] || 0.3, fuse: wItem.fuseLevel || 0, level: lvlFor(wItem.id) }; });
+        var wEntries = inventory.slice(0, 6).map(function (wItem) { return { weapon: wItem, color: RARITY_COLORS[wItem.rarity], glow: GLOW_BY_RARITY[wItem.rarity] || 0.3, fuse: fusionFor(wItem.id) || 0, level: lvlFor(wItem.id) }; });
     var equippedIdx = inventory.indexOf(weapon);
     if (equippedIdx < 0 || equippedIdx > 5) equippedIdx = -1;
     var hCnum = rgbaNum(iconColor);

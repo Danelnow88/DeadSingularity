@@ -5,16 +5,18 @@ function t(desc, fn) { try { fn(); pass++; console.log('  ok  ' + desc); } catch
 
 function sandbox() {
   const freqs = [];
+  const fakeMath = Object.create(Math);
+  fakeMath.random = () => 0.5;
   const gainApi = () => ({ value: 0.6, setValueAtTime(){}, linearRampToValueAtTime(){}, exponentialRampToValueAtTime(){}, cancelScheduledValues(){} });
   const ctx = {
-    createOscillator: () => ({ connect(){}, start(){}, stop(){}, type:'', frequency: { setValueAtTime(v){ freqs.push(Math.round(v)); } } }),
+    createOscillator: () => ({ connect(){}, start(){}, stop(){}, type:'', frequency: { setValueAtTime(v){ freqs.push(Math.round(v)); }, exponentialRampToValueAtTime(v){ freqs.push(Math.round(v)); } } }),
     createGain: () => ({ connect(){}, gain: gainApi() }),
     createBiquadFilter: () => ({ connect(){}, type:'', Q:{value:0}, frequency: gainApi() }),
     createBuffer: () => ({ getChannelData: () => new Float32Array(4410) }),
     createBufferSource: () => ({ connect(){}, start(){}, stop(){}, buffer:null }),
     destination: {}, currentTime: 0, sampleRate: 44100, state: 'suspended', resume: () => Promise.resolve(),
   };
-  const sb = { console, Math, Object, Array, Number, String, Boolean, window:{}, globalThis:{}, AudioContext: function () { return ctx; } };
+  const sb = { console, Math: fakeMath, Object, Array, Number, String, Boolean, window:{}, globalThis:{}, AudioContext: function () { return ctx; } };
   sb.window.AudioContext = sb.AudioContext; sb.window.NV = { getBoss: () => null, getState: () => 'playing', getFrame: () => 1 };
   sb._freqs = freqs; return sb;
 }
@@ -25,10 +27,10 @@ t('sfx.combo actualiza musicState.combo para capas musicales', () => {
   if (NV.musicState.combo !== 8) throw new Error('combo no llegó a musicState');
 });
 
-t('victory genérica y de hito tienen firmas distintas', () => {
-  const a = load(); a.NV.initAudio(); a.NV.sfx.victory(4, { milestone:false });
-  const b = load(); b.NV.initAudio(); b.NV.sfx.victory(5, { milestone:true });
-  if (a.sb._freqs.join(',') === b.sb._freqs.join(',')) throw new Error('fanfarrias iguales');
+t('victory es identidad unica: normal/hito/boss suenan igual', () => {
+  const sig = (w, m) => { const s = load(); s.NV.initAudio(); s.NV.sfx.victory(w, { milestone: m }); return s.sb._freqs.join(','); };
+  const base = sig(4, false);
+  for (const p of [[5, true], [10, true], [25, true]]) { if (sig(p[0], p[1]) !== base) throw new Error('variante en wave=' + p[0]); }
 });
 
 t('game.js conecta combo, countdown solo sin boss y sfx.victory con milestone', () => {

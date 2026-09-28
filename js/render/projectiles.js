@@ -226,4 +226,343 @@
       ctx.globalAlpha = 1;
     }
   };
+
+  // ===== LENGUAJE DE PROYECTIL HOSTIL =====
+  // ROJO = dano hostil · AMARILLO secundario = posibilidad de stun · SHAPE = familia
+  // (projectileStyle, estampado al spawn y estable durante todo el vuelo).
+  // Solo dos clases semanticas. NO existe una tercera.
+  const HOSTILE_DAMAGE_COLOR = '#ff3b4f';
+  const HOSTILE_STUN_COLOR = '#ffd84a';
+  const HOSTILE_PROJECTILE_STYLES = Object.freeze([
+    'genericBolt', 'spectralArrowhead', 'stunDroplet', 'coreSpike', 'voidStunNucleus',
+    'bossRepeater', 'bossHeavyShell', 'bossSpreadDisc', 'bossChargedLance',
+    'bossVolleyDart', 'bossBomb', 'bossOrb', 'bossSplitShard', 'bossRageCore',
+  ]);
+  NV.HOSTILE_DAMAGE_COLOR = HOSTILE_DAMAGE_COLOR;
+  NV.HOSTILE_STUN_COLOR = HOSTILE_STUN_COLOR;
+  NV.HOSTILE_PROJECTILE_STYLES = HOSTILE_PROJECTILE_STYLES;
+
+  function isKnownHostileStyle(style) {
+    for (let i = 0; i < HOSTILE_PROJECTILE_STYLES.length; i++) {
+      if (HOSTILE_PROJECTILE_STYLES[i] === style) return true;
+    }
+    return false;
+  }
+  NV.isKnownHostileProjectileStyle = isKnownHostileStyle;
+
+  // Estilo efectivo: O(1), sin buscar enemigos[] ni leer sourceEnemy.attack.
+  NV.hostileProjectileStyle = function (b) {
+    const s = b ? b.projectileStyle : null;
+    return isKnownHostileStyle(s) ? s : 'genericBolt';
+  };
+
+  // El cuerpo siempre comunica dano. El stun ocupa solo un canal de acento secundario.
+  // b.color (identidad de cuerpo del enemigo) queda ignorado como color primario.
+  NV.hostileProjectileSemanticColor = function () { return HOSTILE_DAMAGE_COLOR; };
+  NV.hasHostileStunAccent = function (b) {
+    const sc = b ? b.stunChance : 0;
+    return Number.isFinite(sc) && sc > 0;
+  };
+
+  // ---- Siluetas procedurales (espacio local ya rotado; +X = direccion) ----
+
+  function hostileBoltBody(ctx, r) {
+    const L = r * 3.0, W = r * 2.0;
+    ctx.beginPath();
+    ctx.moveTo(-L * 0.5, -W * 0.5);
+    ctx.lineTo(L * 0.18, -W * 0.5);
+    ctx.lineTo(L * 0.5, 0);
+    ctx.lineTo(L * 0.18, W * 0.5);
+    ctx.lineTo(-L * 0.5, W * 0.5);
+    ctx.lineTo(-L * 0.36, 0);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function hostileGenericBolt(ctx, r, hasStun) {
+    hostileBoltBody(ctx, r);
+    ctx.strokeStyle = hasStun ? HOSTILE_STUN_COLOR : '#ff99a8';
+    ctx.lineWidth = Math.max(1.8, r * 0.38);
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.72, 0);
+    ctx.lineTo(r * 0.62, 0);
+    ctx.stroke();
+  }
+
+  function hostileRepeater(ctx, r, hasStun) {
+    hostileBoltBody(ctx, r);
+    ctx.strokeStyle = hasStun ? HOSTILE_STUN_COLOR : '#ff99a8';
+    ctx.lineWidth = Math.max(1.8, r * 0.4);
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.18, -r * 0.78);
+    ctx.lineTo(-r * 0.18, r * 0.78);
+    ctx.moveTo(r * 0.22, -r * 0.62);
+    ctx.lineTo(r * 0.22, r * 0.62);
+    ctx.stroke();
+  }
+
+  function hostileArrowhead(ctx, r, hasStun) {
+    ctx.beginPath();
+    ctx.moveTo(r * 1.6, 0);
+    ctx.lineTo(-r * 0.35, -r * 1.2);
+    ctx.lineTo(-r * 1.6, -r * 0.72);
+    ctx.lineTo(-r * 0.72, 0);
+    ctx.lineTo(-r * 1.6, r * 0.72);
+    ctx.lineTo(-r * 0.35, r * 1.2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = hasStun ? HOSTILE_STUN_COLOR : '#ff99a8';
+    ctx.lineWidth = Math.max(1.8, r * 0.36);
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.55, 0);
+    ctx.lineTo(r * 1.05, 0);
+    ctx.stroke();
+  }
+
+  function hostileDroplet(ctx, r, hasStun) {
+    ctx.beginPath();
+    ctx.moveTo(r * 1.5, 0);
+    ctx.quadraticCurveTo(r * 0.45, -r * 1.1, -r * 0.5, -r * 0.9);
+    ctx.quadraticCurveTo(-r * 1.05, -r * 0.55, -r * 1.5, 0);
+    ctx.quadraticCurveTo(-r * 1.05, r * 0.55, -r * 0.5, r * 0.9);
+    ctx.quadraticCurveTo(r * 0.45, r * 1.1, r * 1.5, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = hasStun ? HOSTILE_STUN_COLOR : '#ff99a8';
+    ctx.beginPath();
+    ctx.ellipse(r * 0.25, 0, r * 0.42, r * 0.32, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = hasStun ? HOSTILE_STUN_COLOR : '#ff99a8';
+    ctx.lineWidth = Math.max(1.8, r * 0.38);
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.05, -r * 0.72);
+    ctx.lineTo(r * 0.28, -r * 0.98);
+    ctx.moveTo(-r * 0.05, r * 0.72);
+    ctx.lineTo(r * 0.28, r * 0.98);
+    ctx.stroke();
+  }
+
+  function hostileCoreSpike(ctx, r, hasStun) {
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    for (let i = 0; i < 4; i++) {
+      const a = i * Math.PI * 0.5;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      ctx.moveTo(ca * r * 0.82 - sa * r * 0.34, sa * r * 0.82 + ca * r * 0.34);
+      ctx.lineTo(ca * r * 1.4, sa * r * 1.4);
+      ctx.lineTo(ca * r * 0.82 + sa * r * 0.34, sa * r * 0.82 - ca * r * 0.34);
+      ctx.closePath();
+    }
+    ctx.fill();
+    ctx.fillStyle = hasStun ? HOSTILE_STUN_COLOR : '#ff99a8';
+    ctx.beginPath();
+    ctx.arc(-r * 0.18, -r * 0.18, r * 0.36, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function hostileVoidNucleus(ctx, r, hasStun) {
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 1.1);
+    ctx.lineTo(r * 1.1, 0);
+    ctx.lineTo(0, r * 1.1);
+    ctx.lineTo(-r * 1.1, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#ff99a8';
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 0.68);
+    ctx.lineTo(r * 0.42, 0);
+    ctx.lineTo(0, r * 0.2);
+    ctx.lineTo(-r * 0.42, 0);
+    ctx.closePath();
+    ctx.fill();
+    if (!hasStun) return;
+    ctx.strokeStyle = HOSTILE_STUN_COLOR;
+    ctx.lineWidth = Math.max(1.8, r * 0.4);
+    ctx.beginPath();
+    for (let i = 0; i < 4; i++) {
+      const a0 = i * Math.PI * 0.5 + 0.38;
+      ctx.arc(0, 0, r * 1.45, a0, a0 + Math.PI * 0.5 - 0.76);
+    }
+    ctx.stroke();
+  }
+
+  function hostileHeavyShell(ctx, r, hasStun) {
+    ctx.beginPath();
+    for (let i = 0; i < 12; i++) {
+      const a = i * Math.PI / 6;
+      const rr = (i % 2 === 0) ? r * 1.48 : r * 1.1;
+      const x = Math.cos(a) * rr, y = Math.sin(a) * rr;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = hasStun ? HOSTILE_STUN_COLOR : '#ff99a8';
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.52, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function hostileSpreadDisc(ctx, r, hasStun) {
+    ctx.beginPath();
+    for (let i = 0; i < 12; i++) {
+      const a = i * Math.PI / 6;
+      const rr = (i % 2 === 0) ? r * 1.15 : r * 0.86;
+      const x = Math.cos(a) * rr, y = Math.sin(a) * rr;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = hasStun ? HOSTILE_STUN_COLOR : '#ff99a8';
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.38, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function hostileLance(ctx, r, hasStun) {
+    ctx.beginPath();
+    ctx.moveTo(r * 1.33, 0);
+    ctx.lineTo(r * 0.25, -r * 0.89);
+    ctx.lineTo(-r * 0.88, -r * 0.66);
+    ctx.lineTo(-r * 1.33, 0);
+    ctx.lineTo(-r * 0.88, r * 0.66);
+    ctx.lineTo(r * 0.25, r * 0.89);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = hasStun ? HOSTILE_STUN_COLOR : '#ff99a8';
+    ctx.lineWidth = Math.max(2.4, r * 0.33);
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.78, 0);
+    ctx.lineTo(r * 0.83, 0);
+    ctx.stroke();
+  }
+
+  function hostileVolleyDart(ctx, r, hasStun) {
+    ctx.beginPath();
+    ctx.moveTo(r * 1.4, 0);
+    ctx.lineTo(-r * 0.55, -r * 1.2);
+    ctx.lineTo(-r * 1.4, -r * 0.42);
+    ctx.lineTo(-r * 0.48, 0);
+    ctx.lineTo(-r * 1.4, r * 0.42);
+    ctx.lineTo(-r * 0.55, r * 1.2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = hasStun ? HOSTILE_STUN_COLOR : '#ff99a8';
+    ctx.lineWidth = Math.max(1.8, r * 0.36);
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.52, 0);
+    ctx.lineTo(r * 0.78, 0);
+    ctx.stroke();
+  }
+
+  function hostileBomb(ctx, r, hasStun) {
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ff99a8';
+    ctx.beginPath();
+    ctx.arc(-r * 0.28, -r * 0.24, r * 0.28, 0, Math.PI * 2);
+    ctx.fill();
+    if (!hasStun) return;
+    ctx.strokeStyle = HOSTILE_STUN_COLOR;
+    ctx.lineWidth = Math.max(1.8, r * 0.4);
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.45, -Math.PI * 0.25, Math.PI * 1.25);
+    ctx.stroke();
+  }
+
+  function hostileOrb(ctx, r, hasStun) {
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * 1.05, r * 1.05, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ff99a8';
+    ctx.beginPath();
+    ctx.arc(-r * 0.22, -r * 0.22, r * 0.27, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = hasStun ? HOSTILE_STUN_COLOR : '#ff99a8';
+    ctx.lineWidth = Math.max(1.8, r * 0.4);
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.4, -0.62, 0.62);
+    ctx.moveTo(-r * 1.4, 0);
+    ctx.arc(0, 0, r * 1.4, Math.PI - 0.62, Math.PI + 0.62);
+    ctx.stroke();
+  }
+
+  function hostileSplitShard(ctx, r, hasStun) {
+    ctx.beginPath();
+    ctx.moveTo(r * 1.5, 0);
+    ctx.lineTo(r * 0.18, -r * 1.1);
+    ctx.lineTo(-r * 1.5, -r * 0.72);
+    ctx.lineTo(-r * 0.78, 0);
+    ctx.lineTo(-r * 1.5, r * 0.72);
+    ctx.lineTo(r * 0.18, r * 1.1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = hasStun ? HOSTILE_STUN_COLOR : '#ff99a8';
+    ctx.lineWidth = Math.max(1.8, r * 0.36);
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.72, -r * 0.34);
+    ctx.lineTo(r * 0.55, 0);
+    ctx.lineTo(-r * 0.72, r * 0.34);
+    ctx.stroke();
+  }
+
+  function hostileRageCore(ctx, r, hasStun) {
+    ctx.beginPath();
+    ctx.moveTo(r * 1.45, -r * 0.12);
+    ctx.lineTo(r * 0.72, -r * 0.42);
+    ctx.lineTo(r * 0.28, -r * 1.45);
+    ctx.lineTo(-r * 0.12, -r * 0.78);
+    ctx.lineTo(-r * 1.35, -r * 0.88);
+    ctx.lineTo(-r * 0.82, 0);
+    ctx.lineTo(-r * 1.18, r * 1.05);
+    ctx.lineTo(-r * 0.18, r * 0.7);
+    ctx.lineTo(r * 0.55, r * 1.35);
+    ctx.lineTo(r * 0.72, r * 0.42);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = hasStun ? HOSTILE_STUN_COLOR : '#ff99a8';
+    ctx.lineWidth = Math.max(1.8, r * 0.38);
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.35, -r * 0.25);
+    ctx.lineTo(r * 0.42, r * 0.22);
+    ctx.stroke();
+  }
+
+  // ---- Renderer canonico hostil ----
+  NV.drawHostileProjectile = function (ctx, b) {
+    if (!b) return;
+    const r = (Number.isFinite(b.radius) && b.radius > 0) ? b.radius : 5;
+    const color = NV.hostileProjectileSemanticColor(b);
+    const hasStun = NV.hasHostileStunAccent(b);
+    const style = NV.hostileProjectileStyle(b);
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    ctx.rotate(Math.atan2(b.vy || 0, b.vx || 0));
+    ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.shadowColor = HOSTILE_DAMAGE_COLOR;
+    ctx.shadowBlur = r >= 8 ? 6 : 5;
+
+    switch (style) {
+      case 'spectralArrowhead': hostileArrowhead(ctx, r, hasStun); break;
+      case 'stunDroplet': hostileDroplet(ctx, r, hasStun); break;
+      case 'coreSpike': hostileCoreSpike(ctx, r, hasStun); break;
+      case 'voidStunNucleus': hostileVoidNucleus(ctx, r, hasStun); break;
+      case 'bossRepeater': hostileRepeater(ctx, r, hasStun); break;
+      case 'bossHeavyShell': hostileHeavyShell(ctx, r, hasStun); break;
+      case 'bossSpreadDisc': hostileSpreadDisc(ctx, r, hasStun); break;
+      case 'bossChargedLance': hostileLance(ctx, r, hasStun); break;
+      case 'bossVolleyDart': hostileVolleyDart(ctx, r, hasStun); break;
+      case 'bossBomb': hostileBomb(ctx, r, hasStun); break;
+      case 'bossOrb': hostileOrb(ctx, r, hasStun); break;
+      case 'bossSplitShard': hostileSplitShard(ctx, r, hasStun); break;
+      case 'bossRageCore': hostileRageCore(ctx, r, hasStun); break;
+      default: hostileGenericBolt(ctx, r, hasStun); break;
+    }
+
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  };
 })();

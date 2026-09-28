@@ -47,14 +47,26 @@ t('drawEnemy contiene rama para SPECTRAL_ENEMY_MODE', () => {
   if (!gameSrc.includes('NV.drawSpectralEnemy2D')) throw new Error('llamada ausente en drawEnemy');
 });
 
-// 5. drawEnemy mantiene fallback al render original
-t('drawEnemy mantiene fallback a NV.drawEnemy original', () => {
-  // Busca que después de la rama espectral, se llama NV.drawEnemy
-  const idx = gameSrc.indexOf('NV.drawSpectralEnemy2D');
-  const idxFallback = gameSrc.indexOf('NV.drawEnemy(ctx, e, frame, player, NV.rhythm)');
-  if (idxFallback === -1) throw new Error('fallback ausente');
-  // El fallback debe estar DESPUÉS de la rama espectral (no la reemplaza, la envuelve)
-  if (idxFallback < idx) throw new Error('fallback antes de rama espectral');
+t('Predator execution VFX no introduce un render pass adicional', () => {
+  const spectralSrc = fs.readFileSync(path.join(__dirname, '..', 'js', 'render', 'spectralEnemies2D.js'), 'utf8');
+  const vfxCallCount = (spectralSrc.match(/drawElitePredatorExecutionVfx\(ctx, e, rx, ry\);/g) || []).length;
+  if (vfxCallCount !== 1) throw new Error('llamadas VFX=' + vfxCallCount);
+  const labDraw = spectralSrc.indexOf('drawLabSpecterEnemy(ctx, e, frame, player, profile, rx, ry);');
+  const vfxDraw = spectralSrc.indexOf('drawElitePredatorExecutionVfx(ctx, e, rx, ry);', labDraw);
+  const branchReturn = spectralSrc.indexOf('return true;', labDraw);
+  if (labDraw === -1 || vfxDraw < labDraw || branchReturn < vfxDraw) {
+    throw new Error('VFX no integrado en el mismo pase Lab/espectral');
+  }
+});
+
+// 5. Los comunes aprobados fuerzan el renderer especializado antes del espectral
+t('los ocho comunes usan NV.drawEnemy incluso con modo espectral', () => {
+  const route = "typeof NV.hasCommonEnemyVisual === 'function' && NV.hasCommonEnemyVisual(e.enemyTypeId)";
+  const idxCommon = gameSrc.indexOf(route);
+  const idxCommonDraw = gameSrc.indexOf('NV.drawEnemy(ctx, e, frame, player, frameVisualRhythm, visualTimeSeconds)', idxCommon);
+  const idxSpectral = gameSrc.indexOf("NV.SPECTRAL_ENEMY_MODE && typeof NV.drawSpectralEnemy2D", idxCommon);
+  if (idxCommon === -1 || idxCommonDraw === -1) throw new Error('routing común ausente');
+  if (idxSpectral === -1 || idxCommonDraw > idxSpectral) throw new Error('routing común no precede al espectral');
 });
 
 // 6. El fallback geométrico se mantiene disponible cuando el modo está apagado
@@ -62,6 +74,15 @@ t('el fallback geométrico original se mantiene disponible', () => {
   // Si SPECTRAL_ENEMY_MODE es false, drawEnemy llama NV.drawEnemy
   const idxMode = gameSrc.indexOf('NV.SPECTRAL_ENEMY_MODE && typeof NV.drawSpectralEnemy2D');
   if (idxMode === -1) throw new Error('condicional espectral ausente');
+});
+
+t('enemies.js limita el routing especializado a los ocho IDs aprobados', () => {
+  const enemiesSrc = fs.readFileSync(path.join(__dirname, '..', 'js', 'render', 'enemies.js'), 'utf8');
+  const expected = ['drone', 'runner', 'tank', 'shielder', 'swarmlet', 'spitter', 'wisp', 'kamikaze'];
+  const match = enemiesSrc.match(/const COMMON_ENEMY_IDS = new Set\(\[([^\]]+)\]\)/);
+  if (!match) throw new Error('COMMON_ENEMY_IDS ausente');
+  const actual = Array.from(match[1].matchAll(/'([^']+)'/g), (m) => m[1]);
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error('IDs=' + JSON.stringify(actual));
 });
 
 // 7. ELITE_TYPES.visualId apunta a perfiles válidos

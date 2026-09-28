@@ -53,7 +53,7 @@
       const sayStun = state.cbs.addFloatText;
       const SHOCK_R = 120;
       for (const e of state.enemies || []) {
-        if (e.dead) continue;
+        if (NV.isEnemyDamageable ? !NV.isEnemyDamageable(e) : e.dead) continue;
         if (Math.hypot(e.x - player.x, e.y - player.y) < SHOCK_R) {
           e.stun = Math.max(e.stun || 0, 1.0); // control de 1s (usa el sistema de stun existente)
           if (applyKnockback) applyKnockback(e, player.x, player.y, 260);
@@ -89,9 +89,12 @@
     let hits = 0;
     for (const e of enemies || []) {
       if (e.dead) continue;
+      if (NV.isEnemyDamageable && !NV.isEnemyDamageable(e)) { e.phaseAcc = 0; continue; }
       const acc = e.phaseAcc || 0;
       if (acc > 0) {
-        e.hp -= acc * MULT;
+        const rawDamage = acc * MULT;
+        const dealt = NV.guardProtectedDamage ? NV.guardProtectedDamage(e, rawDamage) : rawDamage;
+        e.hp -= dealt;
         e.hitFlash = Math.max(e.hitFlash || 0, 0.10);
         if (cbs && cbs.addFloatText) cbs.addFloatText(e.x, e.y - 24, 'ESPECTRAL', '#caa7ff');
         hits++;

@@ -5,8 +5,11 @@ function t(desc, fn) { try { fn(); pass++; console.log('  ok  ' + desc); } catch
 
 function mkCtx() {
   const calls = [];
+  const shadowBlurs = [];
+  const arcs = [];
+  const styles = [];
   const ctx = {
-    calls,
+    calls, shadowBlurs, arcs, styles,
     save() { calls.push('save'); },
     restore() { calls.push('restore'); },
     translate(x, y) { calls.push('translate:' + Math.round(x) + ',' + Math.round(y)); },
@@ -15,7 +18,7 @@ function mkCtx() {
     beginPath() { calls.push('beginPath'); },
     closePath() { calls.push('closePath'); },
     moveTo() {}, lineTo() {}, bezierCurveTo() {}, quadraticCurveTo() {},
-    arc() { calls.push('arc'); },
+    arc(x, y, radius, start, end) { calls.push('arc'); arcs.push({ x, y, radius, start, end }); },
     ellipse() { calls.push('ellipse'); },
     fill() { calls.push('fill'); },
     stroke() { calls.push('stroke'); },
@@ -24,7 +27,11 @@ function mkCtx() {
     createRadialGradient() { return { addColorStop() {} }; },
     createLinearGradient() { return { addColorStop() {} }; },
     fillText() { calls.push('fillText'); },
+    setLineDash() {},
   };
+  Object.defineProperty(ctx, 'shadowBlur', { set(value) { shadowBlurs.push(Number(value)); } });
+  Object.defineProperty(ctx, 'strokeStyle', { set(value) { styles.push(String(value)); } });
+  Object.defineProperty(ctx, 'fillStyle', { set(value) { styles.push(String(value)); } });
   return ctx;
 }
 
@@ -69,6 +76,50 @@ t('visual raid boss de los 7 elites base NO muta datos', () => {
     if (JSON.stringify(enemy) !== snapshot) throw new Error('muto datos de gameplay en ' + vid);
   }
 });
+t('Predator execution VFX comparte el pase espectral y Phantom no recibe arma', () => {
+  const source = fs.readFileSync('js/render/spectralEnemies2D.js', 'utf8');
+  if (!source.includes('const cfg = NV.ELITE_PREDATOR_HUNTER')) throw new Error('VFX duplica autoridad de geometría');
+  if (!source.includes('drawElitePredatorExecutionVfx(ctx, e, rx, ry)')) throw new Error('VFX fuera del pase espectral');
+  const phantom = { x: 100, y: 100, radius: 16, color: '#e0ffff', shape: 'circle', enemyTypeId: 'tank', visualId: 'elite_phantom', isElite: true, dead: false };
+  const snapshot = JSON.stringify(phantom);
+  if (NV.drawSpectralEnemy2D(mkCtx(), phantom, 30, player, null) !== true) throw new Error('Phantom no renderizó');
+  if (JSON.stringify(phantom) !== snapshot) throw new Error('Phantom mutado por VFX Predator');
+  if (Object.keys(phantom).some((key) => key.indexOf('predator') === 0)) throw new Error('Phantom recibió estado Predator');
+});
+t('Goliath comunica windup, impacto, aftershock y recovery sin mutar gameplay', () => {
+  const cfg = {
+    triggerRange: 130, slamRadius: 145, windup: 0.35, aftershockDelay: 1,
+    aftershockRadius: 60, aftershockDamageMult: 0.35, recovery: 0.75,
+    attackCooldown: 1.5, initialAttackDelay: 0.75, holdMin: 118, holdMax: 138,
+    retreatRange: 108, retreatSpeedMult: 0.35, impactVfxTime: 0.14, aftershockVfxTime: 0.18,
+  };
+  NV.ELITE_GOLIATH_SEISMIC = Object.freeze(cfg);
+  const base = { x: 100, y: 100, radius: 36, color: '#ff1493', shape: 'rock', visualId: 'elite_titan', isElite: true, dead: false, goliathImpactX: 100, goliathImpactY: 100 };
+  const draw = (over) => {
+    const enemy = Object.assign({}, base, over);
+    const snapshot = JSON.stringify(enemy);
+    const ctx = mkCtx();
+    if (NV.drawSpectralEnemy2D(ctx, enemy, 30, player, null) !== true) throw new Error('no renderizó Goliath');
+    if (JSON.stringify(enemy) !== snapshot) throw new Error('renderer mutó gameplay en ' + enemy.goliathState);
+    return ctx;
+  };
+  const windup = draw({ goliathState: 'slam_windup', goliathStateTimer: 0.35 });
+  if (!windup.styles.includes('#ff6474')) throw new Error('windup sin warning red');
+  if (!windup.arcs.some((arc) => Math.abs(arc.radius - 145) < 1e-9)) throw new Error('windup no muestra radio máximo 145 desde el primer frame');
+  const primary = draw({ goliathState: 'aftershock_window', goliathStateTimer: 1, goliathImpactVfxTimer: 0.1 });
+  if (!primary.styles.includes('#ff3b4f') || !primary.styles.includes('#ffffff')) throw new Error('impacto primario sin pulso/hotspot');
+  if (!primary.arcs.some((arc) => Math.abs(arc.radius - 145) < 1e-9)) throw new Error('impacto primario sin confirmación 145');
+  const warning = draw({ goliathState: 'aftershock_window', goliathStateTimer: 0.5 });
+  if (!warning.styles.includes('#ff6474')) throw new Error('aftershock sin warning');
+  if (!warning.arcs.some((arc) => Math.abs(arc.radius - 60) < 1e-9)) throw new Error('aftershock warning sin radio 60');
+  if (warning.arcs.some((arc) => Math.abs(arc.radius - 145) < 1e-9)) throw new Error('aftershock warning conserva zona exterior 145');
+  const aftershock = draw({ goliathState: 'recovery', goliathStateTimer: 0.75, goliathAftershockVfxTimer: 0.12 });
+  if (!aftershock.styles.includes('#ff3b4f') || !aftershock.styles.includes('#ffffff')) throw new Error('aftershock impact sin pulso/hairline');
+  if (!aftershock.arcs.some((arc) => Math.abs(arc.radius - 60) < 1e-9)) throw new Error('aftershock impact sin radio 60');
+  if (aftershock.arcs.some((arc) => Math.abs(arc.radius - 145) < 1e-9)) throw new Error('aftershock impact redibuja zona 145');
+  const recovery = draw({ goliathState: 'recovery', goliathStateTimer: 0.4 });
+  if (recovery.styles.includes('#ff6474') || recovery.styles.includes('#ff3b4f')) throw new Error('recovery conserva peligro rojo activo');
+});
 t('visual Lab de los 4 espectrales de producción NO muta datos', () => {
   const ids = ['specter_grunt', 'specter_archer', 'specter_guard', 'specter_elite_void'];
   for (const id of ids) {
@@ -99,21 +150,71 @@ t('specter_lite y specter_core mapean a los modelos del lab sin mutar datos', ()
   }
 });
 
+t('cinco espectros auditados: RB2-RB3-RB4-RB5 intactos por modelo y ×0.65 por enemyTypeId', () => {
+  const expected = {
+    specter_grunt: { model: 1, scale: 0.75, factor: 0.9375 },
+    specter_archer: { model: 3, scale: 0.80, factor: 1 },
+    specter_guard: { model: 4, scale: 0.82, factor: 1.025 },
+    specter_lite: { model: 1, scale: 0.75, factor: 0.9375 },
+    specter_core: { model: 2, scale: 0.80, factor: 1 },
+  };
+  if (NV.SPECTRAL_BODY_SCALE !== 0.65) throw new Error('SPECTRAL_BODY_SCALE ausente');
+  for (const [id, contract] of Object.entries(expected)) {
+    // Modelo asignado y tabla por modelo SIN alterar (consumidores no relacionados).
+    if (NV.LAB_SPECTER_IDS[id] !== contract.model) throw new Error(id + ' modelo=' + NV.LAB_SPECTER_IDS[id]);
+    if (Math.abs(NV.LAB_MODEL_SCALE_FACTORS[contract.model] - contract.scale) > 1e-9) throw new Error(id + ' escala de modelo alterada');
+    if (Math.abs(NV.labModelHitboxFactor(contract.model) - contract.factor) > 1e-9) throw new Error(id + ' factor de modelo alterado');
+    // Efectivo por enemyTypeId: escala visual y hitbox físico = base ×0.65.
+    if (NV.spectralBodyScale(id) !== 0.65) throw new Error(id + ' spectralBodyScale=' + NV.spectralBodyScale(id));
+    if (Math.abs(NV.labModelHitboxFactor(contract.model, id) - contract.factor * 0.65) > 1e-9) throw new Error(id + ' factor efectivo');
+    if (Math.abs(contract.scale * 0.65 - contract.scale * NV.spectralBodyScale(id)) > 1e-12) throw new Error(id + ' escala efectiva');
+  }
+  // Scoped: nadie fuera de los cinco recibe el 0.65 (Hydra, élites, comunes...).
+  for (const id of ['specter_elite_void', 'elite_base', 'elite_velocity', 'swarmlet', 'drone', 'runner', null, undefined, '']) {
+    if (NV.spectralBodyScale(id) !== 1) throw new Error(id + ' recibió el body scale de espectros');
+  }
+});
+
+t('cinco espectros usan renderer líquido optimizado sin blur/random ni mutación', () => {
+  const ids = ['specter_grunt', 'specter_archer', 'specter_guard', 'specter_lite', 'specter_core'];
+  const oldRandom = sbx.Math.random;
+  sbx.Math.random = function () { throw new Error('Math.random en render'); };
+  try {
+    for (const id of ids) {
+      const ctx = mkCtx();
+      const enemy = { x: 100, y: 100, radius: 12, color: '#67f8c8', shape: 'specter', enemyTypeId: id, dead: false };
+      const snapshot = JSON.stringify(enemy);
+      if (NV.drawSpectralEnemy2D(ctx, enemy, 30, player, null) !== true) throw new Error(id + ' no renderizó');
+      if (ctx.shadowBlurs.some((value) => value > 0)) throw new Error(id + ' conserva blur=' + ctx.shadowBlurs.join(','));
+      if (JSON.stringify(enemy) !== snapshot) throw new Error(id + ' mutó gameplay');
+    }
+  } finally {
+    sbx.Math.random = oldRandom;
+  }
+});
+
+t('modelos no-RB6 no entran en clasificación Hydra/ojos Hydra', () => {
+  for (const id of ['specter_grunt', 'specter_archer', 'specter_guard', 'specter_lite', 'specter_core']) {
+    if (NV.isHydraEnemyFamily({ enemyTypeId: id, visualId: id })) throw new Error(id + ' clasificado Hydra');
+  }
+});
+
 t('down-scale por modelo: factores aprobados y radio visual del roster', () => {
   if (!Array.isArray(NV.LAB_MODEL_SCALE_FACTORS) || NV.LAB_MODEL_SCALE_FACTORS.length !== 6) throw new Error('factores ausentes');
-  const expected = [24.5, 30, 30.4, 30.4, 34.44, 38.25];
+  const expected = [24.5, 30, 30.4, 30.4, 34.44, 38.25 * 0.65];
   for (let i = 0; i < 6; i++) {
     const r = NV.labModelVisualRadius(i);
     if (Math.abs(r - expected[i]) > 0.01) throw new Error('modelo ' + i + ' radio=' + r);
   }
-  // Jerarquía preservada: ningún modelo dibuja más pequeño que el anterior.
-  for (let i = 1; i < 6; i++) {
+  // Jerarquía del roster no-Hydra preservada. RB6 recibe el ajuste corporal
+  // específico 0.65 y por diseño deja de ser el cuerpo más grande.
+  for (let i = 1; i < 5; i++) {
     if (NV.labModelVisualRadius(i) < NV.labModelVisualRadius(i - 1) - 1e-9) throw new Error('jerarquía invertida en ' + i);
   }
 });
 
 t('factor de hitbox por modelo = factor visual / 0.8 previo', () => {
-  const expected = [0.875, 0.9375, 1, 1, 1.025, 1.0625];
+  const expected = [0.875, 0.9375, 1, 1, 1.025, 1.0625 * 0.65];
   for (let i = 0; i < 6; i++) {
     const f = NV.labModelHitboxFactor(i);
     if (Math.abs(f - expected[i]) > 1e-9) throw new Error('modelo ' + i + ' factor=' + f);
@@ -122,7 +223,7 @@ t('factor de hitbox por modelo = factor visual / 0.8 previo', () => {
 
 t('customScale escala el radio visual del modelo', () => {
   if (Math.abs(NV.labModelVisualRadius(0, 2) - 49) > 0.01) throw new Error('x2=' + NV.labModelVisualRadius(0, 2));
-  if (Math.abs(NV.labModelVisualRadius(5, 0.5) - 19.125) > 0.01) throw new Error('x0.5=' + NV.labModelVisualRadius(5, 0.5));
+  if (Math.abs(NV.labModelVisualRadius(5, 0.5) - 19.125 * 0.65) > 0.01) throw new Error('x0.5=' + NV.labModelVisualRadius(5, 0.5));
 });
 
 t('render con slowUntil activo', () => {

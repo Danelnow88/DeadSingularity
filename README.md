@@ -34,6 +34,7 @@ Abrir `http://localhost:8080/`. También puede abrirse `index.html` directamente
 - `js/game.js` coordina estado, loop, gameplay compartido y transiciones UI.
 - `js/engine/` contiene sistemas de gameplay; `js/render/` contiene renderers; `js/data/` contiene definiciones de contenido y balance.
 - `NV.applyPlayerDamage` es la autoridad de daño al jugador; `NV.getHostileBudget` deriva el presupuesto vivo con topes de 30 hostiles y 7 heavy, boss incluido.
+- Proyectiles hostiles: el cuerpo ROJO (`#ff3b4f`) comunica daño, un acento AMARILLO secundario (`#ffd84a`) indica que puede aturdir y la FORMA comunica la familia de origen/ataque (`projectileStyle`); todo se resuelve en `NV.drawHostileProjectile` sin lookup de enemigos.
 - Teclado y controles táctiles escriben en la misma abstracción lógica `NV.input`.
 - El lobby, Game Over y Settings usan DOM compartido con presentación responsive.
 - `js/core/settings.js` centraliza calidad visual y persistencia sin alterar gameplay.
@@ -53,6 +54,8 @@ Detalles: [Arquitectura](docs/ARCHITECTURE.md).
 El panel compartido **Ajustes** ofrece calidad `Auto`, `Alta` y `Rendimiento`, además de toggles para partículas y VFX intensos de élites. El valor por defecto es **Alta**, equivalente a la calidad visual previa. Los modos alternativos solo reducen coste visual secundario; no cambian enemigos, daño, vida, spawns ni dificultad.
 
 La familia visual élite `RB6 / Entidad Hidra` dispone de un presupuesto LOD estable por proximidad al jugador en `Auto` y `Rendimiento`. Todas las entidades siguen visibles y funcionales.
+
+- **Lenguaje de color hostil:** el peligro entrante usa una familia roja consistente — `#ff6474` (warning/telegrafía), `#ff3b4f` (amenaza activa) y `#ffffff` (impacto). Es solo presentación: no afecta daño, timings ni dificultad.
 
 Contrato completo: [Arquitectura móvil](docs/MOBILE_ARCHITECTURE.md) y [Estados UI](docs/UI_STATES.md).
 

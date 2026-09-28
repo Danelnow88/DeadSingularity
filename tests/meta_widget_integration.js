@@ -61,9 +61,9 @@ function t(desc, fn) {
     if (!game.includes('skewX(')) throw new Error('falta distorsión skew de borde');
     if (!game.includes('transform = \'scale(')) throw new Error('falta apply scale');
     // color por hue
-    if (!game.includes("icon.style.color = 'hsl(")) throw new Error('falta color por hue');
+    if (!game.includes("setWidgetStyle(icon, 'color', 'hsl(")) throw new Error('falta color por hue');
     // glow por energía
-    if (!game.includes('icon.style.filter')) throw new Error('falta glow (filter)');
+    if (!game.includes("setWidgetStyle(icon, 'filter'")) throw new Error('falta glow (filter)');
     // usa hue y groove derivada de NV.rhythm
     if (!game.includes('NV.rhythm') || !game.includes('r.hue') || !game.includes('groove.beat') || !game.includes('groove.energy')) throw new Error('no reusa NV.rhythm');
     // se llama en el loop
@@ -82,8 +82,8 @@ function t(desc, fn) {
   });
 
   t('la celda .rw-icon queda fija y el transform reactivo va al SVG interno', () => {
-    if (!game.includes("const glyph = icon.querySelector('svg.mn') || icon")) throw new Error('falta target interno glyph');
-    if (!game.includes('glyph.style.transform = \'scale(')) throw new Error('transform no se aplica al SVG interno');
+    if (!game.includes("const rhythmWidgetGlyph = dom.rwIcon ? (dom.rwIcon.querySelector('svg.mn') || dom.rwIcon) : null")) throw new Error('falta target interno glyph cacheado');
+    if (!game.includes("setWidgetStyle(glyph, 'transform', transform)")) throw new Error('transform no se aplica al SVG interno');
     if (game.includes('icon.style.transform = \'scale(')) throw new Error('transform reactivo no debe escalar la celda .rw-icon');
     const iconCellBlock = css.slice(css.indexOf('.rw-icon {'), css.indexOf('.rw-icon svg.mn'));
     if (!iconCellBlock.includes('width: 28px') || !iconCellBlock.includes('height: 28px') || !iconCellBlock.includes('flex: 0 0 28px')) throw new Error('.rw-icon no mantiene celda fija 28px');

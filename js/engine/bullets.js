@@ -15,9 +15,18 @@
     if (b.hitTargets.indexOf(target) === -1) b.hitTargets.push(target);
   }
 
+  function isTargetable(enemy) {
+    return NV.isEnemyTargetable ? NV.isEnemyTargetable(enemy) : !!enemy && !enemy.dead;
+  }
+
   function applyPlayerBulletDamage(b, e, st) {
     const { addFloatText, killEnemy, applyKnockback } = st;
-    const dealt = Math.max(1, b.damage - (e.resist || 0));
+    if (NV.isEnemyDamageable && !NV.isEnemyDamageable(e)) return false;
+    if (NV.isElitePredatorProjectileEvading && NV.isElitePredatorProjectileEvading(e)) return false;
+    if (NV.tryElitePredatorProjectileEvade && NV.tryElitePredatorProjectileEvade(e, st.player, st.W, st.H)) return false;
+    const resisted = Math.max(1, b.damage - (e.resist || 0));
+    const snapProtected = b.guardProtectionSnapshot && b.guardProtectionSnapshot.has(e);
+    const dealt = snapProtected ? resisted * 0.10 : (NV.guardProtectedDamage ? NV.guardProtectedDamage(e, resisted) : resisted);
     e.hp -= dealt;
     if (e.isElite) e.stun = 0.25;
     e.hitFlash = Math.max(e.hitFlash || 0, 0.10);
@@ -27,9 +36,11 @@
     // Número de daño con código de color por intensidad (sin textos "CRITICAL!"):
     // normal blanco · sustancial cian · crítico rojo intenso con fuente mayor.
     const dfs = hitFloatStyle(dealt, !!b.crit);
-    addFloatText(e.x, e.y - e.radius - 6, String(dealt), dfs.color, dfs.size);
+    const damageText = NV.formatDamageText ? NV.formatDamageText(dealt) : String(Math.round(dealt * 100) / 100);
+    if (damageText !== null) addFloatText(e.x, e.y - e.radius - 6, damageText, dfs.color, dfs.size, { damageValue: dealt });
     if (e.hp <= 0) killEnemy(e);
     applyKnockback(e, b.x, b.y, 60);
+    return true;
   }
 
   // Estilo del número de daño. Delegado en balance.js (NV.damageFloatStyle)
@@ -44,7 +55,7 @@
     const radius = b.splashRadius || 180;
     let next = null, best = Infinity;
     for (const e of enemies) {
-      if (e.dead || hasHitTarget(b, e)) continue;
+      if (!isTargetable(e) || hasHitTarget(b, e)) continue;
       const d = Math.hypot(e.x - from.x, e.y - from.y);
       if (d <= radius && d < best) { best = d; next = e; }
     }
@@ -109,7 +120,7 @@
     const { enemies, boss, spawnExplosion } = st;
     spawnExplosion(b.x, b.y, 18, b.color, 0.75);
     for (const other of enemies) {
-      if (other.dead || hasHitTarget(b, other)) continue;
+      if (!isTargetable(other) || hasHitTarget(b, other)) continue;
       if (Math.hypot(other.x - b.x, other.y - b.y) > radius + other.radius) continue;
       rememberHitTarget(b, other);
       applyPlayerBulletDamage(b, other, st);
@@ -134,14 +145,14 @@
         if (dt <= 0) {
           while (b.chainIndex < b.chainTargets.length) {
             const target = b.chainTargets[b.chainIndex++];
-            if (!target || target.dead) continue;
+            if (!isTargetable(target)) continue;
             applyPlayerBulletDamage(b, target, st);
           }
           b.dead = true;
           continue;
         }
         const target = b.chainTargets[b.chainIndex];
-        if (!target || target.dead) {
+        if (!isTargetable(target)) {
           b.chainIndex++;
           if (b.chainIndex >= b.chainTargets.length) b.dead = true;
           continue;
@@ -223,7 +234,7 @@
       } else {
         let hitCount = 0;
         for (const e of enemies) {
-          if (e.dead) continue;
+          if (!isTargetable(e)) continue;
           if (hasHitTarget(b, e)) continue;
           const d = Math.hypot(b.x - e.x, b.y - e.y);
           const collided = b.impactType === 'pellet'
@@ -231,6 +242,12 @@
             : ((b.impactType === 'sustain' && d < e.radius + (b.splashRadius || 18)) ||
               (b.impactType !== 'sustain' && d < e.radius + 4));
           if (collided) {
+            if (b.impactType === 'splash' && !b.guardProtectionSnapshot && NV.getGuardProtectionSource) {
+              b.guardProtectionSnapshot = new Set();
+              for (const candidate of enemies) {
+                if (isTargetable(candidate) && NV.getGuardProtectionSource(candidate)) b.guardProtectionSnapshot.add(candidate);
+              }
+            }
             // ESCUDO (shielder): bloquea balas frontales solo cuando el escudo está listo.
             if (e.shield) {
               if (e.shieldCd <= 0) {
@@ -272,9 +289,15 @@
             boss.hp -= b.damage;
             boss.hitFlash = Math.max(boss.hitFlash, 0.10);
             var _bhs = NV.hitSlowFor("BOSS");
-            if ((boss.hitSlowImmunity || 0) <= 0 && (boss.hitSlowUntil || 0) <= 0) { boss.hitSlowUntil = _bhs.activeDuration; boss.hitSlowImmunity = _bhs.activeDuration + _bhs.immunity; }
+            var _bossHitstopAllowed = (boss.hitSlowImmunity || 0) <= 0;
+            if (_bossHitstopAllowed && (boss.hitSlowUntil || 0) <= 0) { boss.hitSlowUntil = _bhs.activeDuration; boss.hitSlowImmunity = _bhs.activeDuration + _bhs.immunity; }
             if (b.impactType === 'splash') explodeSplash(b, st);
-            b.dead = true; hitstop = 0.03; NV.bossHitReaction(boss, b.damage, addFloatText);
+            // HITSTOP con gate anti-spam: el freeze (juice) solo se rearma tras la
+            // ventana de inmunidad del hitSlow (~0.35s). Rearmarlo en CADA bala
+            // convertía el impacto en tirones constantes con armas rápidas
+            // (0.03s × 15 disparos/s ≈ 45% de frames congelados contra el jefe).
+            if (_bossHitstopAllowed) hitstop = 0.03;
+            b.dead = true; NV.bossHitReaction(boss, b.damage, addFloatText);
           }
         }
       }

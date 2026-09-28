@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NEON VOID — Combat Test Lab</title>
+  <link rel="stylesheet" href="combat-test-lab.css" />
+</head>
+<body>
+  <main class="lab-shell">
+    <aside class="control-panel">
+      <header>
+        <p class="eyebrow">NEON VOID · DEV</p>
+        <h1>Universal Combat Test Lab</h1>
+        <p class="hint">Runtime productivo dentro de un iframe same-origin.</p>
+      </header>
+
+      <section class="config-grid" aria-label="Configuración del encuentro">
+        <label>PLAYER<select id="playerSelect"></select></label>
+        <label>WAVE<input id="waveInput" type="number" min="1" max="999" step="1" value="19" /></label>
+        <label>DIFFICULTY<select id="difficultySelect"></select></label>
+        <fieldset>
+          <legend>DURATION MODE</legend>
+          <label class="inline"><input type="radio" name="durationMode" value="timed" checked /> TIMED</label>
+          <label class="inline"><input type="radio" name="durationMode" value="infinite" /> INFINITE</label>
+        </fieldset>
+        <label>DURATION SECONDS<input id="durationInput" type="number" min="1" step="1" value="60" /></label>
+      </section>
+
+      <section>
+        <div class="section-title"><h2>ENEMY COMPOSITION</h2><button id="addEnemyBtn" type="button">+ ADD ENEMY TYPE</button></div>
+        <div id="compositionRows" class="composition-rows"></div>
+      </section>
+
+      <div id="errors" class="errors" role="alert" aria-live="polite"></div>
+
+      <section class="actions" aria-label="Controles del test">
+        <button id="startBtn" class="primary" type="button">START TEST</button>
+        <button id="resetBtn" type="button">RESET TEST</button>
+        <button id="pauseBtn" type="button">PAUSE</button>
+        <button id="restartBtn" type="button">RESTART SAME TEST</button>
+      </section>
+
+      <section class="telemetry" aria-label="Telemetría">
+        <h2>TELEMETRY</h2>
+        <dl>
+          <div><dt>STATUS</dt><dd id="tStatus">LOADING</dd></div>
+          <div><dt>WAVE</dt><dd id="tWave">—</dd></div>
+          <div><dt>DIFFICULTY</dt><dd id="tDifficulty">—</dd></div>
+          <div><dt>TIME</dt><dd id="tTime">—</dd></div>
+          <div><dt>ACTIVE</dt><dd id="tActive">0</dd></div>
+          <div><dt>PLAYER HP</dt><dd id="tHp">—</dd></div>
+          <div><dt>FPS</dt><dd id="tFps">—</dd></div>
+        </dl>
+        <p id="tComposition" class="composition-summary">No test started.</p>
+      </section>
+    </aside>
+
+    <section class="game-panel" aria-label="Juego productivo">
+      <iframe id="gameFrame" tabindex="0" title="NEON VOID production runtime" src="../index.html?combatLab=1&amp;fresh=1"></iframe>
+    </section>
+  </main>
+  <script src="combat-test-lab.js"></script>
+</body>
+</html>

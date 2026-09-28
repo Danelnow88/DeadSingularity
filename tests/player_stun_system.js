@@ -46,7 +46,7 @@ function bossSt(NV, boss) {
     sfx: { bossAttack: new Proxy({}, { get: () => () => {} }) },
     showBanner() {}, triggerFlash() {}, spawnExplosion() {}, addFloatText() {},
     triggerWaveVictory() {},
-    spawnBossProj: (b, speed, damage, count, spread, color, radius, st, stun, stunDuration) => NV.spawnBossProj(b, speed, damage, count, spread, color, radius, st, stun, stunDuration),
+    spawnBossProj: (b, speed, damage, count, spread, color, radius, st, stun, stunDuration, style) => NV.spawnBossProj(b, speed, damage, count, spread, color, radius, st, stun, stunDuration, style),
     spawnMinion: () => false, spawnBossChest: () => {} };
 }
 function fireRanged(NV, e, player) {
@@ -79,16 +79,17 @@ console.log('player_stun_system:');
 t('mapa: fuentes productivas de stun con chance/duración objetivo', () => {
   const { NV } = sandbox();
   const spitter = NV.ENEMY_TYPES.find((x) => x.id === 'spitter');
-  if (!spitter || spitter.stunChance !== 0.5 || spitter.stunDuration !== 0.45) throw new Error('spitter');
+  if (!spitter || spitter.stunChance !== 0.5 || spitter.stunDuration !== 1.25) throw new Error('spitter');
   const titan = NV.ELITE_TYPES.find((x) => x.visualId === 'elite_titan');
-  if (!titan || titan.stunChance !== 0.35 || titan.stunDuration !== 0.55) throw new Error('titan');
+  if (!titan || titan.stunChance !== 0.35 || titan.stunDuration !== 1.0) throw new Error('titan');
   const vela = NV.ELITE_TYPES.find((x) => x.id === 'specter_elite_void');
-  if (!vela || vela.stunChance !== 0.35 || vela.stunDuration !== 0.5) throw new Error('void');
+  if (!vela || vela.stunChance !== 0.35 || vela.stunDuration !== 1.75) throw new Error('void');
   for (const id of ['drone', 'runner', 'tank', 'shielder', 'swarmlet', 'wisp', 'kamikaze', 'specter_grunt', 'specter_archer', 'specter_guard', 'specter_lite', 'specter_core']) {
     const ty = NV.ENEMY_TYPES.find((x) => x.id === id);
     if ((ty.stunChance || 0) > 0) throw new Error(id + ' no debería stunear');
   }
   if (NV.BALANCE.PLAYER_STUN_REAPPLY_LOCKOUT !== 1.5) throw new Error('lockout');
+  if (NV.BALANCE.PLAYER_STUN_POST_RECOVERY_GRACE !== 0.35) throw new Error('grace');
   if (NV.BALANCE.PLAYER_STUN_DEFAULT_DURATION !== 0.5) throw new Error('duración default');
 });
 
@@ -106,82 +107,111 @@ t('spitter: spawn copia stunChance/stunDuration y el proyectil los lleva', () =>
   const spawned = [];
   NV.spawnEnemy({ enemies: spawned, boss: null, wave: 12, ENEMY_TYPES: NV.ENEMY_TYPES, W: 900, H: 520, MAX_ENEMIES: 30, MAX_HOSTILES: 30, MAX_HEAVY_HOSTILES: 7, waveEvent: null, forceTypeId: 'spitter' });
   const e = spawned[0];
-  if (!e || e.stunChance !== 0.5 || e.stunDuration !== 0.45) throw new Error('spawn: ' + (e && e.stunChance));
+  if (!e || e.stunChance !== 0.5 || e.stunDuration !== 1.25) throw new Error('spawn: ' + (e && e.stunChance));
   const b = fireRanged(NV, e, { x: 650, y: 300, moveVx: 0, moveVy: 0, invuln: 0, stun: 0 });
   if (!b) throw new Error('sin bala');
-  if (b.stunChance !== 0.5 || b.stunDuration !== 0.45) throw new Error('propagación: ' + b.stunChance + '/' + b.stunDuration);
+  if (b.stunChance !== 0.5 || b.stunDuration !== 1.25) throw new Error('propagación: ' + b.stunChance + '/' + b.stunDuration);
+  if (b.projectileStyle !== 'stunDroplet') throw new Error('projectileStyle=' + b.projectileStyle);
 });
 
-t('spitter: impacto exitoso aplica 0.45s + lockout 1.5 y el daño aplica', () => {
+t('spitter: impacto exitoso aplica 1.25s + lockout 1.6 y el daño aplica', () => {
   const { NV } = sandbox();
   const player = mkPlayer();
-  const b = bulletFixture({ stunChance: 0.5, stunDuration: 0.45, damage: 15, sourceType: 'spitter' });
+  const b = bulletFixture({ stunChance: 0.5, stunDuration: 1.25, damage: 15, sourceType: 'spitter' });
   bulletHit(NV, player, b);
-  if (player.stun !== 0.45) throw new Error('stun=' + player.stun);
-  if (player.stunReapplyLockout !== 1.5) throw new Error('lockout=' + player.stunReapplyLockout);
+  if (player.stun !== 1.25) throw new Error('stun=' + player.stun);
+  if (player.stunReapplyLockout !== 1.6) throw new Error('lockout=' + player.stunReapplyLockout);
   if (player.hp !== 105) throw new Error('hp=' + player.hp);
-  if (player.invuln !== 0) throw new Error('stun concedió invuln');
+  if (player.invuln !== 0.5) throw new Error('impacto no concedió protección post-hit');
   if (!b.dead) throw new Error('bala no consumida');
 });
 
 t('spitter: roll fallido no aturde pero el daño igual aplica', () => {
   const { NV } = sandbox(0.99);
   const player = mkPlayer();
-  const b = bulletFixture({ stunChance: 0.5, stunDuration: 0.45, damage: 15, sourceType: 'spitter' });
+  const b = bulletFixture({ stunChance: 0.5, stunDuration: 1.25, damage: 15, sourceType: 'spitter' });
   bulletHit(NV, player, b);
   if (player.stun !== 0 || player.stunReapplyLockout !== 0) throw new Error('aturdió con roll fallido');
   if (player.hp !== 105) throw new Error('hp=' + player.hp);
   if (!b.dead) throw new Error('bala no consumida');
 });
 
-t('GOLIATH: contacto no es determinista — roll exitoso (rand=0 < 0.35) aturde 0.55s + lockout 1.5', () => {
-  const { NV, math } = sandbox(0); // rand() = 0 < 0.35 => stun aplica
+t('spitter: contacto conserva daño pero no hereda stun ranged', () => {
+  const { NV, math } = sandbox(0);
+  let rolls = 0;
+  math.random = () => { rolls++; return 0; };
+  const player = mkPlayer({ x: 100, y: 100 });
+  const e = { x: 110, y: 100, hp: 50, maxHp: 50, damage: 12, speed: 0, radius: 12, color: '#6dc4c0', shape: 'rock', behavior: 'chase', dead: false, isElite: false, knockVelX: 0, knockVelY: 0, knockbackRes: 0, contactCd: 0, stunChance: 0.5, stunDuration: 1.25, hostileClass: 'light', enemyTypeId: 'spitter', angle: 0, erraticTimer: 0 };
+  NV.updateEnemies(0.016, { enemies: [e], player, bullets: [], MAX_BULLETS: 10, MAX_ENEMY_BULLETS: 10, enemyBulletCount: () => 0, applyPlayerDamage: applyNoCrit(NV, player), addFloatText() {}, spawnExplosion() {}, MAX_HOSTILES: 30, MAX_HEAVY_HOSTILES: 7, boss: null, wave: 13, waveEvent: null, hookSystem: null, onKill() {} });
+  if (rolls !== 0 || player.stun !== 0 || player.stunReapplyLockout !== 0) throw new Error('contacto intentó stun');
+  if (player.hp !== 108 || !e.dead) throw new Error('daño/contacto alterado: hp=' + player.hp + ' dead=' + e.dead);
+});
+
+t('GOLIATH: contacto corporal no daña, no aturde y no consume al atacante', () => {
+  const { NV, math } = sandbox(0);
   let rolls = 0;
   math.random = () => { rolls++; return 0; };
   const player = mkPlayer({ x: 400, y: 300, hp: 120 });
-  const e = { x: 410, y: 300, hp: 50, maxHp: 50, damage: 0, eliteDamage: 20, speed: 0, radius: 12, color: '#ff1493', shape: 'rock', behavior: 'chase', dead: false, isElite: true, knockVelX: 0, knockVelY: 0, knockbackRes: 0.9, contactCd: 0, stunChance: 0.35, stunDuration: 0.55, hostileClass: 'heavy', visualId: 'elite_titan', angle: 0, erraticTimer: 0 };
+  const e = { x: 410, y: 300, hp: 50, maxHp: 50, damage: 0, eliteDamage: 20, speed: 0, radius: 12, color: '#ff1493', shape: 'rock', behavior: 'chase', dead: false, isElite: true, knockVelX: 0, knockVelY: 0, knockbackRes: 0.9, contactCd: 0, stunChance: 0.35, stunDuration: 1.0, hostileClass: 'heavy', visualId: 'elite_titan', angle: 0, erraticTimer: 0 };
   NV.updateEnemies(0.016, { enemies: [e], player, bullets: [], MAX_BULLETS: 10, MAX_ENEMY_BULLETS: 10, enemyBulletCount: () => 0, applyPlayerDamage: applyNoCrit(NV, player), addFloatText() {}, spawnExplosion() {}, MAX_HOSTILES: 30, MAX_HEAVY_HOSTILES: 7, boss: null, wave: 20, waveEvent: null, hookSystem: null, onKill() {} });
-  if (rolls !== 1) throw new Error('rolls de contacto=' + rolls + ' (esperaba exactamente 1)');
-  if (player.stun !== 0.55 || player.stunReapplyLockout !== 1.5) throw new Error('stun=' + player.stun + '/' + player.stunReapplyLockout);
-  if (player.hp !== 100) throw new Error('hp=' + player.hp);
-  if (!e.dead) throw new Error('el contacto no mató al atacante');
+  if (rolls !== 0) throw new Error('rolls de contacto=' + rolls);
+  if (player.stun !== 0 || player.stunReapplyLockout !== 0) throw new Error('stun=' + player.stun + '/' + player.stunReapplyLockout);
+  if (player.hp !== 120 || player.invuln !== 0) throw new Error('contacto alteró player');
+  if (e.dead || e.contactCd || e.atkFlash) throw new Error('contacto consumió/activó feedback');
 });
 
-t('GOLIATH: contacto NO aturde cuando roll falla (rand=0.99 >= 0.35) pero el daño aplica igual', () => {
-  const { NV, math } = sandbox(0.99); // rand() = 0.99 >= 0.35 => stun NO aplica
+t('GOLIATH: slam exitoso enruta un único roll central con 0.35 / 1.00', () => {
+  const { NV, math } = sandbox(0);
   let rolls = 0;
-  math.random = () => { rolls++; return 0.99; };
+  math.random = () => { rolls++; return 0; };
   const player = mkPlayer({ x: 400, y: 300, hp: 120 });
-  const e = { x: 410, y: 300, hp: 50, maxHp: 50, damage: 0, eliteDamage: 20, speed: 0, radius: 12, color: '#ff1493', shape: 'rock', behavior: 'chase', dead: false, isElite: true, knockVelX: 0, knockVelY: 0, knockbackRes: 0.9, contactCd: 0, stunChance: 0.35, stunDuration: 0.55, hostileClass: 'heavy', visualId: 'elite_titan', angle: 0, erraticTimer: 0 };
-  NV.updateEnemies(0.016, { enemies: [e], player, bullets: [], MAX_BULLETS: 10, MAX_ENEMY_BULLETS: 10, enemyBulletCount: () => 0, applyPlayerDamage: applyNoCrit(NV, player), addFloatText() {}, spawnExplosion() {}, MAX_HOSTILES: 30, MAX_HEAVY_HOSTILES: 7, boss: null, wave: 20, waveEvent: null, hookSystem: null, onKill() {} });
-  if (rolls !== 1) throw new Error('rolls de contacto=' + rolls + ' (esperaba exactamente 1)');
-  if (player.stun !== 0 || player.stunReapplyLockout !== 0) throw new Error('aturdió con roll fallido: stun=' + player.stun);
-  if (player.hp !== 100) throw new Error('daño no aplicado con roll fallido: hp=' + player.hp);
-  if (!e.dead) throw new Error('el contacto no mató al atacante');
+  const e = { x: 400, y: 300, hp: 50, maxHp: 50, damage: 0, eliteDamage: 20, speed: 0, radius: 12, color: '#ff1493', shape: 'rock', behavior: 'chase', dead: false, isElite: true, knockVelX: 0, knockVelY: 0, knockbackRes: 0.9, contactCd: 0, stunChance: 0.35, stunDuration: 1.0, hostileClass: 'heavy', visualId: 'elite_titan', angle: 0, erraticTimer: 0 };
+  const st = { enemies: [e], player, bullets: [], MAX_BULLETS: 10, MAX_ENEMY_BULLETS: 10, enemyBulletCount: () => 0, applyPlayerDamage: applyNoCrit(NV, player), addFloatText() {}, spawnExplosion() {}, MAX_HOSTILES: 30, MAX_HEAVY_HOSTILES: 7, boss: null, wave: 20, waveEvent: null, hookSystem: null, onKill() {} };
+  NV.updateEnemies(0, st);
+  e.goliathAttackCooldown = 0;
+  NV.updateEnemies(0, st);
+  NV.updateEnemies(0.35, st);
+  if (rolls !== 1) throw new Error('rolls de slam=' + rolls);
+  if (player.stun !== 1.0 || player.stunReapplyLockout !== 1.5) throw new Error('stun=' + player.stun + '/' + player.stunReapplyLockout);
+  if (player.hp !== 100) throw new Error('hp=' + player.hp);
 });
 
-t('specter_elite_void: proyectil ranged lleva stun y aplica 0.5s', () => {
+t('specter_elite_void: proyectil ranged lleva stun y aplica 1.75s', () => {
   const { NV } = sandbox();
   const spawned = [];
   NV.spawnElite({ enemies: spawned, boss: null, wave: 17, W: 900, H: 520, ELITE_TYPES: NV.ELITE_TYPES.filter((x) => x.id === 'specter_elite_void'), MAX_ENEMIES: 30, MAX_HOSTILES: 30, MAX_HEAVY_HOSTILES: 7, waveEvent: null });
   const e = spawned[0];
-  if (!e || e.stunChance !== 0.35 || e.stunDuration !== 0.5) throw new Error('spawn');
+  if (!e || e.stunChance !== 0.35 || e.stunDuration !== 1.75) throw new Error('spawn');
   const b = fireRanged(NV, e, { x: 650, y: 300, moveVx: 0, moveVy: 0, invuln: 0, stun: 0 });
-  if (!b || b.stunChance !== 0.35 || b.stunDuration !== 0.5) throw new Error('propagación');
+  if (!b || b.stunChance !== 0.35 || b.stunDuration !== 1.75) throw new Error('propagación');
+  if (b.projectileStyle !== 'voidStunNucleus') throw new Error('projectileStyle=' + b.projectileStyle);
   const player = mkPlayer();
-  bulletHit(NV, player, bulletFixture({ stunChance: 0.35, stunDuration: 0.5, damage: 20, color: '#9b4dff', sourceType: 'specter_elite_void' }));
-  if (player.stun !== 0.5 || player.hp !== 100) throw new Error('impacto: stun=' + player.stun + ' hp=' + player.hp);
+  bulletHit(NV, player, bulletFixture({ stunChance: 0.35, stunDuration: 1.75, damage: 20, color: '#9b4dff', sourceType: 'specter_elite_void' }));
+  if (player.stun !== 1.75 || player.stunReapplyLockout !== 2.1 || player.hp !== 100) throw new Error('impacto: stun=' + player.stun + ' lockout=' + player.stunReapplyLockout + ' hp=' + player.hp);
+});
+
+t('specter_elite_void: contacto conserva daño pero no hereda stun ranged', () => {
+  const { NV, math } = sandbox(0);
+  let rolls = 0;
+  math.random = () => { rolls++; return 0; };
+  const player = mkPlayer({ x: 100, y: 100 });
+  const e = { x: 110, y: 100, hp: 50, maxHp: 50, damage: 24, eliteDamage: 20, speed: 0, radius: 12, color: '#9b4dff', shape: 'circle', behavior: 'chase', dead: false, isElite: true, knockVelX: 0, knockVelY: 0, knockbackRes: 0.4, contactCd: 0, stunChance: 0.35, stunDuration: 1.75, hostileClass: 'heavy', enemyTypeId: 'specter_elite_void', visualId: 'elite_specter_void', angle: 0, erraticTimer: 0 };
+  NV.updateEnemies(0.016, { enemies: [e], player, bullets: [], MAX_BULLETS: 10, MAX_ENEMY_BULLETS: 10, enemyBulletCount: () => 0, applyPlayerDamage: applyNoCrit(NV, player), addFloatText() {}, spawnExplosion() {}, MAX_HOSTILES: 30, MAX_HEAVY_HOSTILES: 7, boss: null, wave: 17, waveEvent: null, hookSystem: null, onKill() {} });
+  if (rolls !== 0 || player.stun !== 0 || player.stunReapplyLockout !== 0) throw new Error('contacto intentó stun');
+  if (player.hp !== 100 || !e.dead) throw new Error('daño/contacto alterado: hp=' + player.hp + ' dead=' + e.dead);
 });
 
 t('bosses: cada familia usa su chance/duración efectiva única', () => {
   const { NV } = sandbox();
   const DATA = 0.15;
   const cases = [
-    ['repeater', DATA, 0.5, 0.23], ['spread', DATA, 0.5, 1.26], ['volley', DATA, 0.5, 0.96],
-    ['orbs', DATA, 0.5, 1.11], ['split', DATA, 0.5, 1.16], ['rage', DATA, 0.5, 1.76],
-    ['heavy', 0.30, 0.55, 1.36], ['bomb', 0.35, 0.60, 1.61], ['beam', 0.40, 0.65, 3.61],
+    ['repeater', DATA, 0.75, 0.23, 'bossRepeater'], ['spread', DATA, 0.90, 1.26, 'bossSpreadDisc'],
+    ['volley', DATA, 0.75, 0.96, 'bossVolleyDart'], ['orbs', DATA, 1.00, 1.11, 'bossOrb'],
+    ['split', DATA, 1.10, 1.16, 'bossSplitShard'], ['rage', DATA, 0.90, 1.76, 'bossRageCore'],
+    ['heavy', 0.30, 1.50, 1.36, 'bossHeavyShell'], ['bomb', 0.35, 1.75, 1.61, 'bossBomb'],
+    ['beam', 0.40, 2.00, 3.61, 'bossChargedLance'],
   ];
-  for (const [fam, chance, dur, atkTimer] of cases) {
+  for (const [fam, chance, dur, atkTimer, style] of cases) {
     const b = bossFixture(fam, DATA);
     const st = bossSt(NV, b);
     b.atkTimer = atkTimer;
@@ -190,6 +220,7 @@ t('bosses: cada familia usa su chance/duración efectiva única', () => {
     for (const bl of st.bullets) {
       if (bl.stunChance !== chance) throw new Error(fam + ' chance=' + bl.stunChance);
       if (bl.stunDuration !== dur) throw new Error(fam + ' dur=' + bl.stunDuration);
+      if (bl.projectileStyle !== style) throw new Error(fam + ' style=' + bl.projectileStyle);
     }
   }
   const b = bossFixture('mystery', DATA);
@@ -197,6 +228,7 @@ t('bosses: cada familia usa su chance/duración efectiva única', () => {
   b.atkTimer = 1.11;
   NV.runBossAttack(b, 0.001, st);
   if (!st.bullets.length || st.bullets[0].stunChance !== DATA || st.bullets[0].stunDuration !== 0.5) throw new Error('familia default');
+  if (st.bullets[0].projectileStyle !== 'genericBolt') throw new Error('familia default style=' + st.bullets[0].projectileStyle);
 });
 
 t('sin roll duplicado: spawn no tira y las rutas de impacto no tiran inline', () => {
@@ -242,6 +274,15 @@ t('helper: validación y sin stack aditivo', () => {
   if (!NV.tryApplyPlayerStun(p, 0.65, 1).applied || p.stun !== 0.65) throw new Error('stack largo: ' + p.stun);
 });
 
+t('lockout efectivo usa suelo 1.5 o duración + gracia 0.35', () => {
+  const { NV } = sandbox();
+  for (const [duration, expected] of [[0.75, 1.5], [1.25, 1.6], [1.75, 2.1], [2.0, 2.35]]) {
+    const p = mkPlayer();
+    const r = NV.tryApplyPlayerStun(p, duration, 1, null, { random: () => 0 });
+    if (!r.applied || p.stun !== duration || p.stunReapplyLockout !== expected) throw new Error(duration + ' -> ' + p.stunReapplyLockout);
+  }
+});
+
 t('stun bloquea movimiento normal y no muta base', () => {
   const { NV } = sandbox();
   const stunned = mkPlayer({ x: 100, y: 100 });
@@ -270,16 +311,20 @@ t('stun bloquea INICIAR dash nuevo; sin stun el dash inicia', () => {
   if (!libre.dashActive) throw new Error('dash legítimo bloqueado');
 });
 
-t('stun NO bloquea daño de proyectil ni de contacto (sin invulnerabilidad)', () => {
+t('stun NO bloquea daño; protección post-hit sí bloquea contacto hasta caducar', () => {
   const { NV } = sandbox();
   const player = mkPlayer({ stun: 0.45, stunReapplyLockout: 1.5 });
-  const b = bulletFixture({ stunChance: 0.5, stunDuration: 0.45, damage: 15, sourceType: 'spitter' });
+  const b = bulletFixture({ stunChance: 0.5, stunDuration: 1.25, damage: 15, sourceType: 'spitter' });
   bulletHit(NV, player, b);
   if (player.hp !== 105) throw new Error('proyectil no dañó: hp=' + player.hp);
   if (!b.dead) throw new Error('bala no consumida');
   if (player.stun !== 0.45 || player.stunReapplyLockout !== 1.5) throw new Error('lockout mutó timers: ' + player.stun + '/' + player.stunReapplyLockout);
-  const e = { x: 110, y: 100, hp: 50, maxHp: 50, damage: 12, speed: 0, radius: 12, color: '#6dc4c0', shape: 'rock', behavior: 'chase', dead: false, isElite: false, knockVelX: 0, knockVelY: 0, knockbackRes: 0, contactCd: 0, stunChance: 0.5, stunDuration: 0.45, hostileClass: 'light', enemyTypeId: 'spitter', angle: 0, erraticTimer: 0 };
-  NV.updateEnemies(0.016, { enemies: [e], player, bullets: [], MAX_BULLETS: 10, MAX_ENEMY_BULLETS: 10, enemyBulletCount: () => 0, applyPlayerDamage: applyNoCrit(NV, player), addFloatText() {}, spawnExplosion() {}, MAX_HOSTILES: 30, MAX_HEAVY_HOSTILES: 7, boss: null, wave: 13, waveEvent: null, hookSystem: null, onKill() {} });
+  const e = { x: 110, y: 100, hp: 50, maxHp: 50, damage: 12, speed: 0, radius: 12, color: '#6dc4c0', shape: 'rock', behavior: 'chase', dead: false, isElite: false, knockVelX: 0, knockVelY: 0, knockbackRes: 0, contactCd: 0, stunChance: 0.5, stunDuration: 1.25, hostileClass: 'light', enemyTypeId: 'spitter', angle: 0, erraticTimer: 0 };
+  const state = { enemies: [e], player, bullets: [], MAX_BULLETS: 10, MAX_ENEMY_BULLETS: 10, enemyBulletCount: () => 0, applyPlayerDamage: applyNoCrit(NV, player), addFloatText() {}, spawnExplosion() {}, MAX_HOSTILES: 30, MAX_HEAVY_HOSTILES: 7, boss: null, wave: 13, waveEvent: null, hookSystem: null, onKill() {} };
+  NV.updateEnemies(0.016, state);
+  if (player.hp !== 105 || e.dead) throw new Error('contacto ignoró protección post-hit');
+  player.invuln = 0;
+  NV.updateEnemies(0.016, state);
   if (player.hp !== 93) throw new Error('contacto no dañó: hp=' + player.hp);
   if (!e.dead) throw new Error('atacante vivo');
 });
@@ -323,13 +368,13 @@ t('lifecycle: pausa congela, restart/muerte/wave_end/shop limpian timers', () =>
   const shopBlock = game.slice(game.indexOf('function beginShopEntrance() {'), game.indexOf('function updatePresentation(dt) {'));
   if (!shopBlock.includes('player.stun = 0; player.stunReapplyLockout = 0;')) throw new Error('shop sin limpieza');
   if (!game.includes('stunChance: bt.stunChance || 0')) throw new Error('boss no copia stunChance de datos');
-  if (!/\(b, speed, damage, count, spread, color, radius, _stArg, stun, stunDuration\)/.test(game)) throw new Error('wrapper de boss no forwarda stun');
+  if (!/\(b, speed, damage, count, spread, color, radius, _stArg, stun, stunDuration, projectileStyle\)/.test(game)) throw new Error('wrapper de boss no forwarda stun');
 });
 
 t('HP finita en todos los escenarios y Hook/Pull intacto', () => {
   const { NV } = sandbox();
   const player = mkPlayer();
-  const b = bulletFixture({ stunChance: 0.5, stunDuration: 0.45, damage: 15, sourceType: 'spitter' });
+  const b = bulletFixture({ stunChance: 0.5, stunDuration: 1.25, damage: 15, sourceType: 'spitter' });
   bulletHit(NV, player, b);
   if (!Number.isFinite(player.hp) || !Number.isFinite(player.maxHp) || player.maxHp <= 0) throw new Error('hp no finita');
   const enemies = fs.readFileSync('js/engine/enemies.js', 'utf8');
@@ -345,7 +390,7 @@ t('boss funcional end-to-end: updateBoss dispara repeater con stun de datos', ()
   boss.atkTimer = 0.23;
   const res = NV.updateBoss(0.001, st);
   if (!st.bullets.length) throw new Error('sin proyectiles de boss');
-  if (st.bullets[0].stunChance !== 0.15 || st.bullets[0].stunDuration !== 0.5) throw new Error('stun boss: ' + st.bullets[0].stunChance + '/' + st.bullets[0].stunDuration);
+  if (st.bullets[0].stunChance !== 0.15 || st.bullets[0].stunDuration !== 0.75) throw new Error('stun boss: ' + st.bullets[0].stunChance + '/' + st.bullets[0].stunDuration);
   if (!res.boss || res.boss.dead) throw new Error('boss murió indebidamente');
 });
 

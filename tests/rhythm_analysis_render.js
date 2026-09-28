@@ -54,6 +54,26 @@ t('computeRhythmGroove comparte envelope widget/minas con valores finitos y boun
   if (!idle.idle || !Number.isFinite(idle.breathPhase) || idle.breath <= 0) throw new Error('idle no determinista');
 });
 
+t('diagnóstico visual rítmico expone los tres modos y no altera análisis/audio', () => {
+  const NV = loadNV();
+  if (NV.getRhythmVisualDiagnostics().mode !== 'full') throw new Error('default no es full');
+  const analyser = { getByteFrequencyData() {} };
+  const data = new Uint8Array(128);
+  Object.assign(NV.rhythm, { enabled: true, active: true, state: 'listening', analyser, data });
+  const before = { enabled: NV.rhythm.enabled, active: NV.rhythm.active, state: NV.rhythm.state, analyser: NV.rhythm.analyser };
+  const noBg = NV.setRhythmVisualDiagnosticMode('no-background');
+  if (noBg.background !== false || noBg.auxiliary !== true) throw new Error(JSON.stringify(noBg));
+  const bgOnly = NV.setRhythmVisualDiagnosticMode('background-only');
+  if (bgOnly.background !== true || bgOnly.auxiliary !== false) throw new Error(JSON.stringify(bgOnly));
+  NV.setRhythmVisualDiagnosticMode('full');
+  if (NV.rhythm.enabled !== before.enabled || NV.rhythm.active !== before.active || NV.rhythm.state !== before.state || NV.rhythm.analyser !== before.analyser) {
+    throw new Error('el diagnóstico mutó captura/análisis');
+  }
+  let rejected = false;
+  try { NV.setRhythmVisualDiagnosticMode('invalid'); } catch (e) { rejected = true; }
+  if (!rejected) throw new Error('modo inválido aceptado');
+});
+
 t('drawRhythmLayer cambia paleta por banda dominante y tempo mueve el centro', () => {
   const NV = loadNV();
   const low = mkCtx(), high = mkCtx(), fast = mkCtx();
@@ -75,11 +95,41 @@ t('drawRhythmLayer cambia paleta por banda dominante y tempo mueve el centro', (
 
 t('rhythmTick lee AnalyserNode y actualiza energy', () => {
   const NV = loadNV();
+  NV.rhythm.enabled = true;
   NV.rhythm.state = 'listening';
   NV.rhythm.data = new Uint8Array(128);
   NV.rhythm.analyser = { getByteFrequencyData(arr) { arr.fill(180); } };
   NV.rhythmTick(1);
   if (!(NV.rhythm.energy > 0.4)) throw new Error('tick no analizó');
+});
+
+t('rhythmTick desacopla análisis a 60 Hz sin limitar render de 165 Hz', () => {
+  const NV = loadNV();
+  let reads = 0;
+  Object.assign(NV.rhythm, {
+    enabled: true,
+    state: 'listening',
+    data: new Uint8Array(128),
+    analyser: { getByteFrequencyData(arr) { reads++; arr.fill(160); } },
+  });
+  for (let frame = 0; frame < 165; frame++) NV.rhythmTick(frame / 165);
+  if (reads < 59 || reads > 61) throw new Error('lecturas=' + reads + ' (esperaba ~60 en 165 rAF)');
+  if (!(NV.rhythm.energy > 0)) throw new Error('valores publicados no reaccionaron');
+});
+
+t('rhythmTick deshabilitado no lee analyser ni procesa audio', () => {
+  const NV = loadNV();
+  let reads = 0;
+  Object.assign(NV.rhythm, {
+    enabled: false,
+    state: 'listening',
+    energy: 0,
+    data: new Uint8Array(128),
+    analyser: { getByteFrequencyData() { reads++; } },
+  });
+  for (let frame = 0; frame < 30; frame++) NV.rhythmTick(frame / 165);
+  if (reads !== 0) throw new Error('analyser leído con visualizador apagado: ' + reads);
+  if (NV.rhythm.energy !== 0) throw new Error('estado analizado con visualizador apagado');
 });
 
 t('hue usa espectro completo: spread >= 150 entre perfiles de banda dominante', () => {
@@ -325,18 +375,29 @@ t('game.js usa fondo galaxia mas oscuro para contraste sin aclarar combate', () 
   const g = fs.readFileSync('js/game.js', 'utf8');
   if (!g.includes("ctx.fillStyle = '#01030d'")) throw new Error('fondo galaxia no aplicado');
   const bg = g.indexOf("ctx.fillStyle = '#01030d'");
-  const star = g.indexOf('NV.drawStarfield(ctx, cameraW, cameraH, frame, player.x - cameraLeft, player.y - cameraTop, NV.rhythm)', bg);
+  const star = g.indexOf('NV.drawStarfield(ctx, cameraW, cameraH, frame, player.x - cameraLeft, player.y - cameraTop, frameVisualRhythm)', bg);
   if (!(star > bg)) throw new Error('fondo no precede starfield');
 });
 
 t('game.js integra drawRhythmLayer después del starfield y antes de gameplay/HUD', () => {
   const g = fs.readFileSync('js/game.js', 'utf8');
-  const star = g.indexOf('NV.drawStarfield(ctx, cameraW, cameraH, frame, player.x - cameraLeft, player.y - cameraTop, NV.rhythm)');
+  const star = g.indexOf('NV.drawStarfield(ctx, cameraW, cameraH, frame, player.x - cameraLeft, player.y - cameraTop, frameVisualRhythm)');
   const rhythm = g.indexOf('NV.drawRhythmLayer(ctx, cameraW, cameraH, frame)');
   const grid = g.indexOf('const gridAlpha', rhythm);
   const special = g.indexOf('if (specialVFX)', rhythm);
   if (!(star >= 0 && rhythm > star)) throw new Error('no va después del starfield');
-  if (!(grid > rhythm && special > rhythm)) throw new Error('no queda antes de capas de gameplay');
+  const gatedSpecial = g.indexOf('if (drawDecorativeVfx && specialVFX)', rhythm);
+  if (!(grid > rhythm && (special > rhythm || gatedSpecial > rhythm))) throw new Error('no queda antes de capas de gameplay');
+});
+
+t('game.js aplica aislamiento render-only a fondo, auxiliares, hazards y shake', () => {
+  const g = fs.readFileSync('js/game.js', 'utf8');
+  if (!g.includes('const drawRhythmBackground = drawBackgroundEffects && (!rhythmVisualDiag || rhythmVisualDiag.background !== false)')) throw new Error('gate de fondo ausente');
+  if (!g.includes('frameVisualRhythm = (!rhythmVisualDiag || rhythmVisualDiag.auxiliary !== false) ? NV.rhythm : null')) throw new Error('gate auxiliar ausente');
+  if (!g.includes('frameVisualRhythm ? minefieldState.groove : null')) throw new Error('groove visual de hazards no aislado');
+  if (!g.includes("NV.drawEnemy(ctx, e, frame, player, frameVisualRhythm, visualTimeSeconds)")) throw new Error('enemigos comunes no aislados');
+  if (!g.includes('NV.drawSpectralEnemy2D(ctx, e, frame, player, frameVisualRhythm)')) throw new Error('espectrales no aislados');
+  if (!g.includes("rhythmVisualDiag.auxiliary !== false) && NV.rhythmShakeBoost")) throw new Error('shake no aislado');
 });
 
 t('game.js llama rhythmTick en el loop y la UI persiste preferencia', () => {

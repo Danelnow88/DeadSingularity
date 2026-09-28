@@ -410,6 +410,52 @@ t('renderer headless: minimal conserva cuerpo/telegraph y no muta geometría', (
   if (arcs < 3) throw new Error('minimal sin cuerpo/telegraph');
 });
 
+t('lenguaje hostil: telegraph usa rojo de warning y armed usa rojo activo', () => {
+  const NV = sandbox(true).window.NV;
+  const styles = (m) => {
+    const c = fakeCtx();
+    NV.drawHazards(c, [m], null, { tier: 'full' }, false);
+    return c.calls.filter((x) => x[0] === 'set' && x[1] === 'strokeStyle').map((x) => x[2]);
+  };
+  const tele = styles(mine({ state: 'spawning', stateTime: 0.3, simTime: 0.3 }));
+  if (tele.indexOf('#ff6474') < 0) throw new Error('telegraph sin rojo de warning');
+  const armed = styles(mine({ state: 'armed' }));
+  if (armed.indexOf('#ff3b4f') < 0) throw new Error('armed sin rojo activo');
+  if (armed.indexOf('#ff6474') >= 0) throw new Error('armed usa el rojo de warning');
+  // El cuerpo conserva su identidad rosa: la mina no se vuelve un objeto rojo.
+  if (tele.indexOf('#ff4da6') < 0 || armed.indexOf('#ff4da6') < 0) throw new Error('identidad de parlante perdida');
+  // La zona del Core ya era roja y debe seguir siéndolo.
+  const zone = { type: 'coreZone', state: 'arming', stateTime: 0.3, simTime: 0.3, x: 10, y: 10, radius: 60, armTime: 1, state: 'arming' };
+  const c = fakeCtx();
+  NV.drawHazards(c, [zone], null, { tier: 'full' }, false);
+  const zs = c.calls.filter((x) => x[0] === 'set' && x[1] === 'strokeStyle').map((x) => x[2]);
+  if (zs.indexOf('#ff6474') < 0) throw new Error('core zone arming alterado');
+});
+
+t('recoloreado de peligro no altera timings, radios ni daño de la mina', () => {
+  const NV = sandbox(true).window.NV, B = NV.BALANCE;
+  for (const [k, v] of [['SPEAKER_MINE_TELEGRAPH_DURATION', 0.9], ['SPEAKER_MINE_TRIGGER_RADIUS', 14],
+    ['SPEAKER_MINE_VISUAL_RADIUS', 16], ['SPEAKER_MINE_DAMAGE_BASE', 38], ['SPEAKER_MINE_DETONATE_TIME', 0.12]]) {
+    if (B[k] !== v) throw new Error('constante alterada: ' + k + '=' + B[k]);
+  }
+  // El render no puede mutar geometría ni estado en ningún tier.
+  for (const tier of ['full', 'reduced', 'minimal']) {
+    for (const st of ['spawning', 'armed', 'detonating']) {
+      const m = mine({ state: st, stateTime: 0.3, simTime: 0.3 });
+      const snap = JSON.stringify(m);
+      NV.drawHazards(fakeCtx(), [m], null, { tier }, false);
+      if (JSON.stringify(m) !== snap) throw new Error('render mutó la mina: ' + st);
+    }
+  }
+  // Y el ciclo de vida de arming sigue siendo el mismo tras el recoloreado.
+  const hazards = [mine()], state = NV.createMinefieldState();
+  state.spawnTimer = 999;
+  NV.updateSpeakerMines(0.89, hazards, state, ctx({ player: { x: 200, y: 200 } }));
+  if (hazards[0].state !== 'spawning') throw new Error('arming alterado');
+  NV.updateSpeakerMines(0.02, hazards, state, ctx({ player: { x: 200, y: 200 } }));
+  if (hazards[0].state !== 'armed') throw new Error('transición a armed alterada');
+});
+
 t('visual tier no modifica triggerRadius; debug hitbox es opt-in', () => {
   const sbx = sandbox(true), NV = sbx.window.NV, m = mine({ state: 'armed' });
   for (const tier of ['full', 'reduced', 'minimal']) {

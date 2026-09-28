@@ -44,20 +44,44 @@ t('spawnBossProj aplica stun por disparo (heavy 0.30 / bomb 0.35 / beam 0.40) + 
     const st = mkSt();
     NV.spawnBossProj(b, 400, 40, 1, 0, undefined, undefined, st,
       attack === 'heavy' ? 0.30 : attack === 'bomb' ? 0.35 : 0.40,
-      attack === 'heavy' ? 0.55 : attack === 'bomb' ? 0.60 : 0.65);
+      attack === 'heavy' ? 1.50 : attack === 'bomb' ? 1.75 : 2.00);
     return { chance: st.bullets[0].stunChance, duration: st.bullets[0].stunDuration };
   }
   const heavy = fire('heavy');
-  if (heavy.chance !== 0.30 || heavy.duration !== 0.55) throw new Error('heavy stun: ' + JSON.stringify(heavy));
+  if (heavy.chance !== 0.30 || heavy.duration !== 1.50) throw new Error('heavy stun: ' + JSON.stringify(heavy));
   const bomb = fire('bomb');
-  if (bomb.chance !== 0.35 || bomb.duration !== 0.60) throw new Error('bomb stun: ' + JSON.stringify(bomb));
+  if (bomb.chance !== 0.35 || bomb.duration !== 1.75) throw new Error('bomb stun: ' + JSON.stringify(bomb));
   const beam = fire('beam');
-  if (beam.chance !== 0.40 || beam.duration !== 0.65) throw new Error('beam stun: ' + JSON.stringify(beam));
+  if (beam.chance !== 0.40 || beam.duration !== 2.00) throw new Error('beam stun: ' + JSON.stringify(beam));
   // sin stun explícito usa el del jefe (o 0); duración default 0.5
   const b2 = mkBoss({ stunChance: 0.1 }), st2 = mkSt();
   NV.spawnBossProj(b2, 400, 10, 1, 0, undefined, undefined, st2);
   if (st2.bullets[0].stunChance !== 0.1) throw new Error('fallback al stun del jefe roto');
   if (st2.bullets[0].stunDuration !== 0.5) throw new Error('duración default ausente');
+  // Sin estilo explícito el proyectil cae en el fallback seguro.
+  if (st2.bullets[0].projectileStyle !== 'genericBolt') throw new Error('estilo default ausente');
+});
+
+t('estilo visual por familia de ataque (solo presentacion, sin alterar mecanica)', () => {
+  const cases = [
+    ['repeater', 'bossRepeater', 0.23], ['heavy', 'bossHeavyShell', 1.36],
+    ['spread', 'bossSpreadDisc', 1.26], ['beam', 'bossChargedLance', 3.61],
+    ['volley', 'bossVolleyDart', 0.96], ['bomb', 'bossBomb', 1.61],
+    ['orbs', 'bossOrb', 1.11], ['split', 'bossSplitShard', 1.16],
+    ['rage', 'bossRageCore', 1.76], ['mystery', 'genericBolt', 1.11],
+  ];
+  for (const [attack, style, atkTimer] of cases) {
+    const b = mkBoss({ attack });
+    const st = mkSt();
+    b.atkTimer = atkTimer;
+    NV.runBossAttack(b, 0.001, st);
+    if (!st.bullets.length) throw new Error(attack + ' sin proyectiles');
+    for (const bl of st.bullets) {
+      if (bl.projectileStyle !== style) throw new Error(attack + ' style=' + bl.projectileStyle);
+      if (!bl.isEnemy) throw new Error(attack + ' no isEnemy');
+      if (bl.sourceType !== 'boss') throw new Error(attack + ' sourceType');
+    }
+  }
 });
 
 t('IA adaptativa: summoner invoca salvo arena llena; remata si jugador herido y cerca; presiona a distancia', () => {

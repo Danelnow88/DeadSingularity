@@ -35,7 +35,7 @@ t('F1: pendiente 0.28 moderada, monotónica y bajo el lineal original', () => {
     if (!(s <= 1 + 0.30 * w)) throw new Error('w=' + w + ' superó el lineal original');
     prev = s;
   }
-  // F1: más durable que la pendiente 0.22 previa (el late game tiene MENOS enemigos)
+  // Contrato histórico de HP intacto en Tarea #19.
   if (!(NV.enemyHpScale(30) > 4 + 20 * 0.22)) throw new Error('F1 no subió durabilidad tardía');
 });
 

@@ -2,6 +2,9 @@
 (() => {
   'use strict';
   const NV = window.NV;
+  const reducedMotionQuery = typeof window.matchMedia === 'function'
+    ? window.matchMedia('(prefers-reduced-motion: reduce)')
+    : null;
   const PROFILES = {
     drone: { body: '#b5c6ff', core: '#e8edff', glow: '#9bb0ff', spikes: 4, innerRatio: 0.62, spikeLen: 0.32, pulseRate: 0.9, pulseAmt: 0.06, particles: 3, particleSize: 0.5, eyeStyle: 'round', radiusMul: 1.0 },
     runner: { body: '#4dd6ff', core: '#d4f7ff', glow: '#7de8ff', spikes: 3, innerRatio: 0.5, spikeLen: 0.55, pulseRate: 2.4, pulseAmt: 0.04, particles: 2, particleSize: 0.35, eyeStyle: 'narrow', radiusMul: 1.05, stretch: 1.25 },
@@ -38,31 +41,55 @@
   };
   // ---- Escalado por modelo (down-scale aprobado del roster líquido) ----
   // Cada modelo tiene su PROPIO multiplicador visual (tabla aprobada), en las
-  // mismas unidades que el labScale uniforme 0.8 que sustituye. Preserva y
-  // amplía la jerarquía: RB1 ágil/pequeño → RB6 jefe/tanque (el más grande).
+  // mismas unidades que el labScale uniforme 0.8 que sustituye. La jerarquía
+  // base del roster se conserva; RB6 aplica después su ajuste corporal Hydra.
   // Radio del cuerpo principal en pantalla (intrínseco × factor):
-  //   RB1 ≈24.5 · RB2 ≈30 · RB3 ≈30.4 · RB4 ≈30.4 · RB5 ≈34.4 · RB6 ≈38.3 px
+  //   RB1 ≈24.5 · RB2 ≈30 · RB3 ≈30.4 · RB4 ≈30.4 · RB5 ≈34.4 · RB6 base ≈38.3 px
   const MODEL_SCALE_FACTORS = [0.70, 0.75, 0.80, 0.80, 0.82, 0.85];
+  // Hydra Performance Fix #1: reducción corporal física/visual autoritativa.
+  // Se aplica sólo a RB6/Hydra; rangos de ataque, fusión y telegraphs conservan
+  // sus unidades world-space independientes.
+  const HYDRA_BODY_SCALE = 0.65;
+  // Down-scale de cuerpo (×0.65) de los cinco espectros líquidos de producción:
+  // specter_grunt · specter_archer · specter_guard · specter_lite · specter_core.
+  // Scoped POR enemyTypeId: la tabla MODEL_SCALE_FACTORS y el factor por modelo
+  // quedan intactos para el resto de consumidores (tools/previews/pruebas), y
+  // RB6/Hydra, élites, comunes y Swarmlet NO reciben este factor. El dibujo y
+  // la hitbox física comparten el MISMO multiplicador para mantener coherencia
+  // visual/física; HP, daño, velocidad, pesos y rangos semánticos no cambian.
+  const SPECTRAL_BODY_SCALE = 0.65;
+  const SPECTRAL_BODY_IDS = { specter_grunt: 1, specter_archer: 1, specter_guard: 1, specter_lite: 1, specter_core: 1 };
+  function spectralBodyScale(typeId) {
+    return Object.prototype.hasOwnProperty.call(SPECTRAL_BODY_IDS, typeId || '') ? SPECTRAL_BODY_SCALE : 1;
+  }
   // Radio intrínseco del cuerpo principal de cada modelo en el lab (escala 1):
   // RB1 35 · RB2 40 · RB3 38 · RB4 38 · RB5 42 · RB6 45.
   const MODEL_INTRINSIC_RADII = [35, 40, 38, 38, 42, 45];
   // Radio visual efectivo del cuerpo principal de un modelo (con customScale).
   NV.labModelVisualRadius = function (modelIdx, customScale) {
     const i = ((modelIdx || 0) % 6 + 6) % 6;
-    return MODEL_INTRINSIC_RADII[i] * (MODEL_SCALE_FACTORS[i] || 0.8) * (customScale || 1);
+    const bodyScale = i === 5 ? HYDRA_BODY_SCALE : 1;
+    return MODEL_INTRINSIC_RADII[i] * (MODEL_SCALE_FACTORS[i] || 0.8) * bodyScale * (customScale || 1);
   };
   // Factor de hitbox por modelo: relación entre el nuevo factor visual y el
   // labScale uniforme 0.8 previo. El radio de datos se adapta con este mismo
   // ratio (engine/enemies.js al spawnear) para que la detección siga
-  // coincidiendo con la silueta dibujada a su nuevo tamaño, preservando la
-  // jerarquía relativa de cada tipo.
-  NV.labModelHitboxFactor = function (modelIdx) {
+  // coincidiendo con la silueta dibujada a su nuevo tamaño.
+  // Segundo argumento opcional typeId: los cinco espectros de producción
+  // reciben aquí su body scale ×0.65 (el MISMO multiplicador de su dibujo).
+  // Sin typeId el valor es idéntico al de siempre (tabla por modelo intacta;
+  // Hydra/RB6 sigue gobernado solo por HYDRA_BODY_SCALE).
+  NV.labModelHitboxFactor = function (modelIdx, typeId) {
     const i = ((modelIdx || 0) % 6 + 6) % 6;
-    return (MODEL_SCALE_FACTORS[i] || 0.8) / 0.8;
+    const bodyScale = i === 5 ? HYDRA_BODY_SCALE : 1;
+    return ((MODEL_SCALE_FACTORS[i] || 0.8) / 0.8) * bodyScale * spectralBodyScale(typeId);
   };
   // Expuestos para el engine (adaptación de hitbox al spawn) y herramientas.
   NV.LAB_SPECTER_IDS = LAB_SPECTER_IDS;
   NV.LAB_MODEL_SCALE_FACTORS = MODEL_SCALE_FACTORS;
+  NV.HYDRA_BODY_SCALE = HYDRA_BODY_SCALE;
+  NV.SPECTRAL_BODY_SCALE = SPECTRAL_BODY_SCALE;
+  NV.spectralBodyScale = spectralBodyScale;
   // Las 6 poses del lab ya no hacen falta: el cuerpo/tamaño de RB1..RB6 lo
   // define drawLabEnemyModel() con los parámetros exactos del lab
   // (blob radius/points/noiseAmp/speedMult/seed por modelo).
@@ -112,12 +139,27 @@
   let visualBudgetPrepared = false;
   let activeGraphicsPolicy = { quality: 'high', particles: true, heavyVfx: true, hydraFullBudget: Infinity };
   let activeVisualBudget = null; // P2: tier runtime (solo recorta calidad decorativa)
-  const DETAIL_FULL = Object.freeze({ simplified: false, medium: false, particles: true, particleScale: 1, jitterScale: 1, secondaryInk: true, glowBlur: 12 });
-  const DETAIL_FULL_NO_PARTICLES = Object.freeze({ simplified: false, medium: false, particles: false, particleScale: 0, jitterScale: 1, secondaryInk: true, glowBlur: 12 });
-  const DETAIL_FULL_REDUCED_VFX = Object.freeze({ simplified: false, medium: false, particles: true, particleScale: 0.5, jitterScale: 0.75, secondaryInk: false, glowBlur: 8 });
-  const DETAIL_MEDIUM = Object.freeze({ simplified: false, medium: true, particles: true, particleScale: 0.4, jitterScale: 0.5, secondaryInk: false, glowBlur: 6 });
-  const DETAIL_MEDIUM_NO_PARTICLES = Object.freeze({ simplified: false, medium: true, particles: false, particleScale: 0, jitterScale: 0.5, secondaryInk: false, glowBlur: 6 });
-  const DETAIL_SIMPLE = Object.freeze({ simplified: true, medium: false, particles: false, particleScale: 0, jitterScale: 0, secondaryInk: false, glowBlur: 0 });
+  // TEMPORAL: A/B de coste Hydra. No se persiste; reload siempre vuelve a full.
+  // full conserva exactamente el LOD decidido por el visual budget existente.
+  // cheap fuerza únicamente el body RB6 al fallback simple ya aprobado.
+  let hydraDiagnosticMode = 'full';
+  const HYDRA_DIAGNOSTIC_MODES = ['full', 'cheap'];
+  // Los cinco modelos espectrales de producción comparten el mismo hot path
+  // líquido. Conservan su geometría, partículas y tinta secundaria, pero evitan
+  // Canvas blur y Math.random por vértice/ojo igual que Hydra Fix #1.
+  const DETAIL_FULL = Object.freeze({ simplified: false, medium: false, particles: true, particleScale: 1, jitterScale: 0, secondaryInk: true, glowBlur: 0, fauxGlow: true, deterministicEyes: true, eyeFauxGlow: true, particleFauxGlow: true });
+  const DETAIL_FULL_NO_PARTICLES = Object.freeze({ simplified: false, medium: false, particles: false, particleScale: 0, jitterScale: 0, secondaryInk: true, glowBlur: 0, fauxGlow: true, deterministicEyes: true, eyeFauxGlow: true, particleFauxGlow: true });
+  const DETAIL_FULL_REDUCED_VFX = Object.freeze({ simplified: false, medium: false, particles: true, particleScale: 0.5, jitterScale: 0, secondaryInk: false, glowBlur: 0, fauxGlow: true, deterministicEyes: true, eyeFauxGlow: true, particleFauxGlow: true });
+  const DETAIL_MEDIUM = Object.freeze({ simplified: false, medium: true, particles: true, particleScale: 0.4, jitterScale: 0, secondaryInk: false, glowBlur: 0, fauxGlow: true, deterministicEyes: true, eyeFauxGlow: true, particleFauxGlow: true });
+  const DETAIL_MEDIUM_NO_PARTICLES = Object.freeze({ simplified: false, medium: true, particles: false, particleScale: 0, jitterScale: 0, secondaryInk: false, glowBlur: 0, fauxGlow: true, deterministicEyes: true, eyeFauxGlow: true, particleFauxGlow: true });
+  const DETAIL_SIMPLE = Object.freeze({ simplified: true, medium: false, particles: false, particleScale: 0, jitterScale: 0, secondaryInk: false, glowBlur: 0, fauxGlow: false, deterministicEyes: true, eyeFauxGlow: false, particleFauxGlow: false });
+  // FULL optimizado: la forma orgánica sigue animada por las dos ondas del blob,
+  // pero elimina jitter aleatorio, Canvas blur y parsing de color por lóbulo.
+  const HYDRA_DETAIL_FULL = Object.freeze({ simplified: false, medium: false, particles: true, particleScale: 0.7, jitterScale: 0, secondaryInk: true, glowBlur: 0, fauxGlow: true, deterministicEyes: true, eyeFauxGlow: true, particleFauxGlow: true });
+  const HYDRA_DETAIL_FULL_NO_PARTICLES = Object.freeze({ simplified: false, medium: false, particles: false, particleScale: 0, jitterScale: 0, secondaryInk: true, glowBlur: 0, fauxGlow: true, deterministicEyes: true, eyeFauxGlow: true, particleFauxGlow: true });
+  const HYDRA_DETAIL_FULL_REDUCED_VFX = Object.freeze({ simplified: false, medium: false, particles: true, particleScale: 0.4, jitterScale: 0, secondaryInk: false, glowBlur: 0, fauxGlow: true, deterministicEyes: true, eyeFauxGlow: true, particleFauxGlow: true });
+  const HYDRA_DETAIL_MEDIUM = Object.freeze({ simplified: false, medium: true, particles: true, particleScale: 0.3, jitterScale: 0, secondaryInk: false, glowBlur: 0, fauxGlow: true, deterministicEyes: true, eyeFauxGlow: true, particleFauxGlow: true });
+  const HYDRA_DETAIL_MEDIUM_NO_PARTICLES = Object.freeze({ simplified: false, medium: true, particles: false, particleScale: 0, jitterScale: 0, secondaryInk: false, glowBlur: 0, fauxGlow: true, deterministicEyes: true, eyeFauxGlow: true, particleFauxGlow: true });
   const BLOB_ANGLE_COUNTS = [4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18];
   const BLOB_ANGLES = Object.create(null);
   for (const count of BLOB_ANGLE_COUNTS) {
@@ -172,9 +214,21 @@
   // Luminancia relativa (0..1) de un hex #rgb/#rrggbb. Base del contraste
   // adaptativo de ojos/auras: acentos claros (blanco, amarillos, cianes claros)
   // necesitan esclera oscura y aura negra más fuerte para leerse sobre el fondo.
+  let colorLuminanceCache = Object.create(null);
+  let colorLuminanceCacheSize = 0;
+  const COLOR_LUMINANCE_CACHE_LIMIT = 32;
   function luminance(hex) {
-    const [r, g, b] = hexToRgb(hex || '#ffffff');
-    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    const color = hex || '#ffffff';
+    if (colorLuminanceCache[color] !== undefined) return colorLuminanceCache[color];
+    const rgb = hexToRgb(color);
+    const value = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255;
+    if (colorLuminanceCacheSize >= COLOR_LUMINANCE_CACHE_LIMIT) {
+      colorLuminanceCache = Object.create(null);
+      colorLuminanceCacheSize = 0;
+    }
+    colorLuminanceCache[color] = value;
+    colorLuminanceCacheSize++;
+    return value;
   }
   function resolveProfile(e) {
     if (e.isElite) {
@@ -356,6 +410,13 @@
     return NV.getGraphicsPolicy ? NV.getGraphicsPolicy() : { quality: 'high', particles: true, heavyVfx: true, hydraFullBudget: Infinity };
   }
   NV.isHydraEnemyFamily = isHydraFamily;
+  NV.setHydraDiagnosticMode = function (mode) {
+    const next = String(mode == null ? '' : mode).trim().toLowerCase();
+    if (HYDRA_DIAGNOSTIC_MODES.indexOf(next) < 0) return hydraDiagnosticMode;
+    hydraDiagnosticMode = next;
+    return hydraDiagnosticMode;
+  };
+  NV.getHydraDiagnosticMode = function () { return hydraDiagnosticMode; };
   NV.prepareEnemyVisualBudget = function (enemies, player) {
     const policy = graphicsPolicy();
     activeGraphicsPolicy = policy;
@@ -580,21 +641,25 @@
     return slot;
   }
   // --- Estilo líquido "hand-drawn" (de enemy-visual-lab) para espectros y élites ---
-  // Funciones exactas del lab: ojos con look-at, blobs orgánicos agitados y
-  // partículas flotantes. Jitter real por-frame (Math.random) como en el lab.
+  // Funciones del lab: ojos con look-at, blobs orgánicos agitados y partículas
+  // flotantes. La animación de producción usa ondas deterministas para evitar
+  // Math.random en el hot path sin congelar la identidad líquida.
   // El tiempo avanza time += 0.03 por frame (igual que enemy-visual-lab.html).
-  function drawLabEyes(ctx, eyeX, eyeY, targetX, targetY, count = 1, eyeScale = 1, time = 0, colorGlow = '#ff2a4b', simplified = false) {
+  function drawLabEyes(ctx, eyeX, eyeY, targetX, targetY, count = 1, eyeScale = 1, time = 0, colorGlow = '#ff2a4b', eyeDetail, accentLumOverride) {
     // Contraste adaptativo del ojo según la luminancia del acento del enemigo:
     //  - Acento MUY claro (blanco/amarillo/cian claro, lum>0.78): esclera oscura
     //    #0d0d12 + pupila clara (la esclera blanca desaparecería contra el cuerpo).
     //  - Acento medio claro (lum>0.55): esclera blanca + contorno oscuro de 2px.
     //  - Acento oscuro (rojo estándar): esclera blanca clásica.
     // La pupila SIEMPRE contrasta contra su esclera (oscura↔clara).
-    const accentLum = luminance(colorGlow || '#ff2a4b');
+    const accentLum = accentLumOverride == null ? luminance(colorGlow || '#ff2a4b') : accentLumOverride;
     const darkSclera = accentLum > 0.78;
     const scleraFill = darkSclera ? '#0d0d12' : '#ffffff';
     const scleraStroke = (!darkSclera && accentLum > 0.55) ? 'rgba(6, 8, 16, 0.9)' : null;
     const pupilFill = colorGlow || '#ff2a4b';
+    const simplified = eyeDetail === true || !!(eyeDetail && eyeDetail.simplified);
+    const deterministic = !!(eyeDetail && eyeDetail.deterministicEyes);
+    const fauxGlow = !!(eyeDetail && eyeDetail.eyeFauxGlow);
 
     ctx.save();
     ctx.translate(eyeX, eyeY);
@@ -612,15 +677,32 @@
       const posX = count === 1 ? 0 : (i === 0 ? -eyeSpacing / 2 : eyeSpacing / 2);
       const posY = count === 3 && i === 2 ? -eyeSpacing * 0.7 : 0;
 
-      const jitter = simplified ? 0 : (Math.random() - 0.5) * 1.5;
+      const jitter = simplified ? 0 : deterministic
+        ? Math.sin(time * 17 + i * 2.37) * 0.72
+        : (Math.random() - 0.5) * 1.5;
       const eyeRadius = Math.max(1, (8 * eyeScale) + Math.sin(time * 15 + i) * 1);
 
-      // Esclera (relleno adaptativo + contorno oscuro en luminancia media)
+      // El renderer anterior daba a la esclera un shadowBlur=10. El halo
+      // concéntrico recupera su volumen/contraste sin el coste raster del blur.
+      if (fauxGlow) {
+        ctx.globalAlpha = 0.18;
+        ctx.beginPath();
+        ctx.arc(posX + jitter, posY + jitter, eyeRadius + 4, 0, Math.PI * 2);
+        ctx.fillStyle = colorGlow;
+        ctx.fill();
+        ctx.globalAlpha = 0.32;
+        ctx.beginPath();
+        ctx.arc(posX + jitter, posY + jitter, eyeRadius + 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
+      // Esclera (relleno adaptativo + contorno oscuro en luminancia media).
       ctx.beginPath();
       ctx.arc(posX + jitter, posY + jitter, eyeRadius, 0, Math.PI * 2);
       ctx.fillStyle = scleraFill;
       ctx.shadowColor = colorGlow;
-      ctx.shadowBlur = simplified ? 0 : 10;
+      ctx.shadowBlur = fauxGlow || simplified ? 0 : 10;
       ctx.fill();
       ctx.shadowBlur = 0;
       if (scleraStroke) {
@@ -646,11 +728,12 @@
     ctx.restore();
   }
 
-  function drawHandDrawnLiquidBlob(ctx, cx, cy, radius, pointsCount, noiseAmp, speedMult, seed, colorGlow = '#ff2a4b', time = 0, detail) {
+  function drawHandDrawnLiquidBlob(ctx, cx, cy, radius, pointsCount, noiseAmp, speedMult, seed, colorGlow = '#ff2a4b', time = 0, detail, auraLumOverride) {
     const simplified = detail === true || !!(detail && detail.simplified);
     const jitterScale = detail && typeof detail.jitterScale === 'number' ? detail.jitterScale : (simplified ? 0 : 1);
     const secondaryInk = detail && typeof detail.secondaryInk === 'boolean' ? detail.secondaryInk : !simplified;
     const glowBlur = detail && typeof detail.glowBlur === 'number' ? detail.glowBlur : (simplified ? 0 : 12);
+    const fauxGlow = !!(detail && detail.fauxGlow);
     ctx.save();
     ctx.translate(cx, cy);
 
@@ -679,7 +762,7 @@
     // Aura oscura adaptativa bajo el trazo de color: preserva la silueta del
     // blob sobre fondos brillantes o elementos luminosos del mapa. A mayor
     // luminancia del acento, más fuerte y ancha la halo negra exterior.
-    const auraLum = luminance(colorGlow || '#ff2a4b');
+    const auraLum = auraLumOverride == null ? luminance(colorGlow || '#ff2a4b') : auraLumOverride;
     if (!simplified) {
       ctx.save();
       ctx.strokeStyle = 'rgba(2, 3, 8, ' + (0.45 + Math.max(0, auraLum - 0.35) * 0.45).toFixed(2) + ')';
@@ -689,7 +772,17 @@
       ctx.restore();
     }
 
-    ctx.lineWidth = 2.5 + Math.sin(time * 20 + seed) * 1;
+    const crispWidth = 2.5 + Math.sin(time * 20 + seed) * 1;
+    if (fauxGlow) {
+      ctx.save();
+      ctx.globalAlpha = 0.2;
+      ctx.lineWidth = crispWidth + 5;
+      ctx.strokeStyle = colorGlow;
+      ctx.shadowBlur = 0;
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.lineWidth = crispWidth;
     ctx.strokeStyle = colorGlow;
     ctx.shadowColor = colorGlow;
     ctx.shadowBlur = glowBlur;
@@ -713,11 +806,11 @@
 
     ctx.restore();
   }
-  function drawLiquidParticles(ctx, cx, cy, count, radiusSpread, seed, colorGlow = '#ff2a4b', time = 0) {
+  function drawLiquidParticles(ctx, cx, cy, count, radiusSpread, seed, colorGlow = '#ff2a4b', time = 0, fauxGlow = false) {
     ctx.save();
     ctx.fillStyle = colorGlow;
     ctx.shadowColor = colorGlow;
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = fauxGlow ? 0 : 8;
     ctx.beginPath();
     for (let i = 0; i < count; i++) {
       const pAngle = (i / count) * Math.PI * 2 + time * 3 + seed;
@@ -728,11 +821,19 @@
       ctx.moveTo(px + pSize, py);
       ctx.arc(px, py, pSize, 0, Math.PI * 2);
     }
+    if (fauxGlow) {
+      ctx.save();
+      ctx.globalAlpha = 0.22;
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = colorGlow;
+      ctx.stroke();
+      ctx.restore();
+    }
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.restore();
   }
-  function drawHydraSimplified(ctx, cx, cy, targetX, targetY, time, enemyColor) {
+  function drawHydraSimplified(ctx, cx, cy, targetX, targetY, time, enemyColor, auraLum) {
     // LOD esencial: conserva la misma silueta de cuatro lóbulos líquidos que la
     // Hidra full y la misma fase de animación, pero omite jitter aleatorio,
     // partículas, aura negra ancha y shadowBlur. No crea un render pass nuevo.
@@ -748,7 +849,8 @@
         lobe.seed,
         enemyColor,
         time,
-        true
+        true,
+        auraLum
       );
     }
 
@@ -774,7 +876,7 @@
     ctx.stroke();
     ctx.restore();
 
-    drawLabEyes(ctx, cx, cy - 12, targetX, targetY, 3, 0.82, time, enemyColor, true);
+    drawLabEyes(ctx, cx, cy - 12, targetX, targetY, 3, 0.82, time, enemyColor, DETAIL_SIMPLE, auraLum);
   }
   // ===== ESPECTRO LEGACY (shape 'specter') -> Modelo RB2 (Ameba Coronada) =====
   // Identidad visual distintiva y reconocible en oleadas 16/17: color carmesí/orange
@@ -804,25 +906,27 @@
     const adjCy = cy / scale;
     const adjTx = targetX / scale;
     const adjTy = targetY / scale;
+    const accentLum = luminance(enemyColor);
+    const particleFauxGlow = !!(detail && detail.particleFauxGlow);
 
     switch (modelIndex % 6) {
       case 0: // RB1 - Proto-Nodo Líquido
-        drawHandDrawnLiquidBlob(ctx, adjCx, adjCy, 35, 12, 8, 1.2, 10, enemyColor, time);
-        if (!detail || detail.particles !== false) drawLiquidParticles(ctx, adjCx, adjCy, 4, 45, 10, enemyColor, time);
-        drawLabEyes(ctx, adjCx, adjCy, adjTx, adjTy, 1, 1, time, enemyColor);
+        drawHandDrawnLiquidBlob(ctx, adjCx, adjCy, 35, 12, 8, 1.2, 10, enemyColor, time, detail, accentLum);
+        if (!detail || detail.particles !== false) drawLiquidParticles(ctx, adjCx, adjCy, 4, 45, 10, enemyColor, time, particleFauxGlow);
+        drawLabEyes(ctx, adjCx, adjCy, adjTx, adjTy, 1, 1, time, enemyColor, detail, accentLum);
         break;
       case 1: // RB2 - Ameba Coronada
-        drawHandDrawnLiquidBlob(ctx, adjCx, adjCy - 30, 18, 8, 10, 1.8, 20, enemyColor, time);
-        drawHandDrawnLiquidBlob(ctx, adjCx, adjCy + 5, 40, 14, 10, 1.0, 25, enemyColor, time);
-        if (!detail || detail.particles !== false) drawLiquidParticles(ctx, adjCx, adjCy, 6, 52, 20, enemyColor, time);
-        drawLabEyes(ctx, adjCx, adjCy - 5, adjTx, adjTy, 2, 0.9, time, enemyColor);
+        drawHandDrawnLiquidBlob(ctx, adjCx, adjCy - 30, 18, 8, 10, 1.8, 20, enemyColor, time, detail, accentLum);
+        drawHandDrawnLiquidBlob(ctx, adjCx, adjCy + 5, 40, 14, 10, 1.0, 25, enemyColor, time, detail, accentLum);
+        if (!detail || detail.particles !== false) drawLiquidParticles(ctx, adjCx, adjCy, 6, 52, 20, enemyColor, time, particleFauxGlow);
+        drawLabEyes(ctx, adjCx, adjCy - 5, adjTx, adjTy, 2, 0.9, time, enemyColor, detail, accentLum);
         break;
       case 2: // RB3 - Viscera Manto
-        drawHandDrawnLiquidBlob(ctx, adjCx - 25, adjCy + 15, 28, 10, 12, 1.6, 30, enemyColor, time);
-        drawHandDrawnLiquidBlob(ctx, adjCx + 25, adjCy + 15, 28, 10, 12, 1.6, 32, enemyColor, time);
-        drawHandDrawnLiquidBlob(ctx, adjCx, adjCy - 5, 38, 14, 8, 1.2, 35, enemyColor, time);
-        if (!detail || detail.particles !== false) drawLiquidParticles(ctx, adjCx, adjCy, 6, 58, 30, enemyColor, time);
-        drawLabEyes(ctx, adjCx, adjCy - 8, adjTx, adjTy, 1, 1.2, time, enemyColor);
+        drawHandDrawnLiquidBlob(ctx, adjCx - 25, adjCy + 15, 28, 10, 12, 1.6, 30, enemyColor, time, detail, accentLum);
+        drawHandDrawnLiquidBlob(ctx, adjCx + 25, adjCy + 15, 28, 10, 12, 1.6, 32, enemyColor, time, detail, accentLum);
+        drawHandDrawnLiquidBlob(ctx, adjCx, adjCy - 5, 38, 14, 8, 1.2, 35, enemyColor, time, detail, accentLum);
+        if (!detail || detail.particles !== false) drawLiquidParticles(ctx, adjCx, adjCy, 6, 58, 30, enemyColor, time, particleFauxGlow);
+        drawLabEyes(ctx, adjCx, adjCy - 8, adjTx, adjTy, 1, 1.2, time, enemyColor, detail, accentLum);
         break;
       case 3: // RB4 - Halo Espectral
         ctx.save();
@@ -834,12 +938,12 @@
         ctx.stroke();
         if (ctx.setLineDash) ctx.setLineDash([]);
         ctx.restore();
-        drawHandDrawnLiquidBlob(ctx, adjCx, adjCy, 38, 16, 9, 1.3, 40, enemyColor, time);
-        if (!detail || detail.particles !== false) drawLiquidParticles(ctx, adjCx, adjCy, 8, 65, 40, enemyColor, time);
-        drawLabEyes(ctx, adjCx, adjCy, adjTx, adjTy, 1, 1.1, time, enemyColor);
+        drawHandDrawnLiquidBlob(ctx, adjCx, adjCy, 38, 16, 9, 1.3, 40, enemyColor, time, detail, accentLum);
+        if (!detail || detail.particles !== false) drawLiquidParticles(ctx, adjCx, adjCy, 8, 65, 40, enemyColor, time, particleFauxGlow);
+        drawLabEyes(ctx, adjCx, adjCy, adjTx, adjTy, 1, 1.1, time, enemyColor, detail, accentLum);
         break;
       case 4: // RB5 - Núcleo Sigilo
-        drawHandDrawnLiquidBlob(ctx, adjCx, adjCy, 42, 14, 11, 1.2, 50, enemyColor, time);
+        drawHandDrawnLiquidBlob(ctx, adjCx, adjCy, 42, 14, 11, 1.2, 50, enemyColor, time, detail, accentLum);
         ctx.save();
         ctx.translate(adjCx, adjCy);
         ctx.rotate(time * 5);
@@ -847,24 +951,27 @@
         ctx.lineWidth = 1.5;
         ctx.strokeRect(-12, -12, 24, 24);
         ctx.restore();
-        if (!detail || detail.particles !== false) drawLiquidParticles(ctx, adjCx, adjCy, 7, 55, 50, enemyColor, time);
-        drawLabEyes(ctx, adjCx, adjCy, adjTx, adjTy, 2, 0.8, time, enemyColor);
+        if (!detail || detail.particles !== false) drawLiquidParticles(ctx, adjCx, adjCy, 7, 55, 50, enemyColor, time, particleFauxGlow);
+        drawLabEyes(ctx, adjCx, adjCy, adjTx, adjTy, 2, 0.8, time, enemyColor, detail, accentLum);
         break;
       case 5: // RB6 - Entidad Hidra
       default:
+        // El acento se analiza una sola vez por Hydra/frame y se comparte entre
+        // lóbulos y ojos; el cache evita repetir parsing en frames posteriores.
+        const hydraAccentLum = accentLum;
         if (detail && detail.simplified) {
-          drawHydraSimplified(ctx, adjCx, adjCy, adjTx, adjTy, time, enemyColor);
+          drawHydraSimplified(ctx, adjCx, adjCy, adjTx, adjTy, time, enemyColor, hydraAccentLum);
           break;
         }
-        drawHandDrawnLiquidBlob(ctx, adjCx - 30, adjCy + 35, 15, 8, 12, 1.6, 60, enemyColor, time, detail);
-        drawHandDrawnLiquidBlob(ctx, adjCx, adjCy + 45, 18, 8, 14, 1.8, 65, enemyColor, time, detail);
-        drawHandDrawnLiquidBlob(ctx, adjCx + 30, adjCy + 35, 15, 8, 12, 1.6, 70, enemyColor, time, detail);
-        drawHandDrawnLiquidBlob(ctx, adjCx, adjCy - 10, 45, 18, 12, 1.1, 75, enemyColor, time, detail);
+        drawHandDrawnLiquidBlob(ctx, adjCx - 30, adjCy + 35, 15, 8, 12, 1.6, 60, enemyColor, time, detail, hydraAccentLum);
+        drawHandDrawnLiquidBlob(ctx, adjCx, adjCy + 45, 18, 8, 14, 1.8, 65, enemyColor, time, detail, hydraAccentLum);
+        drawHandDrawnLiquidBlob(ctx, adjCx + 30, adjCy + 35, 15, 8, 12, 1.6, 70, enemyColor, time, detail, hydraAccentLum);
+        drawHandDrawnLiquidBlob(ctx, adjCx, adjCy - 10, 45, 18, 12, 1.1, 75, enemyColor, time, detail, hydraAccentLum);
         if (!detail || detail.particles !== false) {
           const particleScale = detail && typeof detail.particleScale === 'number' ? detail.particleScale : 1;
-          drawLiquidParticles(ctx, adjCx, adjCy, Math.max(1, Math.round(10 * particleScale)), 70, 60, enemyColor, time);
+          drawLiquidParticles(ctx, adjCx, adjCy, Math.max(1, Math.round(10 * particleScale)), 70, 60, enemyColor, time, !!(detail && detail.particleFauxGlow));
         }
-        drawLabEyes(ctx, adjCx, adjCy - 12, adjTx, adjTy, 3, 0.85, time, enemyColor);
+        drawLabEyes(ctx, adjCx, adjCy - 12, adjTx, adjTy, 3, 0.85, time, enemyColor, detail, hydraAccentLum);
         break;
     }
     ctx.restore();
@@ -1166,7 +1273,12 @@
     // opcional por entidad. El hitbox se adapta al spawn con el mismo ratio
     // (labModelHitboxFactor) para coincidir con la silueta a su nuevo tamaño.
     const modelIdx = poseIdx % MODEL_SCALE_FACTORS.length;
-    const labScale = (MODEL_SCALE_FACTORS[modelIdx] || 0.8) * (e.customScale || 1);
+    const bodyScale = poseIdx === 5 ? HYDRA_BODY_SCALE : 1;
+    // ×0.65 de los cinco espectros de producción (scoped por enemyTypeId):
+    // el cuerpo visual y la hitbox física se encogen juntos con el MISMO
+    // multiplicador; RB6/Hydra y el resto de modelos quedan intactos.
+    const spectralScale = spectralBodyScale(e.enemyTypeId || e.id || e.typeId || e.visualId);
+    const labScale = (MODEL_SCALE_FACTORS[modelIdx] || 0.8) * bodyScale * spectralScale * (e.customScale || 1);
     const lookX = player ? player.x - e.x : 0;
     const lookY = player ? player.y - e.y : 0;
     // Cada enemigo hereda su color de datos como acento del modelo líquido
@@ -1175,24 +1287,504 @@
     const enemyColor = e.color || '#ff2a4b';
     ctx.save();
     ctx.translate(e.x + rx, e.y + ry);
+    if (e.visualId === 'elite_phantom') {
+      if (e.phantomState === 'roam_stalk') {
+        ctx.globalAlpha = 0.24;
+      } else if (e.phantomState === 'materialize' && NV.ELITE_PHANTOM_POSSESSION) {
+        const materialProgress = Math.max(0, Math.min(1, 1 - (e.phantomStateTimer || 0) / NV.ELITE_PHANTOM_POSSESSION.materializeTime));
+        ctx.globalAlpha = 0.32 + materialProgress * 0.68;
+      }
+    }
     drawStatusLayers(ctx, e, frame || 0, player, profile);
-    ctx.scale(labScale, labScale);
+    let predatorPoseScaleX = 1;
+    let predatorPoseScaleY = 1;
+    let predatorPoseRotation = 0;
+    if (e.visualId === 'elite_predator') {
+      const predatorCfg = NV.ELITE_PREDATOR_HUNTER;
+      if (e.predatorState === 'execution_windup' && predatorCfg) {
+        const charge = Math.max(0, Math.min(1, 1 - (e.predatorStateTimer || 0) / predatorCfg.executionWindup));
+        predatorPoseScaleX = 1.02 + charge * 0.08;
+        predatorPoseScaleY = 0.98 - charge * 0.10;
+        predatorPoseRotation = -0.10 * charge;
+      } else if (e.predatorState === 'execution' && predatorCfg) {
+        const release = Math.max(0, Math.min(1, 1 - (e.predatorStateTimer || 0) / predatorCfg.executionActiveTime));
+        predatorPoseScaleX = 1.10 - release * 0.04;
+        predatorPoseScaleY = 0.88 + release * 0.10;
+        predatorPoseRotation = -0.10 + release * 0.24;
+      } else if (e.predatorState === 'recovery') {
+        predatorPoseScaleX = 0.96;
+        predatorPoseScaleY = 0.90;
+      }
+    }
+    let goliathPoseScaleX = 1;
+    let goliathPoseScaleY = 1;
+    let goliathPoseDrop = 0;
+    if (e.visualId === 'elite_titan') {
+      const goliathCfg = NV.ELITE_GOLIATH_SEISMIC;
+      if (e.goliathState === 'slam_windup' && goliathCfg) {
+        const braceProgress = Math.max(0, Math.min(1, 1 - (e.goliathStateTimer || 0) / goliathCfg.windup));
+        const brace = Math.pow(braceProgress, 1.65);
+        goliathPoseScaleX = 1 + brace * 0.04;
+        goliathPoseScaleY = 1 - brace * 0.08;
+        goliathPoseDrop = brace * 3;
+      } else if (e.goliathState === 'recovery') {
+        const settle = goliathCfg ? Math.max(0, Math.min(1, (e.goliathStateTimer || 0) / goliathCfg.recovery)) : 1;
+        goliathPoseScaleX = 1.03 - settle * 0.01;
+        goliathPoseScaleY = 0.94 + (1 - settle) * 0.04;
+        goliathPoseDrop = 2 * settle;
+      }
+    }
+    ctx.translate(0, goliathPoseDrop);
+    ctx.rotate(predatorPoseRotation);
+    ctx.scale(labScale * predatorPoseScaleX * goliathPoseScaleX, labScale * predatorPoseScaleY * goliathPoseScaleY);
     // Dispatcher oficial del lab: poseIdx 0..5 elige RB1..RB6. Se dibuja en el
     // origen local (trasladado arriba); la escala del modelo ya aplicada arriba
     // fija su tamaño aprobado tras el down-scale por modelo.
     const vbAllSimple = !!(activeVisualBudget && activeVisualBudget.spectralDetail <= 0);
-    const simple = (poseIdx === 5 && visualBudgetPrepared && !hydraFullRender.has(e) && !hydraMediumRender.has(e)) || vbAllSimple;
+    const diagnosticCheap = poseIdx === 5 && hydraDiagnosticMode === 'cheap';
+    const simple = diagnosticCheap || (poseIdx === 5 && visualBudgetPrepared && !hydraFullRender.has(e) && !hydraMediumRender.has(e)) || vbAllSimple;
     const medium = poseIdx === 5 && !simple && hydraMediumRender.has(e);
     const reducedVfx = !!(activeVisualBudget && (!activeVisualBudget.heavyShadow || !activeVisualBudget.secondaryGlow || activeVisualBudget.decorativeParticleScale < 1));
     const detail = simple
       ? DETAIL_SIMPLE
-      : medium
-        ? (activeGraphicsPolicy.particles ? DETAIL_MEDIUM : DETAIL_MEDIUM_NO_PARTICLES)
-        : activeGraphicsPolicy.particles
-          ? (reducedVfx ? DETAIL_FULL_REDUCED_VFX : DETAIL_FULL)
-          : DETAIL_FULL_NO_PARTICLES;
+      : poseIdx === 5
+        ? medium
+          ? (activeGraphicsPolicy.particles ? HYDRA_DETAIL_MEDIUM : HYDRA_DETAIL_MEDIUM_NO_PARTICLES)
+          : activeGraphicsPolicy.particles
+            ? (reducedVfx ? HYDRA_DETAIL_FULL_REDUCED_VFX : HYDRA_DETAIL_FULL)
+            : HYDRA_DETAIL_FULL_NO_PARTICLES
+        : medium
+          ? (activeGraphicsPolicy.particles ? DETAIL_MEDIUM : DETAIL_MEDIUM_NO_PARTICLES)
+          : activeGraphicsPolicy.particles
+            ? (reducedVfx ? DETAIL_FULL_REDUCED_VFX : DETAIL_FULL)
+            : DETAIL_FULL_NO_PARTICLES;
     drawLabEnemyModel(ctx, poseIdx, 0, 0, 1, lookX, lookY, (frame || 0) * 0.03, enemyColor, detail);
     NV.drawEnemyHitFeedback(ctx, e, MODEL_INTRINSIC_RADII[modelIdx]);
+    ctx.restore();
+  }
+  function drawEliteGoliathSeismicTelegraph(ctx, e, frame, rx, ry) {
+    if (!e || e.visualId !== 'elite_titan') return;
+    const cfg = NV.ELITE_GOLIATH_SEISMIC;
+    if (!cfg) return;
+    const state = e.goliathState;
+    if (state !== 'slam_windup' && state !== 'aftershock_window') return;
+    const isWindup = state === 'slam_windup';
+    const radius = isWindup ? cfg.slamRadius : cfg.aftershockRadius;
+    const duration = isWindup ? cfg.windup : cfg.aftershockDelay;
+    const progress = Math.max(0, Math.min(1, 1 - (e.goliathStateTimer || 0) / duration));
+    const convergence = isWindup ? progress * progress : progress;
+    const cx = isWindup ? e.x + rx : (Number.isFinite(e.goliathImpactX) ? e.goliathImpactX : e.x);
+    const cy = isWindup ? e.y + ry : (Number.isFinite(e.goliathImpactY) ? e.goliathImpactY : e.y);
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#ff6474';
+    ctx.fillStyle = '#ff6474';
+    ctx.globalAlpha = isWindup ? 0.08 : 0.055;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = isWindup ? 0.62 : 0.48;
+    ctx.lineWidth = isWindup ? 2.2 : 1.6;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = isWindup ? 0.72 : 0.58;
+    ctx.lineWidth = isWindup ? 3 : 2.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius - (isWindup ? 5 : 3), -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+    ctx.stroke();
+    ctx.lineWidth = 1.4;
+    ctx.globalAlpha = isWindup ? 0.58 : 0.38;
+    const markCount = isWindup ? 12 : 8;
+    for (let i = 0; i < markCount; i++) {
+      const angle = i / markCount * Math.PI * 2;
+      const outer = radius - (isWindup ? 9 : 7);
+      const inner = outer - (isWindup ? 12 + convergence * 12 : 7 + convergence * 6);
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+      ctx.lineTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+      ctx.stroke();
+    }
+    if (!isWindup) {
+      ctx.globalAlpha = 0.30 + progress * 0.22;
+      for (let i = 0; i < 5; i++) {
+        const angle = i / 5 * Math.PI * 2 + 0.24;
+        const x1 = Math.cos(angle) * 12;
+        const y1 = Math.sin(angle) * 12;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(Math.cos(angle + 0.12) * 31, Math.sin(angle + 0.12) * 31);
+        ctx.lineTo(Math.cos(angle - 0.08) * 47, Math.sin(angle - 0.08) * 47);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+  function drawElitePhantomTelegraph(ctx, e, frame, player, rx, ry) {
+    if (!e || e.visualId !== 'elite_phantom') return;
+    const cfg = NV.ELITE_PHANTOM_POSSESSION;
+    if (!cfg) return;
+    const state = e.phantomState;
+    if (state !== 'roam_stalk' && state !== 'materialize' && state !== 'entry_windup' && state !== 'entry_commit' && state !== 'expel') return;
+    ctx.save();
+    ctx.shadowBlur = 0;
+    if (state === 'roam_stalk') {
+      const reducedMotion = !!(reducedMotionQuery && reducedMotionQuery.matches);
+      const unstable = reducedMotion ? 0 : Math.sin((frame || 0) * 0.17) * 2;
+      ctx.translate(e.x + rx, e.y + ry);
+      ctx.strokeStyle = '#b8efff';
+      ctx.globalAlpha = 0.18;
+      ctx.lineWidth = 1.4;
+      ctx.setLineDash([5, 7]);
+      ctx.beginPath();
+      ctx.arc(unstable, 0, e.radius + 7, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else if (state === 'materialize') {
+      const progress = Math.max(0, Math.min(1, 1 - (e.phantomStateTimer || 0) / cfg.materializeTime));
+      ctx.translate(e.x + rx, e.y + ry);
+      ctx.strokeStyle = progress < 0.55 ? '#b8efff' : '#e879f9';
+      ctx.globalAlpha = 0.42 + progress * 0.48;
+      ctx.lineWidth = 2 + progress * 2.2;
+      ctx.beginPath();
+      ctx.arc(0, 0, e.radius + 16 - progress * 7, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 0.28 + progress * 0.34;
+      ctx.beginPath();
+      ctx.arc(0, 0, e.radius + 5 + progress * 4, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (state === 'entry_windup') {
+      const progress = Math.max(0, Math.min(1, 1 - (e.phantomStateTimer || 0) / cfg.windup));
+      const dx = player ? player.x - e.x : 1;
+      const dy = player ? player.y - e.y : 0;
+      const length = Math.max(1, Math.hypot(dx, dy));
+      const nx = dx / length, ny = dy / length;
+      ctx.translate(e.x + rx, e.y + ry);
+      ctx.strokeStyle = '#b8efff';
+      ctx.fillStyle = 'rgba(232,121,249,0.10)';
+      ctx.globalAlpha = 0.46 + progress * 0.42;
+      ctx.lineWidth = 2 + progress * 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, e.radius + 8 + progress * 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.globalAlpha = 0.52;
+      for (let i = -2; i <= 2; i++) {
+        const side = i * 5;
+        ctx.beginPath();
+        ctx.moveTo(-ny * side, nx * side);
+        ctx.lineTo(nx * (70 + progress * 45) - ny * side * 0.4, ny * (70 + progress * 45) + nx * side * 0.4);
+        ctx.stroke();
+      }
+    } else if (state === 'entry_commit') {
+      ctx.translate(e.x + rx, e.y + ry);
+      ctx.rotate(e.phantomEntryAngle || 0);
+      ctx.strokeStyle = '#d9fbff';
+      ctx.globalAlpha = 0.66;
+      ctx.lineWidth = Math.max(5, e.radius * 0.65);
+      ctx.beginPath();
+      ctx.moveTo(-e.radius * 2.8, 0);
+      ctx.lineTo(e.radius * 0.8, 0);
+      ctx.stroke();
+    } else {
+      const sx = Number.isFinite(e.phantomExpelStartX) ? e.phantomExpelStartX : e.x;
+      const sy = Number.isFinite(e.phantomExpelStartY) ? e.phantomExpelStartY : e.y;
+      const progress = Math.max(0, Math.min(1, 1 - (e.phantomStateTimer || 0) / cfg.expelTime));
+      ctx.strokeStyle = '#b8efff';
+      ctx.lineWidth = 2;
+      for (let i = -1; i <= 1; i++) {
+        ctx.globalAlpha = 0.28 + progress * 0.34;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy + i * 5);
+        ctx.quadraticCurveTo((sx + e.x) * 0.5, (sy + e.y) * 0.5 - i * 8, e.x, e.y + i * 3);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 0.35 + progress * 0.55;
+      ctx.strokeStyle = '#e879f9';
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, e.radius + 5 + progress * 5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function drawEliteGoliathImpactVfx(ctx, e) {
+    if (!e || e.visualId !== 'elite_titan') return;
+    const cfg = NV.ELITE_GOLIATH_SEISMIC;
+    if (!cfg) return;
+    const primaryActive = (e.goliathImpactVfxTimer || 0) > 0;
+    const aftershockActive = (e.goliathAftershockVfxTimer || 0) > 0;
+    if (!primaryActive && !aftershockActive) return;
+    const radius = primaryActive ? cfg.slamRadius : cfg.aftershockRadius;
+    const duration = primaryActive ? cfg.impactVfxTime : cfg.aftershockVfxTime;
+    const life = Math.max(0, Math.min(1, (primaryActive ? e.goliathImpactVfxTimer : e.goliathAftershockVfxTimer) / duration));
+    const cx = Number.isFinite(e.goliathImpactX) ? e.goliathImpactX : e.x;
+    const cy = Number.isFinite(e.goliathImpactY) ? e.goliathImpactY : e.y;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#ff3b4f';
+    ctx.fillStyle = '#ff3b4f';
+    ctx.globalAlpha = (primaryActive ? 0.16 : 0.12) * life;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = (primaryActive ? 0.92 : 0.78) * life;
+    ctx.lineWidth = primaryActive ? 4 : 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * (1 - 0.06 * (1 - life)), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.lineWidth = primaryActive ? 2.4 : 1.8;
+    const crackCount = primaryActive ? 8 : 5;
+    for (let i = 0; i < crackCount; i++) {
+      const angle = i / crackCount * Math.PI * 2 + 0.17;
+      const branch = angle + (i % 2 ? 0.12 : -0.10);
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle) * 7, Math.sin(angle) * 7);
+      ctx.lineTo(Math.cos(branch) * radius * 0.33, Math.sin(branch) * radius * 0.33);
+      ctx.lineTo(Math.cos(angle - 0.06) * radius * 0.62, Math.sin(angle - 0.06) * radius * 0.62);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = '#ffffff';
+    ctx.fillStyle = '#ffffff';
+    ctx.globalAlpha = (primaryActive ? 0.95 : 0.82) * life;
+    if (primaryActive) {
+      ctx.beginPath();
+      ctx.arc(0, 0, 9 * life + 2, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(-18, 0);
+      ctx.lineTo(18, 0);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function drawElitePredatorTelegraph(ctx, e, frame, player, rx, ry) {
+    if (!e || e.visualId !== 'elite_predator') return;
+    const state = e.predatorState;
+    if (state !== 'mark' && state !== 'execution_windup' && state !== 'execution' && state !== 'recovery' && state !== 'evade') return;
+    const px = e.x + rx;
+    const py = e.y + ry;
+    const pulse = 0.5 + Math.sin((frame || 0) * 0.34) * 0.5;
+    ctx.save();
+    ctx.shadowBlur = 0;
+    if (state === 'mark') {
+      ctx.translate(px, py);
+      ctx.strokeStyle = '#ff3b4f';
+      ctx.fillStyle = '#ff3b4f';
+      ctx.globalAlpha = 0.62 + pulse * 0.32;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, e.radius + 8 + pulse * 3, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillRect(-2, -e.radius - 20, 4, 10);
+      ctx.beginPath();
+      ctx.arc(0, -e.radius - 6, 2.4, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (state === 'execution_windup' || state === 'execution') {
+      const cfg = NV.ELITE_PREDATOR_HUNTER;
+      if (!cfg) { ctx.restore(); return; }
+      const facing = Number.isFinite(e.predatorExecutionFacing) ? e.predatorExecutionFacing : 0;
+      const progress = state === 'execution_windup'
+        ? Math.max(0, Math.min(1, 1 - (e.predatorStateTimer || 0) / cfg.executionWindup))
+        : 1;
+      ctx.translate(px, py);
+      ctx.strokeStyle = '#ff3b4f';
+      ctx.globalAlpha = state === 'execution' ? 0.22 : 0.48 + progress * 0.42;
+      ctx.lineWidth = state === 'execution' ? 1.5 : 2 + progress * 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, cfg.executionRadius, facing - cfg.executionArc * 0.5, facing + cfg.executionArc * 0.5);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, e.radius + 8 + pulse * 3, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (state === 'evade') {
+      const sx = Number.isFinite(e.predatorEvadeStartX) ? e.predatorEvadeStartX : e.x;
+      const sy = Number.isFinite(e.predatorEvadeStartY) ? e.predatorEvadeStartY : e.y;
+      ctx.strokeStyle = e.color || '#f0f';
+      ctx.globalAlpha = 0.24 + pulse * 0.12;
+      ctx.lineWidth = Math.max(3, e.radius * 0.45);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(sx + rx, sy + ry);
+      ctx.lineTo(px, py);
+      ctx.stroke();
+      ctx.globalAlpha = 0.18;
+      ctx.fillStyle = e.color || '#f0f';
+      ctx.beginPath();
+      ctx.arc(sx + rx, sy + ry, Math.max(4, e.radius * 0.72), 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.translate(px, py);
+      ctx.strokeStyle = e.color || '#f0f';
+      ctx.globalAlpha = 0.18 + pulse * 0.08;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, e.radius + 8, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function drawElitePredatorExecutionVfx(ctx, e, rx, ry) {
+    if (!e || e.visualId !== 'elite_predator') return;
+    const cfg = NV.ELITE_PREDATOR_HUNTER;
+    if (!cfg) return;
+    const state = e.predatorState;
+    const facing = Number.isFinite(e.predatorExecutionFacing) ? e.predatorExecutionFacing : 0;
+    let sweep = 0;
+    let manifest = 0;
+    if (state === 'execution_windup') {
+      const windup = Math.max(0, Math.min(1, 1 - (e.predatorStateTimer || 0) / cfg.executionWindup));
+      manifest = Math.max(0, Math.min(1, (windup - 0.62) / 0.38));
+      if (manifest <= 0) return;
+    } else if (state === 'execution') {
+      sweep = Math.max(0, Math.min(1, 1 - (e.predatorStateTimer || 0) / cfg.executionActiveTime));
+      manifest = 1;
+    } else if (!(e.predatorExecutionImpactTimer > 0)) {
+      return;
+    }
+    if (manifest > 0) {
+      const start = facing - cfg.executionArc * 0.5;
+      const bladeAngle = start + cfg.executionArc * sweep;
+      const root = (e.radius || 12) + 3;
+      const reach = root + (cfg.executionRadius - root) * (0.30 + manifest * 0.70);
+      const trailStart = Math.max(start, bladeAngle - cfg.executionArc * (0.16 + sweep * 0.20));
+      ctx.save();
+      ctx.translate(e.x + rx, e.y + ry);
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = '#ff3b4f';
+      ctx.globalAlpha = state === 'execution' ? 0.82 : 0.35 + manifest * 0.35;
+      ctx.lineWidth = state === 'execution' ? 3.2 : 1.8;
+      ctx.beginPath();
+      ctx.arc(0, 0, cfg.executionRadius, trailStart, bladeAngle);
+      ctx.stroke();
+      ctx.globalAlpha = 0.38 + manifest * 0.54;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(0, 0, cfg.executionRadius - 10, trailStart + 0.04, bladeAngle - 0.03);
+      ctx.arc(0, 0, cfg.executionRadius - 18, trailStart + 0.09, bladeAngle - 0.07);
+      ctx.stroke();
+      ctx.rotate(bladeAngle);
+      ctx.fillStyle = e.color || '#f055ff';
+      ctx.strokeStyle = '#f6d7ff';
+      ctx.globalAlpha = 0.92;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(root, 3.5);
+      ctx.quadraticCurveTo(reach * 0.58, -13 * manifest, reach, 0);
+      ctx.quadraticCurveTo(reach * 0.62, 2.5, root, 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ff3b4f';
+      ctx.globalAlpha = state === 'execution' ? 0.95 : 0.55;
+      ctx.beginPath();
+      ctx.arc(root, 5, 4 + manifest * 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    if (e.predatorExecutionImpactTimer > 0) {
+      const impact = Math.max(0, Math.min(1, e.predatorExecutionImpactTimer / 0.12));
+      const ix = Number.isFinite(e.predatorExecutionImpactX) ? e.predatorExecutionImpactX + rx : e.x + rx;
+      const iy = Number.isFinite(e.predatorExecutionImpactY) ? e.predatorExecutionImpactY + ry : e.y + ry;
+      ctx.save();
+      ctx.translate(ix, iy);
+      ctx.rotate(facing);
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = impact > 0.55 ? '#ffffff' : '#ff3b4f';
+      ctx.globalAlpha = impact;
+      ctx.lineWidth = 2.6;
+      for (let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(-5, i * 5 - 3);
+        ctx.lineTo(11 + (1 - Math.abs(i)) * 5, i * 7 + 3);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+  function drawSpecterGruntChargeTelegraph(ctx, e, frame, player, rx, ry) {
+    if (!e || e.enemyTypeId !== 'specter_grunt') return;
+    const state = e.specterChargeState;
+    if (state !== 'windup' && state !== 'charge' && state !== 'recovery') return;
+    const px = e.x + rx;
+    const py = e.y + ry;
+    let dirX = e.specterChargeDirX || 0;
+    let dirY = e.specterChargeDirY || 0;
+    if (state === 'windup' && player) {
+      const dx = player.x - e.x;
+      const dy = player.y - e.y;
+      const dist = Math.max(1, Math.hypot(dx, dy));
+      dirX = dx / dist;
+      dirY = dy / dist;
+    }
+    const pulse = 0.5 + Math.sin((frame || 0) * 0.28) * 0.5;
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.shadowBlur = 0;
+    // Lenguaje hostil: ROJO = peligro entrante. Warning (windup) y activo (carga)
+    // comparten la familia roja del resto de amenazas; el cian solo queda en recovery.
+    if (state === 'windup') {
+      ctx.strokeStyle = '#ff6474';
+      const progress = Math.max(0, Math.min(1, 1 - (e.specterChargeTimer || 0) / 0.45));
+      ctx.globalAlpha = 0.45 + progress * 0.45;
+      ctx.lineWidth = 1.5 + progress * 1.5;
+      ctx.beginPath();
+      ctx.moveTo(dirX * (e.radius + 4), dirY * (e.radius + 4));
+      ctx.lineTo(dirX * (74 + progress * 34), dirY * (74 + progress * 34));
+      ctx.stroke();
+      ctx.globalAlpha = 0.5 + pulse * 0.3;
+      ctx.beginPath();
+      ctx.arc(0, 0, e.radius + 7 + progress * 5, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (state === 'charge') {
+      ctx.strokeStyle = '#ff3b4f';
+      ctx.globalAlpha = 0.65;
+      ctx.lineWidth = Math.max(4, e.radius * 0.7);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-dirX * (e.radius + 8), -dirY * (e.radius + 8));
+      ctx.lineTo(-dirX * (e.radius + 34), -dirY * (e.radius + 34));
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = '#b8efff';
+      ctx.globalAlpha = 0.22 + pulse * 0.12;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, e.radius + 10, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function drawSpecterGuardProtectionTelegraph(ctx, e, frame, rx, ry) {
+    if (!e || e.enemyTypeId !== 'specter_guard' || !e.guardProtectionActive || !e.guardTarget) return;
+    const target = e.guardTarget;
+    const source = typeof NV.getGuardProtectionSource === 'function' ? NV.getGuardProtectionSource(target) : null;
+    if (source !== e || target.dead) return;
+    const pulse = 0.5 + Math.sin((frame || 0) * 0.18) * 0.5;
+    const sx = e.x + rx, sy = e.y + ry;
+    const tx = target.x, ty = target.y;
+    const tr = (target.radius || 10) + 7 + pulse * 2;
+    ctx.save();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#67f8c8';
+    ctx.globalAlpha = 0.5 + pulse * 0.2;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash && ctx.setLineDash([7, 5]);
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(tx, ty);
+    ctx.stroke();
+    ctx.setLineDash && ctx.setLineDash([]);
+    ctx.globalAlpha = 0.72 + pulse * 0.2;
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.arc(tx, ty, tr, -0.72, 0.72);
+    ctx.moveTo(tx - Math.cos(0.72) * tr, ty - Math.sin(0.72) * tr);
+    ctx.arc(tx, ty, tr, Math.PI - 0.72, Math.PI + 0.72);
+    ctx.stroke();
     ctx.restore();
   }
   function resolveBossProfile(boss) {
@@ -1267,6 +1859,7 @@
   }
   NV.drawSpectralEnemy2D = function (ctx, e, frame, player, rhythm) {
     if (!e || e.dead) return false;
+    if (e.visualId === 'elite_phantom' && (e.phantomState === 'possessed' || e.phantomState === 'cleanup')) return false;
     const profile = resolveProfile(e);
     ctx.save();
     let rx = 0, ry = 0;
@@ -1282,7 +1875,14 @@
       }
     }
     if (isLabSpecter(e)) {
+      drawElitePhantomTelegraph(ctx, e, frame, player, rx, ry);
+      drawEliteGoliathSeismicTelegraph(ctx, e, frame, rx, ry);
+      drawElitePredatorTelegraph(ctx, e, frame, player, rx, ry);
+      drawSpecterGruntChargeTelegraph(ctx, e, frame, player, rx, ry);
+      drawSpecterGuardProtectionTelegraph(ctx, e, frame, rx, ry);
       drawLabSpecterEnemy(ctx, e, frame, player, profile, rx, ry);
+      drawEliteGoliathImpactVfx(ctx, e);
+      drawElitePredatorExecutionVfx(ctx, e, rx, ry);
       ctx.restore();
       return true;
     }

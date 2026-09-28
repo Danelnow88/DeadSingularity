@@ -30,7 +30,7 @@ t('sfx UI/shop/consumo/fusión existen y no crashean', () => {
 
 t('game.js conecta consume/shopBuy/shopSell/fuse/wheelSelect', () => {
   const src = fs.readFileSync('js/game.js', 'utf8');
-  for (const pat of ['sfx.consume(item.type)', 'sfx.shopBuy()', 'sfx.shopSell()', 'sfx.fuse(fus + 1)', 'sfx.wheelSelect()']) {
+    for (const pat of ['sfx.consume(selectedType)', 'sfx.shopBuy()', 'sfx.shopSell()', 'sfx.fuse(fus + 1)', 'sfx.wheelSelect()']) {
     if (!src.includes(pat)) throw new Error('falta ' + pat);
   }
 });

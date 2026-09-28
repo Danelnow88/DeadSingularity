@@ -71,7 +71,7 @@ t('specter_elite_void registrado en ELITE_TYPES', () => {
   if (et.minWave !== 16) throw new Error('minWave=' + et.minWave);
   if (et.weight !== 0.03) throw new Error('weight=' + et.weight);
   if (et.stunChance !== 0.35) throw new Error('stunChance=' + et.stunChance);
-  if (et.stunDuration !== 0.5) throw new Error('stunDuration=' + et.stunDuration);
+  if (et.stunDuration !== 1.75) throw new Error('stunDuration=' + et.stunDuration);
 });
 
 // ---- Legacy intacto ----

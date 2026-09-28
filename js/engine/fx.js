@@ -154,10 +154,21 @@
     return 3;
   }
 
+  const MAX_DISPLAY_DAMAGE = 1000000;
+  NV.formatDamageText = function (value) {
+    if (!Number.isFinite(value) || value <= 0 || value > MAX_DISPLAY_DAMAGE) return null;
+    return String(Math.round(value * 100) / 100);
+  };
+
   // Empuja un texto flotante al array (por referencia). size opcional en px.
   NV.addFloatText = function (floatTexts, x, y, text, color, size, metadata) {
     const entry = { x, y, text, color, life: 0.8, size: size || 14 };
     if (metadata) Object.assign(entry, metadata);
+    if (Object.prototype.hasOwnProperty.call(entry, 'damageValue')) {
+      const damageText = NV.formatDamageText(entry.damageValue);
+      if (damageText === null) return false;
+      entry.text = damageText;
+    }
     if (entry.bossReaction) {
       entry.life = BOSS_REACTION_TIMING.life;
       entry.age = 0;
@@ -169,6 +180,7 @@
       }
     }
     floatTexts.push(entry);
+    return true;
   };
 
   // Actualiza los textos flotantes; devuelve el array filtrado.

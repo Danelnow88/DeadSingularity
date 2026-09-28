@@ -1,4 +1,4 @@
-// PASO 1: waveDuration única fuente de verdad (fórmula original fiel).
+// Tarea #19: duración creciente, eventos proporcionales y autoridad única timer/HUD.
 const fs = require('fs'), vm = require('vm');
 let pass = 0, fail = 0;
 function t(desc, fn) { try { fn(); pass++; console.log('  ok  ' + desc); } catch (e) { fail++; console.log('  FAIL ' + desc + ' -> ' + e.message); } }
@@ -8,59 +8,72 @@ const sbx = { window: { NV: {} }, console, Math };
 load('js/data/balance.js', sbx);
 const NV = sbx.window.NV;
 
-t('fórmula original fiel: max(15, 25 - wave*0.4)', () => {
-  for (const w of [1, 2, 5, 10, 15, 25, 30]) {
-    const expected = Math.max(15, 25 - w * 0.4);
-    if (NV.waveDuration(w) !== expected) throw new Error('wave ' + w + ': ' + NV.waveDuration(w) + ' != ' + expected);
+function close(actual, expected, label) {
+  if (Math.abs(actual - expected) > 1e-9) throw new Error(label + ': ' + actual + ' != ' + expected);
+}
+
+t('curva base cumple los hitos aprobados', () => {
+  for (const [w, expected] of [[1, 15], [5, 18], [10, 22], [15, 26], [20, 29], [25, 32], [30, 35]]) {
+    close(NV.waveDuration(w), expected, 'wave ' + w);
   }
 });
 
-t('piso en 15s para oleadas altas', () => {
-  if (NV.waveDuration(25) !== 15 || NV.waveDuration(100) !== 15) throw new Error('piso roto');
+t('duración base es monotónica no decreciente y queda capada en 35s', () => {
+  let previous = NV.waveDuration(1);
+  for (let w = 2; w <= 200; w++) {
+    const current = NV.waveDuration(w);
+    if (current < previous) throw new Error('descenso en w=' + w);
+    if (current > 35) throw new Error('cap superado en w=' + w + ': ' + current);
+    previous = current;
+  }
+  close(NV.waveDuration(100), 35, 'cap tardío');
 });
 
-t('sin fórmula inline duplicada en game.js (barra y nextWave usan NV.waveDuration)', () => {
+t('sin fórmula inline duplicada en game.js', () => {
   const g = fs.readFileSync('js/game.js', 'utf8');
-    const uses = (g.match(/NV\.waveDuration\(wave[,\)]/g) || []).length;
+  const uses = (g.match(/NV\.waveDuration\(wave[,\)]/g) || []).length;
   if (uses < 2) throw new Error('esperaba >=2 usos, hay ' + uses);
-  if (/Math\.max\(15,\s*25\s*-\s*wave\s*\*/.test(g)) throw new Error('quedó fórmula inline duplicada');
+  if (/25\s*-\s*wave\s*\*\s*0\.4/.test(g)) throw new Error('quedó fórmula decreciente inline');
 });
 
-t('nextWave y barra leen de la MISMA función (la barra no se desincroniza)', () => {
+t('nextWave y barra leen de la MISMA función', () => {
   const g = fs.readFileSync('js/game.js', 'utf8');
-    const nw = g.includes('waveTimer = NV.waveDuration(wave, waveEvent);');
+  const nw = g.includes('waveTimer = NV.waveDuration(wave, waveEvent);');
   const bar = g.includes('const maxWaveTimer = NV.waveDuration(wave, waveEvent);');
   if (!nw || !bar) throw new Error('nextWave=' + nw + ' barra=' + bar);
 });
 
-t('evento extiende duración y respeta cap 90s', () => {
-  // base oleada 1: 25 - 0.4 = 24.6; evento: +25 => 49.6 (sin pasar 90)
-  if (Math.abs(NV.waveDuration(1, 'fog') - 49.6) > 0.001) throw new Error('duración evento: ' + NV.waveDuration(1, 'fog'));
-  // el cap 90 es una salvaguarda: NUNCA debe superar 90s (ni en oleadas bajas con bonus fijo)
-  for (const w of [1, 2, 3, 5, 10, 20, 24, 25, 100]) {
-    if (NV.waveDuration(w, 'fog') > 90) throw new Error('cap 90 superado en w=' + w + ': ' + NV.waveDuration(w, 'fog'));
+t('evento agrega 15% proporcional, sin salto fijo de 25s', () => {
+  for (const w of [1, 3, 10, 20, 25, 100]) {
+    const base = NV.waveDuration(w);
+    const event = NV.waveDuration(w, 'fog');
+    close(event, Math.min(40.25, base * 1.15), 'evento w=' + w);
+    if (event - base >= 10) throw new Error('salto excesivo en w=' + w + ': ' + (event - base));
   }
-  // oleadas muy altas: base pisa 15s, evento = 15 + 25 = 40 (no 90, el clamp no altera el piso)
-  if (NV.waveDuration(100, 'fog') !== 40) throw new Error('evento alta: ' + NV.waveDuration(100, 'fog'));
 });
 
 t('sin evento: duración base sin cambios', () => {
-  for (const w of [1, 2, 5, 10]) {
-    if (NV.waveDuration(w, null) !== NV.waveDuration(w)) throw new Error('base cambió en ' + w);
-    if (NV.waveDuration(w, false) !== NV.waveDuration(w)) throw new Error('base falsy cambió en ' + w);
+  for (const w of [1, 2, 5, 10, 25]) {
+    close(NV.waveDuration(w, null), NV.waveDuration(w), 'null w=' + w);
+    close(NV.waveDuration(w, false), NV.waveDuration(w), 'false w=' + w);
   }
 });
 
-t('waveSpawnFactor compensa oleadas largas (mismo total de spawns)', () => {
-  // Sin evento: factor = 1 (intervalo base).
-  if (Math.abs(NV.waveSpawnFactor(5, null) - 1) > 1e-9) throw new Error('factor sin evento: ' + NV.waveSpawnFactor(5, null));
-  // Con evento: factor > 1 (intervalo más lento, menos spawns/segundo)
-  if (NV.waveSpawnFactor(5, 'fog') <= 1) throw new Error('factor evento debe ser >1: ' + NV.waveSpawnFactor(5, 'fog'));
-  // El factor es la razón de duraciones: wave 5 -> base 23, evento 48 => factor = 48/23
-  if (Math.abs(NV.waveSpawnFactor(5, 'fog') - (48 / 23)) > 1e-6) throw new Error('factor no coincide con ratio: ' + NV.waveSpawnFactor(5, 'fog'));
+t('waveSpawnFactor compensa sólo la mitad y deja actividad adicional', () => {
+  close(NV.waveSpawnFactor(10, null), 1, 'factor normal');
+  const factor = NV.waveSpawnFactor(10, 'fog');
+  close(factor, 1.075, 'factor evento');
+  const opportunityRatio = 1.15 / factor;
+  if (!(opportunityRatio > 1.06 && opportunityRatio < 1.08)) throw new Error('ratio de actividad=' + opportunityRatio);
+  if (Math.abs(factor - 1.15) < 1e-9) throw new Error('la compensación sigue siendo total');
 });
 
-console.log('RESULT wave_duration: pass=' + pass + ' fail=' + fail);
+t('bosses conservan final por muerte y no por timer', () => {
+  const game = fs.readFileSync('js/game.js', 'utf8');
+  if (!game.includes('waveTimer <= 0 && !boss')) throw new Error('falta exclusión de boss en fin temporizado');
+  const boss = fs.readFileSync('js/engine/boss.js', 'utf8');
+  if (!boss.includes('if (boss.hp <= 0)') || !boss.includes('st.triggerWaveVictory(true')) throw new Error('muerte de boss no conserva autoridad');
+});
 
 console.log('RESULT wave_duration: pass=' + pass + ' fail=' + fail);
 process.exit(fail ? 1 : 0);

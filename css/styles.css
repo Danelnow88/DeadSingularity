@@ -233,3 +233,87 @@ html[data-game-state="shop_enter"] .touch-options {
   .nv-mobile .switch-indicator-icon { width: 28px; height: 28px; }
   .nv-mobile .switch-indicator-name { font-size: 9px; }
 }
+
+/* ===== Pestañas / tabs de Ajustes (AUDIO / CONTROLES / GRÁFICOS) ===== */
+.settings-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  background: rgba(124, 248, 255, .04);
+  border: 1px solid rgba(124, 248, 255, .22);
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  margin: 0 0 0px;
+}
+.settings-tab {
+  flex: 1 1 auto;
+  min-width: 4px;
+  padding: 10px 6px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: #8e93ad;
+  font: 700 12px/1 system-ui, sans-serif;
+  letter-spacing: .08em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .16s, background .16s, border-color .16s;
+}
+.settings-tab:hover { color: #c5cbdb; background: rgba(124, 248, 255, .06); }
+.settings-tab.active,
+.settings-tab[aria-selected="true"] {
+  color: #7cf8ff;
+  background: rgba(124, 248, 255, .10);
+  border-color: rgba(124, 248, 255, .28);
+  border-bottom-color: transparent;
+}
+.settings-tab:focus-visible { outline: 2px solid #7cf8ff; outline-offset: 2px; }
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  height: 680px;
+  overflow: hidden;
+}
+.settings-panel > .settings-head,
+.settings-panel > .settings-tabs { flex: 0 0 auto; }
+.settings-tab-panels {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.settings-tab-panel[hidden] { display: none !important; }
+.settings-tab-panel .settings-range { margin-top: 0; }
+.settings-tab-panel .settings-range + .settings-range { margin-top: 4px; }
+.settings-mute-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(124, 248, 255, .18);
+  border-radius: 10px;
+  background: rgba(124, 248, 255, .045);
+  margin-bottom: 6px;
+}
+.settings-mute-btn {
+  flex: 1 1 auto;
+  min-width: 120px;
+  height: 40px;
+  padding: 0 10px;
+  font: 700 13px/1 system-ui, sans-serif;
+  letter-spacing: .06em;
+  color: #7cf8ff;
+  background: rgba(124, 248, 255, .10);
+  border: 1px solid rgba(124, 248, 255, .32);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.settings-mute-btn.off,
+.settings-mute-btn[aria-pressed="false"] { color: #ff6b81; }
+.settings-mute-note { font-size: 10px; color: #8e93ad; }
+@media (pointer: coarse) {
+  .settings-tabs { padding: 2px; }
+  .settings-tab { padding: 12px 4px; font-size: 11px; }
+  .settings-mute-btn { height: 44px; font-size: 13px; }
+}

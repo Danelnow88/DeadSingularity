@@ -176,4 +176,19 @@
     player.y += player.moveVy * dt;
     return player;
   };
+
+  NV.phantomPossessionIntent = function (player, moveX, moveY, hookPullActive) {
+    moveX = Number(moveX) || 0;
+    moveY = Number(moveY) || 0;
+    const possession = player && player.phantomPossession;
+    if (!possession || !possession.active || player.stun > 0 || player.dashActive || hookPullActive) {
+      return { x: moveX, y: moveY, applied: false };
+    }
+    const angle = Number.isFinite(possession.forceAngle) ? possession.forceAngle : (Number(possession.entryAngle) || 0);
+    let x = moveX + Math.cos(angle) * 0.40;
+    let y = moveY + Math.sin(angle) * 0.40;
+    const length = Math.hypot(x, y);
+    if (length > 1) { x /= length; y /= length; }
+    return { x, y, applied: true };
+  };
 })();

@@ -38,6 +38,24 @@ t('las pupilas se orientan hacia el jugador (4 arcos por par de ojos)', () => {
   if (!(pupils[0] > 0 && pupils[1] > 0)) throw new Error('pupilas no miran a la derecha: ' + JSON.stringify(pupils));
 });
 
+t('ojos especializados invierten el transform local y siguen al jugador en world-space', () => {
+  const ellipses = [], stack = [];
+  let m = { a: 0, b: 2, c: -2, d: 0, e: 80, f: 40 };
+  function mul(n) { m = { a: m.a*n.a+m.c*n.b, b: m.b*n.a+m.d*n.b, c: m.a*n.c+m.c*n.d, d: m.b*n.c+m.d*n.d, e: m.a*n.e+m.c*n.f+m.e, f: m.b*n.e+m.d*n.f+m.f }; }
+  const ctx = {
+    save(){ stack.push({...m}); }, restore(){ m = stack.pop(); }, getTransform(){ return {...m}; },
+    translate(x,y){ mul({a:1,b:0,c:0,d:1,e:x,f:y}); }, scale(x,y){ mul({a:x,b:0,c:0,d:y,e:0,f:0}); },
+    rotate(a){ const c=Math.cos(a),s=Math.sin(a); mul({a:c,b:s,c:-s,d:c,e:0,f:0}); },
+    beginPath(){}, closePath(){}, moveTo(){}, lineTo(){}, quadraticCurveTo(){}, arc(){}, fill(){}, stroke(){},
+    ellipse(x,y,rx,ry){ ellipses.push({x,y,rx,ry}); }, set fillStyle(v){}, set strokeStyle(v){}, set lineWidth(v){},
+    set lineCap(v){}, set lineJoin(v){}, set shadowColor(v){}, set shadowBlur(v){}, set globalAlpha(v){},
+  };
+  NV.drawEnemy(ctx, { x: 10, y: 20, radius: 11, color: '#f07bad', shape: 'circle', enemyTypeId: 'drone' }, 60, { x: 110, y: 20 });
+  const pupil = ellipses.find((a) => Math.abs(a.rx - 3.9 * 0.42) < 0.01);
+  if (!pupil) throw new Error('pupila especializada no encontrada');
+  if (!(pupil.x > 6)) throw new Error('pupila no mira a la derecha en espacio local: x=' + pupil.x);
+});
+
 t('temblor rítmico de enemigos es 100% visual: no muta posición/hitbox/datos', () => {
   const ctx = mkCtx();
   const e = { x: 120, y: 80, radius: 14, color: '#fff', shape: 'dot', hp: 30, speed: 70, behavior: 'chase' };
@@ -167,7 +185,7 @@ t('game.js dibuja a los atacantes (atkFlash) en segunda pasada (z-order)', () =>
 t('game.js pasa rhythm solo al render de enemigo y colisiones siguen usando e.x/e.y', () => {
   const g = fs.readFileSync('js/game.js', 'utf8');
   const bullets = fs.readFileSync('js/engine/bullets.js', 'utf8');
-  if (!g.includes('NV.drawEnemy(ctx, e, frame, player, NV.rhythm)')) throw new Error('render enemigo no recibe rhythm');
+  if (!g.includes('NV.drawEnemy(ctx, e, frame, player, frameVisualRhythm, visualTimeSeconds)')) throw new Error('render enemigo no recibe rhythm/tiempo visual');
   if (!bullets.includes('Math.hypot(b.x - e.x, b.y - e.y)') || !bullets.includes('d < e.radius + 4')) throw new Error('colisión de balas no usa datos reales');
 });
 

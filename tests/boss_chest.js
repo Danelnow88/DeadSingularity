@@ -61,5 +61,22 @@ t('boss.js invoca spawnBossChest al morir', () => {
   if (!fs.readFileSync('js/engine/boss.js', 'utf8').includes('spawnBossChest')) throw new Error('no conectado');
 });
 
+// ---- Filtro de elegibles en cofres (arma poseída MAX fusión no vuelve como drop) ----
+t('cofre con TODAS las armas inelegibles: no suelta armas ni crash (solo lo demás)', () => {
+  const chests = [{ x: 0, y: 0, dead: false, timer: 0 }];
+  const pickups = []; const wp = [];
+  const alive = NV2.updateBossChests(0.1, chests, { x: 0, y: 0 }, pickups, wp, [{ id: 'rifle' }], () => {}, () => {}, () => false);
+  if (alive.length !== 0) throw new Error('cofre no descartado');
+  if (wp.length !== 0) throw new Error('soltó arma inelegible');
+});
+
+t('cofre filtra arma maxeada y elige solo entre elegibles', () => {
+  const chests = [{ x: 0, y: 0, dead: false, timer: 0 }];
+  const pickups = []; const wp = [];
+  NV2.updateBossChests(0.1, chests, { x: 0, y: 0 }, pickups, wp, [{ id: 'rifle' }, { id: 'smg' }], () => {}, () => {}, (w) => w.id !== 'rifle');
+  if (wp.length !== 3) throw new Error('esperaba 3 armas elegibles, got ' + wp.length);
+  if (wp.some((p) => p.weapon.id === 'rifle')) throw new Error('soltó la inelegible');
+});
+
 console.log('RESULT boss_chest: pass=' + pass + ' fail=' + fail);
 process.exit(fail ? 1 : 0);

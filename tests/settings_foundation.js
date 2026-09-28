@@ -56,15 +56,21 @@ t('valores inválidos vuelven a defaults seguros', () => {
 
 t('volumen SFX se limita y aplica al mixer sin tocar mute', () => {
   const { NV } = load();
-  const applied = [];
+  const sfxApplied = [];      // agregado legacy (setSfxVolume)
+  const fullApplied = [];     // applyAudioSettings: reaplicación completa (reset)
   NV.soundOn = false;
-  NV.applySfxVolume = (value) => applied.push(value);
+  NV.applySfxVolume = (value) => sfxApplied.push(value);
+  NV.applyAudioSettings = (audio) => fullApplied.push(audio && audio.masterVolume);
   if (NV.setSfxVolume(4) !== 1) throw new Error('clamp superior');
   if (NV.setSfxVolume(-2) !== 0) throw new Error('clamp inferior');
-  if (NV.soundOn !== false) throw new Error('volumen cambió mute');
-  if (applied.join(',') !== '1,0') throw new Error('mixer no recibió valores normalizados');
+  if (NV.soundOn !== false) throw new Error('volumen cambió el mute');
+  if (sfxApplied.join(',') !== '1,0') throw new Error('el mixer no recibió valores normalizados: ' + sfxApplied.join(','));
+  // reset reaplica los defaults completos (incluye master) vía applyAudioSettings; el
+  // agregado legacy applySfxVolume NO es su autoridad (no debe dispararse en reset).
   NV.resetSettings();
-  if (applied[applied.length - 1] !== 1) throw new Error('reset no reaplicó default al mixer');
+  if (fullApplied.length === 0) throw new Error('reset no reaplicó defaults al mixer');
+  if (fullApplied[fullApplied.length - 1] !== 1) throw new Error('reset no reaplicó el master default: ' + fullApplied[fullApplied.length - 1]);
+  if (sfxApplied.length !== 2) throw new Error('reset disparó applySfxVolume (el contrato es applyAudioSettings)');
 });
 
 t('UI compartida ofrece entrada desktop, lobby y móvil', () => {
@@ -73,10 +79,19 @@ t('UI compartida ofrece entrada desktop, lobby y móvil', () => {
     if (!html.includes('id="' + id + '"')) throw new Error('falta ' + id);
   }
   if (!html.includes('value="auto"') || !html.includes('value="high"') || !html.includes('value="performance"')) throw new Error('calidades incompletas');
-  if (!html.includes('id="settingsSfxVolume"') || !html.includes('id="settingsSfxVolumeValue"')) throw new Error('slider SFX ausente');
+  for (const id of ['tabAudio', 'tabControls', 'tabGraphics', 'panelAudio', 'panelControls', 'panelGraphics', 'settingsMuteToggle']) {
+    if (!html.includes('id="' + id + '"')) throw new Error('falta ' + id);
+  }
+  const volumeIds = ['Master', 'Music', 'Weapons', 'Ui', 'Player', 'Enemies', 'Ambient'];
+  for (const suffix of volumeIds) {
+    if (!html.includes('id="settings' + suffix + 'Volume"') || !html.includes('id="settings' + suffix + 'VolumeValue"')) throw new Error('slider incompleto: ' + suffix);
+  }
   if (!html.includes('name="firePolicy"') || !html.includes('value="manual"') || !html.includes('value="legacy-auto"')) throw new Error('selector de disparo ausente');
   const ui = fs.readFileSync('js/ui/settingsPanel.js', 'utf8');
-  if (!ui.includes("addEventListener('input'") || !ui.includes('NV.setSfxVolume')) throw new Error('slider SFX sin wiring live');
+  for (const setter of ['setMasterVolume', 'setMusicVolume', 'setWeaponsVolume', 'setUiVolume', 'setPlayerVolume', 'setEnemiesVolume', 'setAmbientVolume']) {
+    if (!ui.includes(setter)) throw new Error('setter sin wiring: ' + setter);
+  }
+  if (!ui.includes("addEventListener('input'") || ui.includes('NV.setSfxVolume')) throw new Error('wiring live de categorías incorrecto');
 });
 
 t('mute usa una autoridad y sincroniza controles desktop/móvil', () => {
