@@ -71,7 +71,7 @@ node tests/dynamic_arena.js
 npm test
 ```
 
-Baseline actual: 77 suites; 2 fallos conocidos (`kamikaze` y `lab_model_hitbox`). P3.1 añade Campo Minado táctico, `IDLE_GROOVE`/`MUSIC_GROOVE` y notas musicales decorativas; P3.1.1 hace que el widget de ritmo y Speaker Mines compartan groove math puro sin DOM por hazard. Cualquier fallo adicional es una regresión hasta investigarlo. Conteos y política: [Testing](docs/TESTING.md).
+Baseline actual, verificado el 28 de septiembre de 2026: 128 suites; 0 fallos (`RESULT run_all: total=128 failed=0`). P3.1 añade Campo Minado táctico, `IDLE_GROOVE`/`MUSIC_GROOVE` y notas musicales decorativas; P3.1.1 hace que el widget de ritmo y Speaker Mines compartan groove math puro sin DOM por hazard. Cualquier fallo adicional es una regresión hasta investigarlo. Conteos y política: [Testing](docs/TESTING.md).
 
 ## Despliegue
 
@@ -98,4 +98,4 @@ Los iconos de consumibles se renderizan mediante `js/render/consumableIcons.js` 
 - Una arena móvil más ancha puede reducir la dificultad efectiva y la densidad aparente de spawns.
 - Los patrones de jefes usan mayormente amplitudes absolutas en unidades de mundo.
 - La distribución de pickups y meteoritos puede sentirse distinta en arenas anchas.
-- Permanecen los dos fallos baseline de pruebas indicados arriba; no se consideran resueltos ni deben ocultar regresiones nuevas.
+- La suite completa actual no registra fallos; cualquier fallo posterior debe investigarse como posible regresión.

@@ -126,7 +126,7 @@ node tests/controlled_movement.js
 
 Simula a 120 Hz aceleración, parada, inversión, diagonal, Overdrive y el sistema de dash (F03) sobre el módulo real (`engine/movement.js`). Verifica identidad por personaje, cap permanente, compatibilidad de saves, ausencia de mutación de stats base, pausa/reanudación, ruta móvil compartida y update O(1) sin allocations explícitas. En dash cubre: coste exacto (`100→0` en dos dashes), rechazo por debajo del coste, delay `0.8–1.0s`, recuperación completa (`~3–4s`), press-edge (mantener Shift no re-dispara), re-press, dirección `move→aim→último`, sin invuln/daño, pausa/latch sin dash espurio y reset.
 
-Baseline verificado el 9 de agosto de 2026:
+Baseline histórico verificado el 9 de agosto de 2026:
 
 ```text
 RESULT run_all: total=80 failed=2
@@ -156,13 +156,13 @@ node tests/runner_flank.js
 
 Convirtió el Runner (`id: 'runner'`) de persecución directa a flanqueador. Verifica selección/persistencia de lado (`flankSide`), state machine (`APPROACH`/`COMMIT`/`RECOVERY`), objetivo desplazado del centro durante COMMIT (sin corrección magnética), recuperación que crea separación, sin cambio rápido de lado, death-on-contact preservado, speed caps (145 base, ~177 en minas, cap 260), presupuesto intacto (30/7) y stress con múltiples Runners.
 
-Baseline verificado el 10 de septiembre de 2026:
+Baseline histórico verificado el 10 de septiembre de 2026:
 
 ```text
 RESULT run_all: total=82 failed=2
 ```
 
-## Fallos baseline conocidos
+## Historial de fallos previamente conocidos
 
 ### `kamikaze`
 
@@ -170,7 +170,7 @@ RESULT run_all: total=82 failed=2
 RESULT kamikaze: pass=10 fail=1
 ```
 
-Falla la prueba de separación de varios enemigos chase apilados: la distancia medida no disminuye el amontonamiento esperado.
+Este fallo pertenecía a un baseline histórico y ya no aparece en la suite completa actual.
 
 ### `lab_model_hitbox`
 
@@ -178,11 +178,15 @@ Falla la prueba de separación de varios enemigos chase apilados: la distancia m
 RESULT lab_model_hitbox: pass=6 fail=1
 ```
 
-Falla la expectativa de hitbox de `specter_lite`: el test obtiene radio `11.25` frente al valor esperado por el modelo.
+Este fallo pertenecía a un baseline histórico y ya no aparece en la suite completa actual.
 
 ## Política de regresiones
 
-**Fallo conocido no significa fallo ignorado.** Los dos casos anteriores forman el baseline pendiente. Cualquier suite adicional fallida, aumento en el número de fallos o cambio inesperado en una prueba dirigida es una regresión hasta investigarlo.
+El baseline actual es el resultado verificado el 28 de septiembre de 2026: 128 suites y 0 fallos. Cualquier suite fallida, aumento en el número de fallos o cambio inesperado en una prueba dirigida es una regresión hasta investigarlo.
+
+```text
+RESULT run_all: total=128 failed=0
+```
 
 Antes de desplegar:
 
