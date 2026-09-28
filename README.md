@@ -81,6 +81,7 @@ Procedimiento completo: [Deployment](docs/DEPLOYMENT.md).
 
 ## Documentación
 
+- [Punto de entrada para agentes de IA](docs/AI_START_HERE.md)
 - [Arquitectura](docs/ARCHITECTURE.md)
 - [Arquitectura móvil](docs/MOBILE_ARCHITECTURE.md)
 - [Estados UI](docs/UI_STATES.md)
