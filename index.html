@@ -10,20 +10,7 @@
     <link rel="stylesheet" href="css/alpha.css" />
     <!-- Capa móvil: detección por capacidad (se carga primero; solo etiqueta <html>). -->
     <script src="js/core/capabilities.js"></script>
-    <script type="importmap">
-    {
-      "imports": {
-        "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
-      }
-    }
-    </script>
     <!-- La distribución Canvas2D funciona offline. WebGL legado sólo a pedido. -->
-    <script type="module">
-      if (new URLSearchParams(location.search).get('legacy3d') === '1') {
-        window.NV = window.NV || {};
-        window.NV.THREE_READY = import('three').catch(() => null);
-      }
-    </script>
   </head>
   <body>
     <main class="shell">

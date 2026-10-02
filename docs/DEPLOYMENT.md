@@ -52,6 +52,22 @@ El proyecto es estático y no tiene build de producción. GitHub Pages sirve los
 
 ## Reglas de seguridad
 
+### Paridad con la entrega Electron (02-10-2026)
+
+La entrega activa es `NEON-VOID-0.10.0-alpha-windows-mh6vEs`.
+Se compararon por HTTP sus 73 archivos `js/`, `css/` y `assets/` contra Pages:
+todos coincidían (normalizando únicamente los finales de línea de texto).
+El HTML público conservaba dos bloques opcionales de 3D experimental que la
+build quitaba. Se retiraron de la entrada principal; ahora el HTML fuente también
+coincide con el empaquetado. Esto no modifica el Canvas2D ni el balance.
+
+GitHub Pages debe servir los 74 archivos del juego de esa entrega, no el EXE
+ni las DLL de Electron. Verificar también el HTML y todos los recursos, no sólo
+un archivo de pilotos. `previews/pages-electron-parity/` contiene la auditoría
+local ignorada por Git. Guardados y preferencias del navegador y de Electron
+son independientes; no borrar almacenamiento para intentar igualar imágenes.
+Para comparar apariencia, usar dimensiones, stage y calidad gráfica equivalentes.
+
 - No usar force push en un deploy normal.
 - No usar `--amend` para este flujo; crear un commit nuevo.
 - No stagear logs, salidas de pruebas, probes o diagnósticos locales.
