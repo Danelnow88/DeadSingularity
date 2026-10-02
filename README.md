@@ -1,5 +1,55 @@
 # NEON VOID
 
+Última entrega local (02-10): **cuatro formas de pilotos aprobadas e integradas**
+en Web y Electron, 160 suites sin fallos y limpieza de builds duplicadas.
+Abrí `JUGAR NEON VOID.cmd` (cerrá una instancia vieja antes).
+[Entrega, pruebas, respaldo y publicación pendiente](docs/PILOT_PRODUCTION_2026-10-02.md).
+Los informes visuales anteriores describen pasos históricos, no esta entrega.
+
+## Alpha 0.10 — 30 de septiembre de 2026
+
+Historia de 20 oleadas con diez jefes distintos (asalto/jefe alternados) y modo infinito. Los guardados anteriores conservan su ruta de cuatro jefes. Incluye preparación
+entre oleadas, contratos, evoluciones de armas, guardado para continuar, récords
+locales y controles de comodidad. [Cambios, pruebas y pendientes](docs/ALPHA_RELEASE.md).
+
+Para jugar, abrí `JUGAR NEON VOID.cmd` en esta carpeta, o `index.html` con Edge/Chrome.
+La entrega Windows también se puede abrir desde su `NEON VOID.exe` dentro de `releases`.
+Conservá toda la carpeta de la entrega; el EXE necesita sus archivos acompañantes.
+No hace falta instalar Node ni conectarse a Internet para jugar.
+
+Pasada local del02-10: bosses recorren la arena con soporte gradual, láseres
+compatibles alternados con ataques, mayor densidad y spawn con X roja/puff.
+[Informe y continuidad](docs/ARENA_ADAPTATION_2026-10-02.md):157 suites sin fallos.
+Los cuatro pilotos ahora dejan una estela estelar únicamente durante el dash,
+sin cambiar su física. [Referencias, pruebas y entregas](docs/DASH_TRAIL_2026-10-02.md).
+
+El rediseño corporal posterior fue rechazado y retirado: los cuatro pilotos
+conservan su aspecto anterior. Web y el lanzador Windows vuelven a esa base;
+158 suites sin fallos. [Recuperación y nueva comparación visual separada](docs/PILOT_ENERGY_REDESIGN_2026-10-02.md).
+
+La comparación ahora estudia el **mismo arte con movimiento estabilizado**, sin
+cambiar el juego. Abrí `dev/pilot-concepts/index.html` con Edge/Chrome; ofrece
+controles por piloto y capturas A/B. [Informe y mediciones](docs/PILOT_STABILITY_LAB_2026-10-02.md).
+
+El mismo laboratorio ahora conserva tu configuración exacta como **base canónica
+protegida**. Elegí un piloto y «Forma base» para probar siluetas sin cambiar su
+animación; «Duplicar preset» habilita sliders únicamente en una copia.
+[Preset, pruebas y separación geométrica](docs/PILOT_CANONICAL_GEOMETRY_LAB_2026-10-02.md).
+
+En la tienda, «Preparar oleada» abre las ayudas opcionales. «Desplegar» sigue
+abajo a la derecha. «Guardar y salir» conserva el último checkpoint; si abrís
+`ABRIR_JUEGO_FRESH.bat`, ese modo de prueba no guarda y el botón dice «Salir sin guardar».
+
+El navegador y la app Windows tienen guardados separados. En **RÉCORDS / INFORME**
+podés exportar e importar permanentes, récords y checkpoint para trasladarlos.
+Exportá antes de importar si querés conservar el progreso del destino.
+
+Para desarrollar/compilar Windows: Node **22.12 o superior**, `npm ci`,
+`npm run runtime:install`, `npm test`, `npm run build:windows`.
+`npm run build:web` genera una carpeta web offline. Cada build usa un destino nuevo.
+
+La alpha no está publicada ni aprobada en Steam. No contiene pagos ni telemetría remota.
+
 Roguelite arcade de supervivencia con estética synthwave/neón. El juego comparte una única implementación de gameplay entre desktop y móvil; la presentación, el viewport y la entrada se adaptan por capacidad y orientación.
 
 ## Tecnología
@@ -7,7 +57,7 @@ Roguelite arcade de supervivencia con estética synthwave/neón. El juego compar
 - HTML5, CSS y JavaScript sin framework ni proceso de build.
 - Canvas2D para gameplay y render principal.
 - Web Audio API para música procedural y efectos.
-- Three.js 0.160.0 disponible por CDN para el overlay espectral legacy/opcional; está desactivado por defecto.
+- Three.js 0.160.0 sólo para el overlay experimental `?legacy3d=1`; no se solicita por defecto ni se incluye su arranque en las entregas offline.
 - Pruebas headless con Node.js.
 
 ## Ejecutar localmente
@@ -41,10 +91,16 @@ Abrir `http://localhost:8080/`. También puede abrirse `index.html` directamente
 
 Detalles: [Arquitectura](docs/ARCHITECTURE.md).
 
+Los cuatro escenarios de la expedición conservan sus cambios en oleadas 1, 6,
+11 y 16. Ahora son regiones cósmicas distintas, sin cuadrícula: nebulosa/luna,
+forja estelar, fractura espacial y singularidad. Hitos y polvo quedan anclados
+al mundo para hacer perceptible la cámara. Arte Canvas2D cacheado, sin nuevas
+dependencias ni cambios de combate. [Informe de escenarios](docs/COSMIC_SCENARIOS_2026-10-01.md).
+
 ## Comportamiento móvil
 
-- **Desktop:** referencia/vista/arena `900x520`; presentación legacy contain.
-- **Móvil landscape:** Dynamic World View y Dynamic Arena se activan automáticamente. La altura lógica permanece en `520` y el ancho lógico/arena se expande para llenar el viewport sin stretch, crop ni gutters laterales.
+- **Desktop:** referencia/vista `900x520`, arena `1350x780`; cámara sigue con 28 unidades de exterior visual, sin cambiar paredes físicas.
+- **Móvil landscape:** Dynamic World View y Dynamic Arena automáticos. Altura visible `520`, ancho según canvas físico; arena `1.5×` vista en ambos ejes, sin stretch. El campo ya no está limitado por la pantalla.
 - **Móvil portrait:** se conserva el overlay de orientación y el comportamiento legacy de métricas.
 - `?dynamicView=0` fuerza temporalmente contain `900x520` en móvil landscape para diagnóstico.
 - El HUD móvil usa datos DOM arriba, menú único arriba-derecha y selectores de arma/item abajo-centro; el panel Canvas redundante se conserva solo en desktop.
@@ -71,7 +127,11 @@ node tests/dynamic_arena.js
 npm test
 ```
 
-Baseline actual, verificado el 28 de septiembre de 2026: 128 suites; 0 fallos (`RESULT run_all: total=128 failed=0`). P3.1 añade Campo Minado táctico, `IDLE_GROOVE`/`MUSIC_GROOVE` y notas musicales decorativas; P3.1.1 hace que el widget de ritmo y Speaker Mines compartan groove math puro sin DOM por hazard. Cualquier fallo adicional es una regresión hasta investigarlo. Conteos y política: [Testing](docs/TESTING.md).
+Baseline local de perímetro, 1 de octubre de 2026: 154 suites; cero fallos. Incluye
+19 casos específicos de cámara/arena y 9 de perímetro, además del plan previo. Pruebas y cierre
+de empaquetado: [Testing](docs/TESTING.md). Arquitectura, riesgos y archivos:
+[Camera foundation](docs/CAMERA_FOUNDATION_2026-10-01.md).
+Pulido y sincronización web/Windows: [Perímetro](docs/PERIMETER_POLISH_2026-10-01.md).
 
 ## Despliegue
 

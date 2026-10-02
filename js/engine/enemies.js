@@ -52,6 +52,58 @@
   const SPECTER_GRUNT_RECOVERY = 0.70;
   const SPECTER_GRUNT_COOLDOWN = 1.40;
 
+  // ---- CORTE C1: roles pendientes del roster base ----
+  // Tanque: cañón pesado con snapshot; Comandante: rally de aliados;
+  // Bulwark: escolta física + bash; Swift: pasada lineal de alta velocidad.
+  // Todos conservan aviso, ejecución y recuperación explícitos.
+  const TANK_CANNON_MIN_RANGE = 150;
+  // Artillería, no perseguidor corto: el cañón debe entrar en juego antes de
+  // recorrer toda la arena mientras el autoataque lo elimina a distancia.
+  const TANK_CANNON_MAX_RANGE = 440;
+  const TANK_CANNON_WINDUP = 0.9;
+  const TANK_CANNON_RECOVERY = 1.05;
+  const TANK_CANNON_COOLDOWN = 2.4;
+  const TANK_CANNON_BULLET_SPEED = 250;
+
+  const COMMANDER_HOLD_MIN = 175;
+  const COMMANDER_HOLD_MAX = 235;
+  const COMMANDER_RALLY_RADIUS = 165;
+  const COMMANDER_RALLY_WINDUP = 0.68;
+  const COMMANDER_RALLY_DURATION = 2.4;
+  const COMMANDER_RALLY_SPEED_MULT = 1.18;
+  const COMMANDER_RALLY_RECOVERY = 0.62;
+  const COMMANDER_RALLY_COOLDOWN = 3.8;
+
+  const BULWARK_GUARD_OFFSET = 58;
+  const BULWARK_BASH_RANGE = 92;
+  const BULWARK_BASH_WINDUP = 0.48;
+  const BULWARK_BASH_RECOVERY = 0.9;
+  const BULWARK_BASH_COOLDOWN = 2.7;
+  const BULWARK_RETARGET_TIME = 0.45;
+
+  const SWIFT_STAGING_RADIUS = 175;
+  const SWIFT_WINDUP = 0.38;
+  const SWIFT_DASH_DURATION = 0.44;
+  const SWIFT_DASH_SPEED = 430;
+  const SWIFT_RECOVERY = 0.58;
+  const SWIFT_COOLDOWN = 1.65;
+
+  const DRONE_FORMATION_MIN = 112;
+  const DRONE_FORMATION_MAX = 158;
+  const DRONE_SIGNAL_TIME = 0.34;
+  const DRONE_PRESS_TIME = 0.72;
+  const DRONE_RECOVERY_TIME = 0.52;
+  const DRONE_PRESS_SPEED_MULT = 1.75;
+  const DRONE_PRESS_COOLDOWN = 2.35;
+
+  NV.ENEMY_ROLE_REWORK = Object.freeze({
+    tank: Object.freeze({ minRange: TANK_CANNON_MIN_RANGE, maxRange: TANK_CANNON_MAX_RANGE, windup: TANK_CANNON_WINDUP, recovery: TANK_CANNON_RECOVERY, cooldown: TANK_CANNON_COOLDOWN, bulletSpeed: TANK_CANNON_BULLET_SPEED }),
+    commander: Object.freeze({ holdMin: COMMANDER_HOLD_MIN, holdMax: COMMANDER_HOLD_MAX, radius: COMMANDER_RALLY_RADIUS, windup: COMMANDER_RALLY_WINDUP, duration: COMMANDER_RALLY_DURATION, speedMult: COMMANDER_RALLY_SPEED_MULT, recovery: COMMANDER_RALLY_RECOVERY, cooldown: COMMANDER_RALLY_COOLDOWN }),
+    bulwark: Object.freeze({ guardOffset: BULWARK_GUARD_OFFSET, bashRange: BULWARK_BASH_RANGE, windup: BULWARK_BASH_WINDUP, recovery: BULWARK_BASH_RECOVERY, cooldown: BULWARK_BASH_COOLDOWN, retarget: BULWARK_RETARGET_TIME }),
+    swift: Object.freeze({ stagingRadius: SWIFT_STAGING_RADIUS, windup: SWIFT_WINDUP, duration: SWIFT_DASH_DURATION, dashSpeed: SWIFT_DASH_SPEED, recovery: SWIFT_RECOVERY, cooldown: SWIFT_COOLDOWN }),
+    drone: Object.freeze({ holdMin: DRONE_FORMATION_MIN, holdMax: DRONE_FORMATION_MAX, signal: DRONE_SIGNAL_TIME, press: DRONE_PRESS_TIME, recovery: DRONE_RECOVERY_TIME, speedMult: DRONE_PRESS_SPEED_MULT, cooldown: DRONE_PRESS_COOLDOWN }),
+  });
+
   // ---- ELITE PREDATOR: cazador/ejecutor con evasiones limitadas ----
   const PREDATOR_STALK_RADIUS = 190;
   const PREDATOR_STALK_FALLBACK = 1.20;
@@ -262,8 +314,77 @@
     return !!e && e.isElite === true && e.visualId === 'elite_phantom';
   }
 
+  function isNormalTank(e) {
+    return !!e && e.isElite !== true && e.enemyTypeId === 'tank';
+  }
+
+  function isNormalDrone(e) {
+    return !!e && e.isElite !== true && e.enemyTypeId === 'drone';
+  }
+
+  function initDroneFormation(e) {
+    if (!isNormalDrone(e) || e.droneState) return;
+    e.droneState = 'formation';
+    e.droneTimer = 0;
+    // El ángulo ya forma parte del spawn productivo: lo reutilizamos para
+    // escalonar el grupo sin introducir otra tirada aleatoria.
+    e.droneCooldown = 0.75 + Math.abs(Math.sin(e.angle || 0)) * 1.15;
+    e.droneOrbitSide = Math.sin(e.angle || 0) >= 0 ? 1 : -1;
+  }
+
+  function isEliteCommander(e) {
+    return !!e && e.isElite === true && e.visualId === 'elite_base';
+  }
+
+  function isEliteBulwark(e) {
+    return !!e && e.isElite === true && e.visualId === 'elite_bulwark';
+  }
+
+  function isEliteSwift(e) {
+    return !!e && e.isElite === true && e.visualId === 'elite_swift';
+  }
+
+  function initTankCannon(e) {
+    if (!isNormalTank(e) || e.tankCannonState) return;
+    e.tankCannonState = 'approach';
+    e.tankCannonTimer = 0;
+    e.tankCannonCooldown = 0.65;
+    e.tankCannonTargetX = e.x;
+    e.tankCannonTargetY = e.y;
+    e.tankCannonFired = false;
+  }
+
+  function initEliteCommander(e) {
+    if (!isEliteCommander(e) || e.commanderState) return;
+    e.commanderState = 'position';
+    e.commanderTimer = 0;
+    e.commanderCooldown = 0.9;
+    e.commanderOrbitSide = Math.random() < 0.5 ? -1 : 1;
+  }
+
+  function initEliteBulwark(e) {
+    if (!isEliteBulwark(e) || e.bulwarkState) return;
+    e.bulwarkState = 'guard';
+    e.bulwarkTimer = 0;
+    e.bulwarkCooldown = 0.8;
+    e.bulwarkRetargetTimer = 0;
+    e.bulwarkGuardTarget = null;
+    e.bulwarkBashSpent = false;
+  }
+
+  function initEliteSwift(e) {
+    if (!isEliteSwift(e) || e.swiftState) return;
+    e.swiftState = 'stage';
+    e.swiftTimer = 0;
+    e.swiftCooldown = 0.55;
+    e.swiftOrbitSide = Math.random() < 0.5 ? -1 : 1;
+    e.swiftDirX = 0;
+    e.swiftDirY = 0;
+    e.swiftHitSpent = false;
+  }
+
   NV.isEnemyCombatActive = function (enemy) {
-    return !!enemy && !enemy.dead && !enemy.killResolved && !enemy.waveCleanup && enemy.phantomCombatInactive !== true;
+    return !!enemy && !enemy.dead && !enemy.killResolved && !enemy.waveCleanup && !enemy.arrival && enemy.phantomCombatInactive !== true;
   };
 
   NV.isEnemyTargetable = function (enemy) {
@@ -665,15 +786,76 @@
     return items[items.length - 1];
   };
 
-  function resolveSpawnPosition(st, options) {
-    const explicit = options && options.position;
+  NV.enemyArenaPosition = function (entity, width, height) {
+    const W = Number.isFinite(width) && width > 0 ? width : 900;
+    const H = Number.isFinite(height) && height > 0 ? height : 520;
+    const radius = Number.isFinite(entity.radius) ? entity.radius : 20;
+    const margin = Math.min(Math.min(W, H) * .5 - 1, Math.max(24, radius * 2.1 + 10));
+    return { x: Math.max(margin, Math.min(W - margin, Number.isFinite(entity.x) ? entity.x : W * .5)),
+      y: Math.max(margin, Math.min(H - margin, Number.isFinite(entity.y) ? entity.y : H * .5)), margin };
+  };
+  NV.keepEnemyInArena = function (entity, width, height) {
+    const position = NV.enemyArenaPosition(entity, width, height);
+    if (entity.x !== position.x) entity.knockVelX = 0;
+    if (entity.y !== position.y) entity.knockVelY = 0;
+    entity.x = position.x; entity.y = position.y;
+    return entity;
+  };
+  // Sólo las reposiciones tácticas agrupan sus roles. La geometría se calcula
+  // antes de crear entidades: no teletransporta enemigos activos ni saltea avisos.
+  NV.waveSquadPositions = function (plan, st) {
+    const W = st.W || 900, H = st.H || 520;
+    const player = st.player || { x: W/2, y: H/2 };
+    const offsets = [[-30,-30],[30,-30],[0,30],[-30,30],[30,30]];
+    let best = [], bestDistance = -Infinity;
+    const largeArena = W * H > 900 * 520 * 1.1;
+    // En arena grande, encuentros a distancia de lectura en vez del rincón
+    // más lejano. Los roles siguen juntos; la cámara no decide sus bounds.
+    const anchors = largeArena ? Array.from({ length: 8 }, (_, i) => {
+      const angle = i * Math.PI / 4;
+      return [(player.x + Math.cos(angle) * 320) / W, (player.y + Math.sin(angle) * 240) / H];
+    }) : [[.25,.25],[.75,.25],[.75,.75],[.25,.75]];
+    for (let n=0;n<anchors.length;n++) {
+      const anchor = anchors[(n + (st.cycle || 0)) % anchors.length];
+      const positions = plan.map((id,i) => {
+        const type = st.ENEMY_TYPES.find(t => t.id === id);
+        const offset = offsets[i % offsets.length];
+        return NV.enemyArenaPosition({ radius:type ? normalHitboxRadius(type) : 20,
+          x:W*anchor[0]+offset[0], y:H*anchor[1]+offset[1] },W,H);
+      });
+      const distance = Math.min(...positions.map(p=>Math.hypot(p.x-player.x,p.y-player.y)));
+      const crowd = largeArena ? (st.enemies || []).filter(e => !e.dead && Math.hypot(e.x-positions[0].x,e.y-positions[0].y)<140).length : 0;
+      const score = largeArena ? (distance > 140 ? 1000 - Math.abs(distance - 290) - crowd * 90 - n * .01 : distance - 1000) : distance;
+      if (score > bestDistance + .001) { best = positions; bestDistance = score; }
+    }
+    return best;
+  };
+  function resolveSpawnPosition(st, options, radius) {
+    const explicit = (options && options.position) || st.spawnPosition;
     if (explicit && Number.isFinite(explicit.x) && Number.isFinite(explicit.y)) {
+      // El roster puede filtrar un tipo experimental y resolver otro de radio
+      // mayor. Las posiciones productivas siempre se ajustan al tipo REAL.
+      if (!(options && options.position)) return NV.enemyArenaPosition({radius,x:explicit.x,y:explicit.y},st.W,st.H);
       return { x: explicit.x, y: explicit.y };
     }
-    return {
-      x: Math.random() < 0.5 ? 0 : st.W,
-      y: 80 + Math.random() * (st.H - 200),
-    };
+    const bounds = NV.enemyArenaPosition({ radius }, st.W, st.H);
+    const W = st.W || 900, H = st.H || 520, margin = bounds.margin;
+    const rx = Math.random(), ry = Math.random();
+    let x = margin + rx * (W - margin * 2);
+    let y = margin + ry * (H - margin * 2);
+    if (st.player && W * H > 900 * 520 * 1.1 && rx < .8) {
+      // 80% encuentros próximos (190..330), 20% población del resto del mapa.
+      const angle = rx / .8 * Math.PI * 2, distance = 190 + ry * 140;
+      const point = NV.enemyArenaPosition({ radius, x: st.player.x + Math.cos(angle) * distance,
+        y: st.player.y + Math.sin(angle) * distance }, W, H);
+      x = point.x; y = point.y;
+    }
+    // No aparecer encima del piloto. Fallback determinista, sin reintentos infinitos.
+    if (st.player && Math.hypot(x - st.player.x, y - st.player.y) < margin + 65) {
+      x = st.player.x < W * .5 ? W - margin : margin;
+      y = st.player.y < H * .5 ? H - margin : margin;
+    }
+    return { x, y };
   }
 
   function normalHitboxRadius(type) {
@@ -702,12 +884,22 @@
       : normalHitboxRadius(descriptor.definition);
   };
 
-  function constructNormalEnemy(st, type, position) {
+  // ==== CAPA A (ACT-B1a): resolución de valores de un enemigo normal ====
+  // Dueña EXCLUSIVA de las fórmulas de la construcción normal: curva de HP por
+  // oleada (NV.enemyHpScale), multiplicadores de dificultad (getDiffMult),
+  // multiplicadores de rol (roleHpMult/roleDmgMult), dmgScale, escalado de
+  // velocidad, escalado de score/xp, hitbox del modelo visual
+  // (normalHitboxRadius -> labModelHitboxFactor) y selección de movementClass.
+  // También es la única dueña de los dos Math.random de la construcción normal,
+  // en el orden original: `angle` primero y `erraticTargetAngle` después.
+  // Devuelve valores YA resueltos; no crea la entidad ni tiene efectos externos
+  // salvo el incremento del serial de zonas del core, que ya ocurría aquí.
+  function resolveNormalEnemyState(st, type, position) {
     const hostileClass = type.hostileClass || 'light';
     const hpScale = NV.enemyHpScale(st.wave);
     const dmgScale = Math.min(60, Math.round(st.wave * 1.5));
     const hp = Math.round(type.hp * hpScale * 0.85 * getDiffMult('hp') * (NV.roleHpMult ? NV.roleHpMult(type.id) : 1));
-    const entity = {
+    return {
       x: position.x, y: position.y,
       hp, maxHp: hp,
       speed: type.speed + Math.min(40, st.wave * 1.5),
@@ -726,8 +918,46 @@
       shootTimer: 0, stunChance: type.stunChance || 0, stunDuration: type.stunDuration || 0,
       coreZoneOwnerId: type.id === 'specter_core' ? ++coreZoneOwnerSerial : 0,
     };
+  }
+
+  // ==== CAPA B (ACT-B1a): ensamblador puro y compartido de entidad ====
+  // Contrato: ENTRADA = valores YA resueltos. Este ensamblador NO conoce oleada,
+  // dificultad, escalados ni modelos: no llama a getDiffMult, enemyHpScale,
+  // roleHpMult, roleDmgMult, normalHitboxRadius ni labModelHitboxFactor; no toca
+  // Math.random; no hace push a st.enemies; no reporta spawn candidates; no
+  // loguea; no consulta presupuestos; no muta la entrada. Solo copia los valores
+  // recibidos a un objeto de entidad NUEVO, en el orden de claves histórico, y lo
+  // devuelve. Los efectos secundarios siguen siendo propiedad del constructor.
+  // El radio se copia tal cual: quien lo escala es la capa de resolución. Así un
+  // consumidor futuro (esbirros de jefe) puede pedir un radio exacto sin heredar
+  // el factor del modelo visual.
+  NV.buildEnemyEntityFromResolved = function (resolved) {
+    return {
+      x: resolved.x, y: resolved.y,
+      hp: resolved.hp, maxHp: resolved.maxHp,
+      speed: resolved.speed,
+      radius: resolved.radius, color: resolved.color, shape: resolved.shape,
+      enemyTypeId: resolved.enemyTypeId,
+      hostileClass: resolved.hostileClass,
+      movementClass: resolved.movementClass,
+      score: resolved.score, xp: resolved.xp,
+      dead: resolved.dead, behavior: resolved.behavior,
+      angle: resolved.angle, erraticTimer: resolved.erraticTimer,
+      knockbackRes: resolved.knockbackRes, knockVelX: resolved.knockVelX, knockVelY: resolved.knockVelY,
+      damage: resolved.damage,
+      shield: resolved.shield, shieldCd: resolved.shieldCd, resist: resolved.resist,
+      hitFlash: resolved.hitFlash, hitSlowUntil: resolved.hitSlowUntil, hitSlowImmunity: resolved.hitSlowImmunity,
+      erraticTargetAngle: resolved.erraticTargetAngle,
+      shootTimer: resolved.shootTimer, stunChance: resolved.stunChance, stunDuration: resolved.stunDuration,
+      coreZoneOwnerId: resolved.coreZoneOwnerId,
+    };
+  };
+
+  function constructNormalEnemy(st, type, position) {
+    const entity = NV.buildEnemyEntityFromResolved(resolveNormalEnemyState(st, type, position));
     reportSpawnCandidate(st, NV.describeEnemySpawnCandidate(type, position.x, position.y, false));
     st.enemies.push(entity);
+    if (NV.beginEnemyArrival) NV.beginEnemyArrival(entity, st);
     if (type.id && type.id.indexOf('specter_') === 0) console.log('[SPAWN] wave=' + st.wave + ' type=' + type.id);
     return entity;
   }
@@ -755,6 +985,7 @@
     if (type.visualId) entity.visualId = type.visualId;
     reportSpawnCandidate(st, NV.describeEnemySpawnCandidate(type, position.x, position.y, true));
     st.enemies.push(entity);
+    if (NV.beginEnemyArrival) NV.beginEnemyArrival(entity, st);
     if (type.spectralElite && type.id && type.id.indexOf('specter_') === 0) console.log('[SPAWN] wave=' + st.wave + ' type=' + type.id);
     return entity;
   }
@@ -765,7 +996,7 @@
     if (st.boss && !st.boss.dead) return { ok: false, code: 'BOSS_ACTIVE', enemyId };
     const heavyCount = descriptor.hostileClass === 'heavy' ? 1 : 0;
     if (!canSpawn(st, 1, heavyCount)) return { ok: false, code: 'HOSTILE_BUDGET', enemyId };
-    const position = resolveSpawnPosition(st, options);
+    const position = resolveSpawnPosition(st, options, NV.productionEnemySpawnRadius(descriptor));
     const entity = descriptor.spawnKind === 'elite'
       ? constructEliteEnemy(st, descriptor.definition, position)
       : constructNormalEnemy(st, descriptor.definition, position);
@@ -775,7 +1006,7 @@
   // ---- Spawn normal ----
   NV.spawnEnemy = function (st) {
     if (!canSpawn(st, 1, 0)) return false;
-    if (st.boss && !st.boss.dead) return;
+    if (st.boss && !st.boss.dead && !st.allowBossSupport) return;
 
     const spectersEnabled = NV.SPECTER_ENABLED !== false;
     const enabledTypes = spectersEnabled
@@ -815,7 +1046,7 @@
     const hostileClass = type.hostileClass || 'light';
     if (!canSpawn(st, 1, hostileClass === 'heavy' ? 1 : 0)) return false;
 
-    const position = resolveSpawnPosition(st);
+    const position = resolveSpawnPosition(st, null, normalHitboxRadius(type));
     constructNormalEnemy(st, type, position);
     return true;
   };
@@ -829,7 +1060,7 @@
     const baseElites = st.ELITE_TYPES.filter((t) => !t.spectralElite);
     const spectralElites = st.ELITE_TYPES.filter((t) => t.spectralElite && (t.minWave || 1) <= st.wave);
     // Evento LLUVIA DE ÉLITES: 1 élite extra (3 en vez de 2) en cada spawn.
-    const count = st.waveEvent === 'elites' ? 3 : 2;
+    const count = Math.min(st.maxCount == null ? Infinity : Math.max(0, st.maxCount), st.waveEvent === 'elites' ? 3 : 2);
     const startIndex = baseElites.length ? ((st.wave / 2 - 1) * 2) % baseElites.length : 0;
     for (let i = 0; i < count; i++) {
       if (!canSpawn(st, 1, 1)) break;
@@ -846,7 +1077,7 @@
         elite = NV.weightedRandom(spectralElites);
         if (!elite) continue;
       }
-      const position = resolveSpawnPosition(st);
+      const position = resolveSpawnPosition(st, null, eliteHitboxRadius(elite));
       constructEliteEnemy(st, elite, position);
     }
   };
@@ -877,15 +1108,21 @@
       (st.sfx.playerLevelUp || st.sfx.levelup)();
       st.triggerFlash('#ff0');
     }
-    // El arma equipada gana XP por derribos y sube de nivel.
-    const wid = st.currentWeapon.id;
-    const curLevel = st.weaponLevels[wid] || 1;
-    st.weaponKills[wid] = (st.weaponKills[wid] || 0) + st.weaponKillProgress();
-    // Tope duro de nivel de arma (WEAPON_MAX_LEVEL): Nv100 = pico de poder.
-    // Sin texto flotante de subida: el nivel se lee en el HUD (badge del slot).
-    if (curLevel < (NV.BALANCE.WEAPON_MAX_LEVEL || 100) && st.weaponKills[wid] >= st.WEAPON_KILLS_PER_LEVEL * curLevel) {
-      st.weaponLevels[wid] = curLevel + 1;
-      (st.sfx.fuse || st.sfx.levelup)(curLevel + 1);
+    // Solo la fuente de arma que aplicó el daño letal gana progreso. Una muerte sin
+    // fuente válida (especial, drone, reflejo, consumible, ambiente, autodetonación)
+    // no cae silenciosamente al arma equipada.
+    const source = st.damageSource;
+    const wid = source && source.kind === 'weapon' && typeof source.weaponId === 'string' &&
+      NV.weaponById && NV.weaponById(source.weaponId) ? source.weaponId : null;
+    if (wid) {
+      const curLevel = st.weaponLevels[wid] || 1;
+      st.weaponKills[wid] = (st.weaponKills[wid] || 0) + st.weaponKillProgress();
+      // Tope duro de nivel de arma (WEAPON_MAX_LEVEL): Nv100 = pico de poder.
+      // Sin texto flotante de subida: el nivel se lee en el HUD (badge del slot).
+      if (curLevel < (NV.BALANCE.WEAPON_MAX_LEVEL || 100) && st.weaponKills[wid] >= st.WEAPON_KILLS_PER_LEVEL * curLevel) {
+        st.weaponLevels[wid] = curLevel + 1;
+        (st.sfx.fuse || st.sfx.levelup)(curLevel + 1);
+      }
     }
     st.spawnExplosion(e.x, e.y, 8, e.color, 0.3);
     if (e.isElite) {
@@ -893,6 +1130,14 @@
       st.pickups.push({ x: e.x, y: e.y, type: 'shard', value: 3, dead: false });
     } else if (Math.random() < 0.15 + st.player.luck * 0.01 + (st.player.permGreed || 0) * NV.BALANCE.GREED_PERM_DROP) {
       st.pickups.push({ x: e.x, y: e.y, type: 'shard', dead: false });
+    }
+    // C2 — una fusión es una amenaza voluntariamente más exigente, por lo que su
+    // derribo siempre devuelve valor. Se suma al drop normal/élite, con tope bajo.
+    const fusionReward = NV.fusionRewardValue ? NV.fusionRewardValue(e.fusionLevel) : 0;
+    if (fusionReward > 0) {
+      st.pickups.push({ x: e.x - 6, y: e.y + 6, type: 'shard', value: fusionReward, dead: false });
+      score += Math.round(e.score * Math.min(0.5, fusionReward * 0.1));
+      st.addFloatText(e.x, e.y - 22, '+' + fusionReward + ' SHD · ' + NV.fusionMilestoneLabel(e.fusionLevel), '#ffe66d');
     }
     // Consumible RECOMPENSA: +1 shard y score doble por derribo durante su duración.
     if (st.player.bounty > 0) {
@@ -942,7 +1187,9 @@
       if (e.hp <= 0 && onKill) onKill(e);
     }
     if (boss && !boss.dead) {
+      const previousHp = boss.hp;
       boss.hp = Math.max(0, boss.hp - Math.round(boss.maxHp * NV.BALANCE.VOID_BOMB_BOSS_DAMAGE_MULT));
+      if (NV.playtest && NV.playtest.enabled) NV.playtest.bossHit('consumable:voidBomb', previousHp - boss.hp, 'consumable');
     }
   };
   NV.freezeEnemies = function (enemies, duration) {
@@ -1053,6 +1300,14 @@
   // fusionLevel: 0 = normal, 1+ = fusionado (más HP, daño, tamaño). Indicador visual en render.
   const FUSION_MIN = 3;       // enemigos mínimos para fusionar
   const FUSION_RADIUS = 40;   // distancia para considerarse "juntos"
+  NV.FUSION_MILESTONES = Object.freeze(['NORMAL', 'ENLAZADO', 'INESTABLE', 'SINGULARIDAD', 'NÚCLEO EXTREMO']);
+  NV.fusionMilestoneLabel = function (level) {
+    const value = Math.max(0, Math.floor(level || 0));
+    return NV.FUSION_MILESTONES[Math.min(value, NV.FUSION_MILESTONES.length - 1)];
+  };
+  NV.fusionRewardValue = function (level) {
+    return Math.max(0, Math.min(4, Math.floor(level || 0)));
+  };
   // ---- SPITTER (F07): banda de rango y tiempos ----
   // too far -> approach · en banda -> strafe/reposición · too close -> retreat.
   // WINDUP real (cero spawn, aim snapshot legible) -> ATTACK (1 disparo de la
@@ -1073,16 +1328,19 @@
     // visualId/shape/behavior para NO fusionar cualquier enemigo undefined con otro.
     return e.enemyTypeId || e.visualId || ((e.shape || 'enemy') + '|' + (e.behavior || 'chase') + '|' + (e.isElite ? 'elite' : 'normal'));
   }
+  function canFuseEntity(e) {
+    return e.noFuse !== true;
+  }
   function fuseEnemies(enemies, st) {
     const grid = buildSpatialGrid(enemies);
     const fused = new Set();
     for (const e of enemies) {
-      if (!NV.isEnemyCombatActive(e) || fused.has(e)) continue;
+      if (!NV.isEnemyCombatActive(e) || fused.has(e) || !canFuseEntity(e)) continue;
       const key = enemyFusionKey(e);
       // Buscar mismos de su especie cercanos (excluye él mismo).
       const sameType = [];
       forEachGridNeighbor(e, grid, (other) => {
-        if (!NV.isEnemyCombatActive(other) || fused.has(other) || other === e) return;
+        if (!NV.isEnemyCombatActive(other) || fused.has(other) || other === e || !canFuseEntity(other)) return;
         if (enemyFusionKey(other) !== key) return;
         if (Math.hypot(other.x - e.x, other.y - e.y) < FUSION_RADIUS) sameType.push(other);
       });
@@ -1102,7 +1360,9 @@
       e.x = cx / n; e.y = cy / n; // centróide del grupo
       e.hp = totalHp;
       e.maxHp = totalMaxHp;
-      e.damage = Math.round(totalDmg * (1 + 0.15 * (n - 1))); // +15% por cada fusión extra
+      // La amenaza crece con identidad y pulso anunciado; sumar el daño de todos
+      // los cuerpos convertía una fusión tardía en un golpe mortal inevitable.
+      e.damage = Math.min(45, Math.round(totalDmg / n * (1 + .28 * Math.min(3, maxLevel + 1))));
       e.radius = Math.min(60, e.radius * (1 + 0.18 * (n - 1))); // crece con tope
       e.fusionLevel = maxLevel + 1;
       // La fusión conserva su renderer, pero su clasificación mecánica puede escalar.
@@ -1114,7 +1374,7 @@
       }
       e.color = fusionColor(e.fusionLevel);
       e.fusionFlash = 0.9;
-      if (st && st.addFloatText) st.addFloatText(e.x, e.y - e.radius - 16, 'FUSION ' + e.fusionLevel, e.color);
+      if (st && st.addFloatText) st.addFloatText(e.x, e.y - e.radius - 16, NV.fusionMilestoneLabel(e.fusionLevel), e.color);
       if (st && st.spawnExplosion) st.spawnExplosion(e.x, e.y, Math.max(18, e.radius * 0.8), e.color, 0.55);
       fused.add(e);
     }
@@ -1225,6 +1485,8 @@
     } else if (hookSystem.phase === 'projectile') {
       const p = hookSystem.projectile;
       if (!p) { NV.resetHookState(hookSystem); return; }
+      const cameraReady = !NV.cameraThreatReady || NV.cameraThreatReady(p, dt,
+        { x:p.x-5, y:p.y-5, w:10, h:10 }, .30);
       const mx = p.vx * dt, my = p.vy * dt;
       p.x += mx; p.y += my;
       p.dist += Math.hypot(mx, my);
@@ -1236,7 +1498,7 @@
       }
       // hit: distancia al jugador < radio
       const d = Math.hypot(p.x - player.x, p.y - player.y);
-      if (d < (player.radius || 20)) {
+      if (cameraReady && d < (player.radius || 20)) {
         // Hit: crear tether (snapshot posicion del source)
         hookSystem.tether = { srcX: src.x, srcY: src.y };
         hookSystem.tetherTimer = B.HOOK_PULL_DURATION;
@@ -1349,6 +1611,8 @@
     for (const e of enemies) {
       if (e.dead) continue;
 
+      if (st.keepInsideArena) NV.keepEnemyInArena(e, st.W, st.H);
+      if (NV.updateEnemyArrival && NV.updateEnemyArrival(e, dt, st)) continue;
       const kb = e.knockVelX || 0;
       const kby = e.knockVelY || 0;
       const kbx = Math.abs(kb) > 0.1 ? kb : 0;
@@ -1359,6 +1623,7 @@
             if (e.contactCd > 0) e.contactCd = Math.max(0, e.contactCd - dt);
             if (e.atkFlash > 0) e.atkFlash = Math.max(0, e.atkFlash - dt);
             if (e.fusionFlash > 0) e.fusionFlash = Math.max(0, e.fusionFlash - dt);
+            if (e.fusionInterruptFlash > 0) e.fusionInterruptFlash = Math.max(0, e.fusionInterruptFlash - dt);
       if (e.hitFlash > 0) e.hitFlash = Math.max(0, e.hitFlash - dt);
       if (e.predatorExecutionImpactTimer > 0) e.predatorExecutionImpactTimer = Math.max(0, e.predatorExecutionImpactTimer - dt);
       if (e.goliathImpactVfxTimer > 0) e.goliathImpactVfxTimer = Math.max(0, e.goliathImpactVfxTimer - dt);
@@ -1368,16 +1633,19 @@
       if (e.slowUntil > 0) e.slowUntil -= dt;
       if (e.hitSlowUntil > 0) e.hitSlowUntil = Math.max(0, e.hitSlowUntil - dt);
       if (e.hitSlowImmunity > 0) e.hitSlowImmunity = Math.max(0, e.hitSlowImmunity - dt);
+      if (e.rallyTimer > 0) e.rallyTimer = Math.max(0, e.rallyTimer - dt);
       // Campo Minado acelera movimiento efectivo sin mutar permanentemente e.speed.
       const eventSpeed = NV.minefieldEnemySpeed ? NV.minefieldEnemySpeed(e, st.waveEvent) : e.speed;
       const hitSlowActive = e.hitSlowUntil > 0;
       const hitSlowMult = hitSlowActive ? NV.hitSlowFor(e.isElite ? "ELITE" : "NORMAL").multiplier : 1;
-      const spd = eventSpeed * (e.slowUntil > 0 ? 0.5 : 1) * hitSlowMult;
+      const rallyMult = e.rallyTimer > 0 ? COMMANDER_RALLY_SPEED_MULT : 1;
+      const spd = eventSpeed * (e.slowUntil > 0 ? 0.5 : 1) * hitSlowMult * rallyMult;
       let specterChargeContactActive = false;
       let swarmContactActive = e.enemyTypeId !== 'swarmlet';
       let swarmCommitContactActive = false;
       let wispContactActive = e.enemyTypeId !== 'wisp';
       let phantomCommitContactActive = false;
+      let droneContactActive = e.enemyTypeId !== 'drone';
       if (stunned && e.enemyTypeId === 'specter_guard' && e.guardTarget) claimGuardProtection(e, e.guardTarget);
       if (isElitePhantom(e)) {
           initElitePhantom(e);
@@ -1948,6 +2216,257 @@
             e.x -= goliathDx / goliathInvDist * spd * GOLIATH_RETREAT_SPEED_MULT * correction * dt;
             e.y -= goliathDy / goliathInvDist * spd * GOLIATH_RETREAT_SPEED_MULT * correction * dt;
           }
+        } else if (isNormalDrone(e)) {
+          // C2 — DRON: presión básica en formación. Mantiene un anillo móvil,
+          // avisa antes de cerrarlo y sólo hace daño durante ese avance. En grupo
+          // corta rutas sin copiar la velocidad ni el snapshot de Centella/Tanque.
+          initDroneFormation(e);
+          e.droneCooldown = Math.max(0, (e.droneCooldown || 0) - dt);
+          const dx = player.x - e.x, dy = player.y - e.y;
+          const dist = Math.max(1, Math.hypot(dx, dy));
+          if (e.droneState === 'signal') {
+            e.droneTimer = Math.max(0, e.droneTimer - dt);
+            if (e.droneTimer <= 1e-9) {
+              e.droneState = 'press';
+              e.droneTimer = DRONE_PRESS_TIME;
+            }
+          } else if (e.droneState === 'press') {
+            droneContactActive = true;
+            e.droneTimer = Math.max(0, e.droneTimer - dt);
+            e.x += dx / dist * spd * DRONE_PRESS_SPEED_MULT * dt + kbx * dt;
+            e.y += dy / dist * spd * DRONE_PRESS_SPEED_MULT * dt + kby2 * dt;
+            if (e.droneTimer <= 1e-9) {
+              e.droneState = 'recovery';
+              e.droneTimer = DRONE_RECOVERY_TIME;
+            }
+          } else if (e.droneState === 'recovery') {
+            e.droneTimer = Math.max(0, e.droneTimer - dt);
+            // Sale lateralmente del centro para rearmar el anillo.
+            const side = e.droneOrbitSide || 1;
+            e.x += -dy / dist * side * spd * 0.55 * dt + kbx * dt;
+            e.y += dx / dist * side * spd * 0.55 * dt + kby2 * dt;
+            if (e.droneTimer <= 1e-9) {
+              e.droneState = 'formation';
+              e.droneCooldown = DRONE_PRESS_COOLDOWN;
+              e.droneOrbitSide = -side;
+            }
+          } else if (e.droneCooldown <= 1e-9 && dist >= DRONE_FORMATION_MIN - 18 && dist <= DRONE_FORMATION_MAX + 34) {
+            e.droneState = 'signal';
+            e.droneTimer = DRONE_SIGNAL_TIME;
+          } else {
+            e.droneState = 'formation';
+            const radial = dist > DRONE_FORMATION_MAX ? 1 : (dist < DRONE_FORMATION_MIN ? -1 : 0);
+            const side = e.droneOrbitSide || 1;
+            e.x += (dx / dist * radial - dy / dist * side * 0.34) * spd * dt + kbx * dt;
+            e.y += (dy / dist * radial + dx / dist * side * 0.34) * spd * dt + kby2 * dt;
+          }
+        } else if (isNormalTank(e)) {
+          // Cañón pesado: el Tanque se planta, fija una mira roja y dispara una
+          // única bala grande hacia esa posición. Es lento y resistente; nunca
+          // hace dash. El snapshot permite esquivarlo moviéndose tras el aviso.
+          initTankCannon(e);
+          e.tankCannonCooldown = Math.max(0, (e.tankCannonCooldown || 0) - dt);
+          const dx = player.x - e.x, dy = player.y - e.y;
+          const dist = Math.max(1, Math.hypot(dx, dy));
+          if (e.tankCannonState === 'windup') {
+            e.tankCannonTimer = Math.max(0, e.tankCannonTimer - dt);
+            if (e.tankCannonTimer <= 1e-9 && !e.tankCannonFired) {
+              const aimX = (Number.isFinite(e.tankCannonTargetX) ? e.tankCannonTargetX : player.x) - e.x;
+              const aimY = (Number.isFinite(e.tankCannonTargetY) ? e.tankCannonTargetY : player.y) - e.y;
+              const aimDist = Math.max(1, Math.hypot(aimX, aimY));
+              if (bullets.length < MAX_BULLETS && st.enemyBulletCount() < MAX_ENEMY_BULLETS) {
+                bullets.push({
+                  x: e.x, y: e.y,
+                  vx: aimX / aimDist * TANK_CANNON_BULLET_SPEED,
+                  vy: aimY / aimDist * TANK_CANNON_BULLET_SPEED,
+                  damage: Math.round(e.damage * 1.25), radius: 9,
+                  color: e.color, isEnemy: true, dead: false,
+                  stunChance: 0, stunDuration: 0,
+                  sourceEnemy: e, sourceType: 'tank', projectileStyle: 'tankShell',
+                });
+              }
+              e.tankCannonFired = true;
+              e.atkFlash = 0.42;
+              shake = Math.max(shake, 0.08);
+              e.tankCannonState = 'recovery';
+              e.tankCannonTimer = TANK_CANNON_RECOVERY;
+            }
+          } else if (e.tankCannonState === 'recovery') {
+            e.tankCannonTimer = Math.max(0, e.tankCannonTimer - dt);
+            e.x += kbx * dt * 0.15;
+            e.y += kby2 * dt * 0.15;
+            if (e.tankCannonTimer <= 1e-9) {
+              e.tankCannonState = 'approach';
+              e.tankCannonCooldown = TANK_CANNON_COOLDOWN;
+            }
+          } else if (e.tankCannonCooldown <= 1e-9 && dist >= TANK_CANNON_MIN_RANGE && dist <= TANK_CANNON_MAX_RANGE) {
+            e.tankCannonState = 'windup';
+            e.tankCannonTimer = TANK_CANNON_WINDUP;
+            e.tankCannonTargetX = player.x;
+            e.tankCannonTargetY = player.y;
+            e.tankCannonFired = false;
+          } else {
+            e.tankCannonState = 'approach';
+            const radial = dist > TANK_CANNON_MAX_RANGE ? 1 : (dist < TANK_CANNON_MIN_RANGE ? -0.32 : 0);
+            e.x += dx / dist * spd * radial * dt + kbx * dt;
+            e.y += dy / dist * spd * radial * dt + kby2 * dt;
+          }
+        } else if (isEliteCommander(e)) {
+          initEliteCommander(e);
+          e.commanderCooldown = Math.max(0, (e.commanderCooldown || 0) - dt);
+          if (e.commanderPulseTimer > 0) e.commanderPulseTimer = Math.max(0, e.commanderPulseTimer - dt);
+          const dx = player.x - e.x, dy = player.y - e.y;
+          const dist = Math.max(1, Math.hypot(dx, dy));
+          if (e.commanderState === 'rally_windup') {
+            e.commanderTimer = Math.max(0, e.commanderTimer - dt);
+            if (e.commanderTimer <= 1e-9) {
+              for (let ri = 0; ri < enemies.length; ri++) {
+                const ally = enemies[ri];
+                if (ally === e || ally.dead || ally.waveCleanup) continue;
+                if (Math.hypot(ally.x - e.x, ally.y - e.y) <= COMMANDER_RALLY_RADIUS) {
+                  ally.rallyTimer = Math.max(ally.rallyTimer || 0, COMMANDER_RALLY_DURATION);
+                }
+              }
+              e.rallyTimer = COMMANDER_RALLY_DURATION;
+              e.commanderPulseTimer = 0.42;
+              e.commanderState = 'recovery';
+              e.commanderTimer = COMMANDER_RALLY_RECOVERY;
+            }
+          } else if (e.commanderState === 'recovery') {
+            e.commanderTimer = Math.max(0, e.commanderTimer - dt);
+            if (e.commanderTimer <= 1e-9) {
+              e.commanderState = 'position';
+              e.commanderCooldown = COMMANDER_RALLY_COOLDOWN;
+              e.commanderOrbitSide = -e.commanderOrbitSide;
+            }
+          } else if (e.commanderCooldown <= 1e-9 && dist <= COMMANDER_HOLD_MAX + 70) {
+            e.commanderState = 'rally_windup';
+            e.commanderTimer = COMMANDER_RALLY_WINDUP;
+          } else {
+            const radial = dist > COMMANDER_HOLD_MAX ? 1 : (dist < COMMANDER_HOLD_MIN ? -1 : 0);
+            const side = e.commanderOrbitSide || 1;
+            e.x += (dx / dist * radial - dy / dist * side * 0.26) * spd * dt + kbx * dt;
+            e.y += (dy / dist * radial + dx / dist * side * 0.26) * spd * dt + kby2 * dt;
+          }
+        } else if (isEliteBulwark(e)) {
+          initEliteBulwark(e);
+          e.bulwarkCooldown = Math.max(0, (e.bulwarkCooldown || 0) - dt);
+          e.bulwarkRetargetTimer = Math.max(0, (e.bulwarkRetargetTimer || 0) - dt);
+          if (!e.bulwarkGuardTarget || e.bulwarkGuardTarget.dead || e.bulwarkGuardTarget.waveCleanup || e.bulwarkRetargetTimer <= 1e-9) {
+            let best = null, bestDist = Infinity;
+            for (let bi = 0; bi < enemies.length; bi++) {
+              const candidate = enemies[bi];
+              if (candidate === e || candidate.dead || candidate.waveCleanup || isEliteBulwark(candidate)) continue;
+              const candidateDist = Math.hypot(candidate.x - e.x, candidate.y - e.y);
+              if (candidateDist < bestDist) { bestDist = candidateDist; best = candidate; }
+            }
+            e.bulwarkGuardTarget = best;
+            e.bulwarkRetargetTimer = BULWARK_RETARGET_TIME;
+          }
+          const pdx = player.x - e.x, pdy = player.y - e.y;
+          const playerDist = Math.max(1, Math.hypot(pdx, pdy));
+          if (e.bulwarkState === 'bash_windup') {
+            e.bulwarkTimer = Math.max(0, e.bulwarkTimer - dt);
+            if (e.bulwarkTimer <= 1e-9) {
+              if (!e.bulwarkBashSpent && playerDist <= BULWARK_BASH_RANGE) {
+                e.bulwarkBashSpent = true;
+                const hit = applyPlayerDamage(e.eliteDamage || e.damage, { cause: 'bulwark-bash', enemy: e });
+                if (hit.dodged) e.atkFlash = 0.25;
+                if (hit.applied) {
+                  e.atkFlash = 0.45;
+                  shake = Math.max(shake, hit.crit ? 0.3 : 0.18);
+                  if (hit.killed) gameOver = true;
+                }
+              }
+              e.bulwarkState = 'recovery';
+              e.bulwarkTimer = BULWARK_BASH_RECOVERY;
+            }
+          } else if (e.bulwarkState === 'recovery') {
+            e.bulwarkTimer = Math.max(0, e.bulwarkTimer - dt);
+            if (e.bulwarkTimer <= 1e-9) {
+              e.bulwarkState = 'guard';
+              e.bulwarkCooldown = BULWARK_BASH_COOLDOWN;
+            }
+          } else if (e.bulwarkCooldown <= 1e-9 && playerDist <= BULWARK_BASH_RANGE) {
+            e.bulwarkState = 'bash_windup';
+            e.bulwarkTimer = BULWARK_BASH_WINDUP;
+            e.bulwarkBashSpent = false;
+          } else {
+            e.bulwarkState = 'guard';
+            const ally = e.bulwarkGuardTarget;
+            let targetX, targetY;
+            if (ally) {
+              const guardDx = player.x - ally.x, guardDy = player.y - ally.y;
+              const guardDist = Math.max(1, Math.hypot(guardDx, guardDy));
+              targetX = ally.x + guardDx / guardDist * BULWARK_GUARD_OFFSET;
+              targetY = ally.y + guardDy / guardDist * BULWARK_GUARD_OFFSET;
+            } else {
+              targetX = player.x - pdx / playerDist * 118;
+              targetY = player.y - pdy / playerDist * 118;
+            }
+            const moveX = targetX - e.x, moveY = targetY - e.y;
+            const moveDist = Math.max(1, Math.hypot(moveX, moveY));
+            if (moveDist > 8) {
+              e.x += moveX / moveDist * spd * dt + kbx * dt;
+              e.y += moveY / moveDist * spd * dt + kby2 * dt;
+            }
+          }
+        } else if (isEliteSwift(e)) {
+          initEliteSwift(e);
+          e.swiftCooldown = Math.max(0, (e.swiftCooldown || 0) - dt);
+          const dx = player.x - e.x, dy = player.y - e.y;
+          const dist = Math.max(1, Math.hypot(dx, dy));
+          if (e.swiftState === 'windup') {
+            e.swiftTimer = Math.max(0, e.swiftTimer - dt);
+            if (e.swiftTimer <= 1e-9) {
+              const aimX = (Number.isFinite(e.swiftTargetX) ? e.swiftTargetX : player.x) - e.x;
+              const aimY = (Number.isFinite(e.swiftTargetY) ? e.swiftTargetY : player.y) - e.y;
+              const aimDist = Math.max(1, Math.hypot(aimX, aimY));
+              e.swiftDirX = aimX / aimDist;
+              e.swiftDirY = aimY / aimDist;
+              e.swiftHitSpent = false;
+              e.swiftState = 'dash';
+              e.swiftTimer = SWIFT_DASH_DURATION;
+            }
+          } else if (e.swiftState === 'dash') {
+            const oldX = e.x, oldY = e.y;
+            e.x += e.swiftDirX * SWIFT_DASH_SPEED * dt;
+            e.y += e.swiftDirY * SWIFT_DASH_SPEED * dt;
+            e.swiftTimer = Math.max(0, e.swiftTimer - dt);
+            if (!e.swiftHitSpent && segmentHitsCircle(oldX, oldY, e.x, e.y, player.x, player.y, e.radius + 18)) {
+              e.swiftHitSpent = true;
+              const hit = applyPlayerDamage(e.eliteDamage || e.damage, { cause: 'swift-dash', enemy: e });
+              if (hit.dodged) e.atkFlash = 0.25;
+              if (hit.applied) {
+                e.atkFlash = 0.45;
+                shake = Math.max(shake, hit.crit ? 0.3 : 0.15);
+                if (hit.killed) gameOver = true;
+              }
+              e.swiftState = 'recovery';
+              e.swiftTimer = SWIFT_RECOVERY;
+            } else if (e.swiftTimer <= 1e-9) {
+              e.swiftState = 'recovery';
+              e.swiftTimer = SWIFT_RECOVERY;
+            }
+          } else if (e.swiftState === 'recovery') {
+            e.swiftTimer = Math.max(0, e.swiftTimer - dt);
+            if (e.swiftTimer <= 1e-9) {
+              e.swiftState = 'stage';
+              e.swiftCooldown = SWIFT_COOLDOWN;
+              e.swiftOrbitSide = -e.swiftOrbitSide;
+            }
+          } else if (e.swiftCooldown <= 1e-9 && dist <= 340) {
+            e.swiftState = 'windup';
+            e.swiftTimer = SWIFT_WINDUP;
+            e.swiftTargetX = player.x;
+            e.swiftTargetY = player.y;
+          } else {
+            e.swiftState = 'stage';
+            const radial = dist > SWIFT_STAGING_RADIUS + 24 ? 1 : (dist < SWIFT_STAGING_RADIUS - 24 ? -1 : 0);
+            const side = e.swiftOrbitSide || 1;
+            e.x += (dx / dist * radial - dy / dist * side * 0.48) * spd * 0.72 * dt + kbx * dt;
+            e.y += (dy / dist * radial + dx / dist * side * 0.48) * spd * 0.72 * dt + kby2 * dt;
+          }
         } else if (e.behavior === 'chase') {
           const angle = Math.atan2(st.player.y - e.y, st.player.x - e.x);
           e.x += Math.cos(angle) * spd * dt + kbx * dt;
@@ -2177,6 +2696,23 @@
           const pdx = st.player.x - e.x, pdy = st.player.y - e.y;
           const dist = Math.hypot(pdx, pdy);
           const invD = Math.max(dist, 1);
+          // El ESCOPURAS conserva inercia visual entre aproximación, strafe,
+          // frenado para disparar y retirada. El filtro exponencial es estable
+          // con distintos FPS y elimina los cambios de dirección a tirones.
+          const moveRanged = (desiredVx, desiredVy) => {
+            if (e.enemyTypeId !== 'spitter') {
+              e.x += desiredVx * dt + kbx * dt;
+              e.y += desiredVy * dt + kby2 * dt;
+              return;
+            }
+            if (!Number.isFinite(e.spitMoveVx)) e.spitMoveVx = 0;
+            if (!Number.isFinite(e.spitMoveVy)) e.spitMoveVy = 0;
+            const response = 1 - Math.exp(-8 * Math.max(0, dt));
+            e.spitMoveVx += (desiredVx - e.spitMoveVx) * response;
+            e.spitMoveVy += (desiredVy - e.spitMoveVy) * response;
+            e.x += e.spitMoveVx * dt + kbx * dt;
+            e.y += e.spitMoveVy * dt + kby2 * dt;
+          };
           // F3: Hook owner cannot normal-fire durante su Hook windup.
           // Congela al owner (sin strafe ni avances de state) mientras windupea.
           if (hookSystem && hookSystem.phase === 'windup' && hookSystem.srcEnemy === e) { continue; }
@@ -2250,10 +2786,10 @@
                 mx = sx * spd * 0.4 + (pdx / invD) * spd * 0.25 * drift;
                 my = sy * spd * 0.4 + (pdy / invD) * spd * 0.25 * drift;
               }
-              e.x += mx * dt + kbx * dt;
-              e.y += my * dt + kby2 * dt;
+              moveRanged(mx, my);
             }
           } else if (rState === 'windup') {
+            moveRanged(0, 0);
             // F3: el Hook owner NO dispara normal durante el Hook windup (gate completo).
             if (!(e.hookOwner || e.hookWindup) && rTimer <= 0) {
               fireSpitterShot();
@@ -2270,12 +2806,12 @@
               setRState('recovery', SPIT_RECOVERY);
             }
           } else if (rState === 'recovery') {
+            moveRanged(0, 0);
             if (rTimer <= 0) setRState('positioning', 0.2);
           } else if (rState === 'retreat') {
             e.spitFired = false;
             const rx = (-pdx / invD), ry = (-pdy / invD);
-            e.x += rx * spd * 0.6 * dt + kbx * dt;
-            e.y += ry * spd * 0.6 * dt + kby2 * dt;
+            moveRanged(rx * spd * 0.6, ry * spd * 0.6);
             if (dist > SPIT_NEAR + 30 || rTimer <= 0) setRState('positioning', 0.2);
           } else {
             setRState('positioning', 0.2);
@@ -2319,7 +2855,12 @@
       // Cuadrícula espacial (no O(n²)): mismo minD (r+r+6) y mismo empuje que antes.
       const goliathCommitted = isEliteGoliath(e)
         && (e.goliathState === 'slam_windup' || e.goliathState === 'aftershock_window' || e.goliathState === 'recovery');
-      if (NV.isEnemyCombatActive(e) && e.behavior !== 'ranged' && !isElitePhantom(e) && !goliathCommitted && !(e.enemyTypeId === 'wisp' && e.wispPhaseState !== 'drift')) {
+      const roleCommitted = (isNormalDrone(e) && e.droneState !== 'formation')
+        || (isNormalTank(e) && e.tankCannonState !== 'approach')
+        || (isEliteCommander(e) && e.commanderState !== 'position')
+        || (isEliteBulwark(e) && e.bulwarkState !== 'guard')
+        || (isEliteSwift(e) && e.swiftState !== 'stage');
+      if (NV.isEnemyCombatActive(e) && e.behavior !== 'ranged' && !isElitePhantom(e) && !goliathCommitted && !roleCommitted && !(e.enemyTypeId === 'wisp' && e.wispPhaseState !== 'drift')) {
         const idx = enemies.indexOf(e);
         forEachGridNeighbor(e, grid, (other) => {
           if (other.dead) return;
@@ -2338,15 +2879,21 @@
 
       e.knockVelX = (e.knockVelX || 0) * 0.92;
       e.knockVelY = (e.knockVelY || 0) * 0.92;
+      if (st.keepInsideArena) NV.keepEnemyInArena(e, st.W, st.H);
 
             const d = Math.hypot(e.x - st.player.x, e.y - st.player.y);
       const inContact = d < e.radius + 20;
       const contactDamageEnabled = (e.enemyTypeId !== 'specter_grunt' || specterChargeContactActive)
+        && (e.enemyTypeId !== 'drone' || droneContactActive)
         && (e.enemyTypeId !== 'swarmlet' || swarmContactActive)
         && (e.enemyTypeId !== 'wisp' || wispContactActive)
         && !isElitePhantom(e)
         && !isElitePredator(e)
-        && !isEliteGoliath(e);
+        && !isEliteGoliath(e)
+        && !isNormalTank(e)
+        && !isEliteCommander(e)
+        && !isEliteBulwark(e)
+        && !isEliteSwift(e);
       if (contactDamageEnabled && inContact && st.player.invuln <= 0 && (e.contactCd || 0) <= 0) {
         if (swarmCommitContactActive) e.swarmCommitContactSpent = true;
         const baseDmg = e.isElite ? (e.eliteDamage || 0) : e.damage;

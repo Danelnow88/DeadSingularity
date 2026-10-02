@@ -16,11 +16,14 @@ const vm = require('vm');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
-function makeNV() {
+function makeNV(arenaIntegration = false) {
+  let seed = 1337;
+  const seededMath = Object.create(Math);
+  seededMath.random = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
   const sbx = {
     window: { NV: {} },
     console,
-    Math,
+    Math: arenaIntegration ? seededMath : Math,
     performance,
     Date, JSON, Object, Array, Set, Map, WeakSet, Float32Array, Proxy, Reflect,
     localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
@@ -45,6 +48,7 @@ function makeNV() {
     'js/render/spectralEnemies2D.js',
     'js/render/hazards.js',
   ];
+  if (arenaIntegration) files.push('js/engine/enemyArrival.js','js/engine/bossEncounters.js','js/engine/sectorEncounters.js','js/engine/cameraSafety.js');
   for (const f of files) {
     vm.runInNewContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), sbx, { filename: f });
   }
@@ -283,6 +287,64 @@ function runAll(frames) {
   return out;
 }
 
+// Pasada adicional, SIN cambiar los 19 escenarios comparables anteriores.
+// Pipeline nuevo: mundo1350×780, boss moderno, refill, X/puff y láser integrado.
+// Canvas contador: coste CPU de geometría, NO raster/GPU ni FPS real.
+function runArenaIntegration(frames, dashFx = false) {
+  const results=[];
+  for(const quality of ['high','auto','performance']) {
+    const NV=makeNV(true),st=baseState(NV,[]),ctx=costCtx();
+    NV.settings.graphics.quality=quality;NV.resetVisualBudget();
+    Object.assign(st,{W:1350,H:780,wave:8,difficulty:'hard',announceSpawn:true,allowBossSupport:true,ENEMY_TYPES:NV.ENEMY_TYPES});
+    st.boss={...NV.BOSS_TYPES[3],x:675,y:140,hp:6000,maxHp:6000,timer:0,atkTimer:0,primaryAttack:'spread',isBoss:true};
+    NV.worldMetrics={refW:900,refH:520,viewW:900,viewH:520,viewX:225,viewY:130,arenaW:1350,arenaH:780};
+    const m=NV.worldMetrics;
+    NV.viewport={intersectsWorldRect(x,y,w,h){return x+w>=m.viewX&&x<=m.viewX+m.viewW&&y+h>=m.viewY&&y<=m.viewY+m.viewH;}};
+    const sector=NV.createSectorEncounterState();let refill=0,maxHostiles=0,maxHeavy=0,maxHazards=0,sawActive=false;
+    // Arranque de estrés al cap duro: la reposición posterior sigue el soft de boss.
+    for(let i=0;i<29;i++) NV.spawnEnemy({...st,forceTypeId:i<6?'specter_guard':'drone'});
+    NV.performanceMonitor.reset();
+    for(let frame=0;frame<frames;frame++) {
+      st.player.x=675+Math.cos(frame/130)*280;st.player.y=390+Math.sin(frame/130)*220;
+      m.viewX=Math.max(-28,Math.min(478,st.player.x-450));m.viewY=Math.max(-28,Math.min(288,st.player.y-260));
+      const start=performance.now();
+      NV.updateSpeakerMines(1/60,st.hazards,st.minefieldState,{...st,waveEvent:null});
+      NV.updateSectorEncounter(1/60,st.hazards,sector,st);
+      st.sectorPressureActive=st.hazards.some(h=>h.state==='telegraph'||h.state==='active');
+      st.enemies=NV.updateEnemies(1/60,st).enemies;
+      st.bullets=NV.updateBullets(1/60,st).bullets;
+      NV.updateBoss(1/60,st);NV.updateParticles(1/60,st.particles);
+      // Comparación decorativa A/B con el MISMO combate sembrado. Dash sintético
+      // 84 unidades/0.15s cada2s: este harness no ejecuta game.js ni input real.
+      if(dashFx) {
+        const along=frame%120;
+        if(along<9)NV.emitDashTrail(st.trails,true,st.player.x-9.33,st.player.y,st.player.x,st.player.y,NV.CHARACTERS.rook.color);
+        NV.updateTrails(1/60,st.trails);
+      }
+      refill-=1/60;
+      if(refill<=0) {
+        const b=NV.getHostileBudget(st),attempts=Math.min(2,b.remainingHostiles,Math.max(0,NV.bossSupportTarget(st.wave,'hard')-b.hostiles));
+        for(let i=0;i<attempts;i++)NV.spawnEnemy(st);
+        refill=NV.spawnRefillInterval(st.wave,null,true,'hard',m);
+      }
+      const end=performance.now(),budget=NV.getHostileBudget(st);
+      maxHostiles=Math.max(maxHostiles,budget.hostiles);maxHeavy=Math.max(maxHeavy,budget.heavy);maxHazards=Math.max(maxHazards,st.hazards.length);
+      sawActive ||= st.hazards.some(h=>h.state==='active');
+      if(budget.hostiles>30||budget.heavy>7)throw new Error('Integrated stress excede caps');
+      const drawStart=performance.now();
+      NV.prepareEnemyVisualBudget(st.enemies,st.player);
+      for(const e of st.enemies)if(!NV.drawEnemyArrival(ctx,e))NV.drawSpectralEnemy2D(ctx,e,frame,st.player,null);
+      NV.drawEncounterWarnings(ctx,st.boss,st.enemies);
+      NV.drawSectorEmitters(ctx,st.W,st.H,st.wave,st.hazards,sector.active);
+      NV.drawHazards(ctx,st.hazards,null,NV.getVisualBudget(),false);
+      if(dashFx)NV.drawTrails(ctx,st.trails,NV.getVisualBudget());
+      NV.performanceMonitor.record(1000/60,end-start,performance.now()-drawStart);
+    }
+    results.push({quality,dashFx,simulatedFrames:frames,seed:1337,maxHostiles,maxHeavy,maxHazards,sawActive,...NV.performanceMonitor.getSnapshot()});
+  }
+  return results;
+}
+
 function printTable(results) {
   console.log('STRESS HARNESS (headless: coste CPU de engine/render; NO es frame real de browser)');
   console.log('escenario | upd p50/p95 | draw p50/p95 | >16.7/>25/>33 | hostiles/heavy | hazards | part | tier');
@@ -299,12 +361,22 @@ function printTable(results) {
   }
 }
 
-module.exports = { runAll, SCENARIOS, makeNV };
+module.exports = { runAll, runArenaIntegration, SCENARIOS, makeNV };
 
 if (require.main === module) {
   const args = process.argv.slice(2);
   let frames = 240;
   const fi = args.indexOf('--frames');
   if (fi >= 0 && args[fi + 1]) frames = parseInt(args[fi + 1], 10) || 240;
-  printTable(runAll(frames));
+  const integrated=args.includes('--arena-integration');
+  const results = integrated ? runArenaIntegration(frames,args.includes('--dash-fx')) : runAll(frames);
+  if(integrated)for(const r of results)console.log('ARENA '+r.quality+' update p95='+r.update.p95.toFixed(3)+'ms draw p95='+r.draw.p95.toFixed(3)+'ms caps='+r.maxHostiles+'/'+r.maxHeavy+' laser='+r.sawActive);
+  else printTable(results);
+  const ji = args.indexOf('--json');
+  if (ji >= 0 && args[ji + 1]) {
+    const output = path.resolve(ROOT, args[ji + 1]);
+    fs.mkdirSync(path.dirname(output), { recursive: true });
+    fs.writeFileSync(output, JSON.stringify({ generatedAt: new Date().toISOString(), frames, scope: 'headless-engine-render', results }, null, 2));
+    console.log('JSON ' + output);
+  }
 }

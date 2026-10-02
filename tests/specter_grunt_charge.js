@@ -159,7 +159,7 @@ t('charge fallida por tiempo entra en recovery sin daño', function () {
 t('contacto de otro enemigo conserva muerte y onKill globales', function () {
   const NV = setupEngine(), e = enemy(100, 100), st = state(e, { x: 100, y: 100, invuln: 0, stun: 0 });
   let hits = 0, kills = 0;
-  e.enemyTypeId = 'drone';
+  e.enemyTypeId = 'runner';
   st.applyPlayerDamage = function () { hits++; return { applied: true }; };
   st.onKill = function (killed) { if (killed !== e) throw new Error('entidad incorrecta'); kills++; };
   NV.updateEnemies(0.01, st);

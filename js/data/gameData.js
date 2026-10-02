@@ -27,7 +27,12 @@
   };
 
   NV.normalizePermUpgrades = function (saved) {
-    return Object.assign(NV.defaultPermUpgrades(), saved || {});
+    const out = NV.defaultPermUpgrades();
+    for (const key of Object.keys(out)) {
+      const value = saved && saved[key];
+      out[key] = Number.isFinite(value) ? Math.max(0, Math.min(10, Math.floor(value))) : 0;
+    }
+    return out;
   };
 
   // === PERSONAJES ===
@@ -37,11 +42,12 @@
       // Color dominante REAL del cuerpo en drawPlayer (drips/blob/flow cian).
       shieldColor: '#00f0ff',
       special: 'meteor', maxCd: 14, passive: 'Regenera 1 HP cada 5s', passiveId: 'boti_regen',
-      skillName: 'Lluvia Estelar', skillDesc: 'Meteoritos devastadores contra enemigos normales; recarga larga y daño reducido contra jefes',
+      skillColor: '#68edff',
+      skillName: 'Lluvia Criocósmica', skillDesc: '12 cometas de energía fría caen sobre la arena, con daño reducido contra jefes',
       card: {
         tag: 'Equilibrado', previewClass: 'char-preview-boti', statLine: 'HP 120 · SPD 195 · ARM 0',
         identity: 'Supervivencia estable · gran impacto contra oleadas · recarga larga',
-        descHtml: 'Regenera 1 HP cada 5s. <canvas class="char-skill-icon" data-skill-icon="meteor" aria-label="Lluvia Estelar"></canvas> <b>Lluvia Estelar</b>: <span class="dmg-highlight">devasta enemigos normales</span>, aunque <span class="cd-note">tiene recarga larga</span> y <span class="dmg-highlight">golpea menos a los jefes</span>.',
+        descHtml: 'Regenera 1 HP cada 5s. <canvas class="char-skill-icon" data-skill-icon="meteor" aria-label="Lluvia Criocósmica"></canvas> <b>Lluvia Criocósmica</b>: <span class="dmg-highlight">12 cometas fríos devastan enemigos normales</span>, con <span class="cd-note">recarga larga</span>; <span class="dmg-highlight">golpea menos a los jefes</span>.',
       },
       stats: { hp: 120, speed: 195, armor: 0, luck: 0 },
     },
@@ -50,11 +56,12 @@
       // Color dominante REAL del cuerpo en drawPlayer (blob principal rojo).
       shieldColor: '#ff3300',
       special: 'phase', maxCd: 7, passive: 'Daño +20%, recibe +20%', passiveId: 'nova_glass_cannon', takeDmgMult: 1.2,
-      skillName: 'Fase Fantasma', skillDesc: 'Aura espectral de área potente (afecta jefes); al terminar, detona un golpe final sobre lo alcanzado',
+      skillColor: '#ff9d36',
+      skillName: 'Ignición Astral', skillDesc: '3s invulnerable con aura de plasma que daña a los cercanos; al terminar detona un golpe final con la energía acumulada',
       card: {
         tag: 'Veloz', previewClass: 'char-preview-nova', statLine: 'HP 80 · SPD 225 · ARM 0',
         identity: 'Daño y movilidad altos · alcance de área · defensa frágil',
-        descHtml: '+20% daño, +20% daño recibido. <canvas class="char-skill-icon" data-skill-icon="phase" aria-label="Fase Fantasma"></canvas> <b>Fase Fantasma</b>: <span class="cc-highlight">aura espectral que quema a los cercanos (también jefes)</span> y <span class="dmg-highlight">detona un golpe final</span> al terminar.',
+        descHtml: '+20% daño, +20% daño recibido. <canvas class="char-skill-icon" data-skill-icon="phase" aria-label="Ignición Astral"></canvas> <b>Ignición Astral</b>: <span class="def-highlight">3s invulnerable</span>, <span class="cc-highlight">corona de plasma que daña a los cercanos</span> y <span class="dmg-highlight">detona un golpe final</span>.',
       },
       stats: { hp: 80, speed: 225, armor: 0, luck: 5 },
     },
@@ -63,11 +70,12 @@
       // Color dominante REAL del cuerpo en drawPlayer (drips/flow dorado).
       shieldColor: '#eab308',
       special: 'bulwark', maxCd: 12, passive: '-15% daño recibido', passiveId: 'rook_tank', takeDmgMult: 0.85,
-      skillName: 'Muralla', skillDesc: 'Escudo que refleja balas con más fuerza; onda de choque que aturde y empuja al activarse',
+      skillColor: '#ffda7d',
+      skillName: 'Bastión Astral', skillDesc: '3s protegido por paneles de energía; refleja balas al contacto y al activarse aturde y empuja a enemigos cercanos',
       card: {
         tag: 'Tanque', previewClass: 'char-preview-rook', statLine: 'HP 160 · SPD 170 · ARM 5',
         identity: 'Máxima resistencia · control y reflejo · movilidad reducida',
-        descHtml: '-15% daño recibido. <canvas class="char-skill-icon" data-skill-icon="bulwark" aria-label="Muralla"></canvas> <b>Muralla</b>: <span class="def-highlight">escudo que refleja balas con más fuerza</span> y <span class="cc-highlight">onda de choque que aturde y empuja</span> a los cercanos.',
+        descHtml: '-15% daño recibido. <canvas class="char-skill-icon" data-skill-icon="bulwark" aria-label="Bastión Astral"></canvas> <b>Bastión Astral</b>: <span class="def-highlight">3s protegido y reflejo al contacto</span>; su aparición <span class="cc-highlight">aturde y empuja</span> a los cercanos.',
       },
       stats: { hp: 160, speed: 170, armor: 5, luck: 0 },
     },
@@ -76,11 +84,12 @@
       // Color dominante REAL del cuerpo en drawPlayer (drips/blob/anillos amarillos).
       shieldColor: '#ffee77',
       special: 'hivemind', maxCd: 10, passive: '15% esquiva', passiveId: 'swarm_dodge', dodge: 0.15,
-      skillName: 'Drones de Combate', skillDesc: '6 drones escoltas que apuntan solos al enemigo o jefe más cercano a distancia',
+      skillColor: '#fff3a3',
+      skillName: 'Núcleos Vivos', skillDesc: '6 fragmentos de tu energía orbitan durante 5s y disparan al enemigo o jefe más cercano dentro de su alcance',
       card: {
         tag: 'Esquivo', previewClass: 'char-preview-swarm', statLine: 'HP 90 · SPD 210 · ARM 0',
         identity: 'Evasión y presión autónoma · gran movilidad · poca vida base',
-        descHtml: '15% esquive. <canvas class="char-skill-icon" data-skill-icon="hivemind" aria-label="Drones de Combate"></canvas> <b>Drones de Combate</b>: <span class="def-highlight">6 drones te escoltan</span> y <span class="cc-highlight">apuntan solos al enemigo más cercano</span>, incluso a distancia.',
+        descHtml: '15% esquive. <canvas class="char-skill-icon" data-skill-icon="hivemind" aria-label="Núcleos Vivos"></canvas> <b>Núcleos Vivos</b>: <span class="def-highlight">6 fragmentos de tu energía orbitan durante 5s</span> y <span class="cc-highlight">disparan al enemigo más cercano, incluido el jefe</span>.',
       },
       stats: { hp: 90, speed: 210, armor: 0, luck: 10 },
     },
@@ -94,16 +103,18 @@
   // === ARMAS (10) ===
   NV.STARTER_WEAPON_ID = 'pistol';
   NV.WEAPONS = [
-    { id: 'pistol', name: 'Pistola', range: 380, damage: 14, speed: 500, fireRate: 30, color: '#fff', rarity: 'common', pro: 'Versátil', con: 'Daño bajo' },
-    { id: 'rifle', name: 'Rifle', range: 480, damage: 20, speed: 700, fireRate: 25, pierce: 2, color: '#4ade80', rarity: 'uncommon', pro: 'Daño alto', con: 'Cadencia media' },
-    { id: 'smg', name: 'Subfusil', range: 320, damage: 7, speed: 450, fireRate: 12, color: '#facc15', rarity: 'rare', pro: 'Muy rápido', con: 'Daño bajo' },
-    { id: 'shotgun', name: 'Escopeta', range: 240, damage: 5, speed: 400, fireRate: 45, count: 12, spread: 0.44, color: '#f97316', rarity: 'rare', pro: 'Brutal de cerca', con: 'Dispersión a distancia' },
-    { id: 'sniper', name: 'Francotirador', range: 700, damage: 50, speed: 1200, fireRate: 70, pierce: 4, color: '#ef4444', rarity: 'epic', pro: 'Daño extrema', con: 'Lenta' },
-    { id: 'laser', name: 'Láser', range: 450, damage: 25, speed: 900, fireRate: 20, pierce: 2, color: '#f472b6', rarity: 'epic', pro: 'Penetra 1', con: 'Daño medio' },
-    { id: 'plasma', name: 'Plasma', range: 520, damage: 36, speed: 600, fireRate: 35, count: 2, spread: 0.1, color: '#a855f7', rarity: 'legendary', pro: 'Doble disparo', con: 'Lento' },
-    { id: 'flamethrower', name: 'Lanzallamas', range: 170, damage: 6, speed: 260, fireRate: 14, color: '#fb923c', rarity: 'epic', pro: 'Fuego sostenido', con: 'Corto alcance' },
-    { id: 'bow', name: 'Arco', range: 540, damage: 19, speed: 800, fireRate: 36, color: '#22c55e', rarity: 'rare', pro: 'Rebota 3', con: 'Cadencia media' },
-    { id: 'railgun', name: 'Cañón de Riel', range: 800, damage: 70, speed: 1500, fireRate: 84, pierce: 8, color: '#06b6d4', rarity: 'legendary', pro: 'Máximo daño', con: 'Muy lenta' },
+    { id: 'pistol', name: 'Pistola', range: 380, damage: 14, speed: 500, fireRate: 30, color: '#fff', rarity: 'common', pro: 'Versátil y confiable', con: 'Sin especialidad' },
+    { id: 'rifle', name: 'Rifle', range: 480, damage: 20, speed: 700, fireRate: 25, pierce: 2, color: '#4ade80', rarity: 'uncommon', pro: 'Preciso y penetrante', con: 'Cadencia media' },
+    // 360 conserva el riesgo cercano frente a Pistola (380), pero evita que un
+    // jefe lateral en el borde inicial corte por completo la ráfaga automática.
+    { id: 'smg', name: 'Subfusil', range: 360, damage: 7, speed: 450, fireRate: 12, color: '#facc15', rarity: 'rare', pro: 'Daño sostenido', con: 'Corto alcance' },
+    { id: 'shotgun', name: 'Escopeta', range: 250, damage: 5, speed: 400, fireRate: 45, count: 12, spread: 0.44, color: '#f97316', rarity: 'rare', pro: 'Burst cercano y grupos', con: 'Menor contra jefes' },
+    { id: 'sniper', name: 'Francotirador', range: 700, damage: 50, speed: 1200, fireRate: 70, pierce: 4, color: '#ef4444', rarity: 'epic', pro: 'Cazador de élites', con: 'Muy lento' },
+    { id: 'laser', name: 'Láser', range: 450, damage: 25, speed: 900, fireRate: 20, pierce: 2, color: '#f472b6', rarity: 'epic', pro: 'Atraviesa escudos', con: 'Alcance medio' },
+    { id: 'plasma', name: 'Plasma', range: 520, damage: 21, speed: 600, fireRate: 35, count: 2, spread: 0.1, color: '#a855f7', rarity: 'legendary', pro: 'Explosión en área', con: 'Cadencia lenta' },
+    { id: 'flamethrower', name: 'Lanzallamas', range: 170, damage: 6, speed: 260, fireRate: 14, color: '#fb923c', rarity: 'epic', pro: 'Control de zona', con: 'Muy corto alcance' },
+    { id: 'bow', name: 'Arco', range: 540, damage: 19, speed: 800, fireRate: 36, color: '#22c55e', rarity: 'rare', pro: 'Rebota entre blancos', con: 'Pierde daño al rebotar' },
+    { id: 'railgun', name: 'Cañón de Riel', range: 800, damage: 70, speed: 1500, fireRate: 84, pierce: 8, color: '#06b6d4', rarity: 'legendary', pro: 'Perfora filas enteras', con: 'Cadencia mínima' },
   ];
 
   // === COLORES DE TIER DE DISPARO: cada 10 niveles cambia la apariencia ===
@@ -182,13 +193,13 @@
   // visualId: identidad para el renderer espectral (spectralEnemies2D.js).
   // Si no está presente, cae a 'elite_base' (dorado genérico).
   NV.ELITE_TYPES = [
-    { name: 'ÉLITE', hp: 90, speed: 90, radius: 20, color: '#ff0', shape: 'hex', score: 50, xp: 50, behavior: 'chase', damage: 20, visualId: 'elite_base' },
+    { name: 'COMANDANTE', hp: 90, speed: 90, radius: 20, color: '#ff0', shape: 'hex', score: 50, xp: 50, behavior: 'chase', damage: 20, visualId: 'elite_base' },
     { name: 'RÁPIDO', hp: 40, speed: 175, radius: 14, color: '#0ff', shape: 'triangle', score: 30, xp: 30, behavior: 'erratic', damage: 15, visualId: 'elite_velocity' },
-    { name: 'TANQUE', hp: 160, speed: 35, radius: 30, color: '#f80', shape: 'rock', score: 60, xp: 60, behavior: 'chase', damage: 25, resist: 3, visualId: 'elite_bulwark' },
+    { name: 'BASTIÓN', hp: 160, speed: 35, radius: 30, color: '#f80', shape: 'rock', score: 60, xp: 60, behavior: 'chase', damage: 25, resist: 3, visualId: 'elite_bulwark' },
     { name: 'ASESINO', hp: 55, speed: 165, radius: 12, color: '#f0f', shape: 'diamond', score: 40, xp: 40, behavior: 'chase', damage: 30, visualId: 'elite_predator' },
     { name: 'FANTASMA', hp: 65, speed: 145, radius: 16, color: '#e0ffff', shape: 'circle', score: 45, xp: 45, behavior: 'erratic', damage: 25, visualId: 'elite_phantom' },
     { name: 'GOLIATH', hp: 210, speed: 25, radius: 36, color: '#ff1493', shape: 'rock', score: 100, xp: 100, behavior: 'chase', damage: 35, stunChance: 0.35, stunDuration: 1.0, resist: 3, visualId: 'elite_titan' },
-    { name: 'VELOCITY', hp: 40, speed: 220, radius: 10, color: '#00ff88', shape: 'dot', score: 35, xp: 35, behavior: 'chase', damage: 18, visualId: 'elite_swift' },
+    { name: 'CENTELLA', hp: 40, speed: 220, radius: 10, color: '#00ff88', shape: 'dot', score: 35, xp: 35, behavior: 'chase', damage: 18, visualId: 'elite_swift' },
 
     // === ÉLITES ESPECTRALES (minWave + weight, raros) ===
     // spectralElite: spawnElite los selecciona ponderado SOLO desde su minWave.
@@ -211,6 +222,35 @@
     { name: 'APOCALIPSIS', hp: 800, radius: 75, color: '#ff1493', speed: 22, pattern: 'rage', attack: 'rage', shape: 'rock', stunChance: 0.18 },
   ];
   for (const type of NV.BOSS_TYPES) type.hostileClass = 'heavy';
+
+  // === ESBIRRO DE JEFE (identidad, no spawner) ===
+  // Descriptor de PREPARACION para la migracion futura de NV.spawnMinion
+  // (js/engine/boss.js), que hoy construye su entidad a mano y sin identidad.
+  //
+  // Vive FUERA de ENEMY_TYPES y ELITE_TYPES a proposito: esas dos listas son la
+  // unica fuente de spawn normal, de elite y de descubrimiento
+  // (NV.getProductionEnemyDefinitions -> catalogo del Combat Lab). Declararlo
+  // aqui garantiza exclusion ESTRUCTURAL de todos esos caminos, sin filtros
+  // por id repartidos por el codigo.
+  //
+  // ESTE ACT NO USA ESTE DESCRIPTOR: NV.spawnMinion sigue construyendo su
+  // entidad legacy actual. Solo se declaran campos de identidad, rol y
+  // semantica de presupuesto; HP, dano, velocidad y radio NO se fijan aqui a
+  // proposito, porque eso seria una decision de balance. La migracion necesita
+  // antes un contrato de construccion que preserve las curvas propias del
+  // esbirro (20*(1+wave*0.3), dano 8 fijo, etc).
+  //
+  // noFuse declara la politica de fusion que el esbirro necesita; su lectura en
+  // fuseEnemies es trabajo del bloque estructural siguiente, no de este ACT.
+  NV.BOSS_MINION_TYPE = {
+    id: 'boss_minion',
+    name: 'ESBIRRO',
+    behavior: 'chase',
+    shape: 'circle',
+    hostileClass: 'light',
+    movementClass: 'normal',
+    noFuse: true,
+  };
 
   // Eventos de oleada aleatorios (cada ~3 oleadas): modifican la run sin tocar las mecánicas base.
   NV.WAVE_EVENTS = {

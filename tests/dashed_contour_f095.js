@@ -72,7 +72,10 @@ t('F09.4 sigue eliminado: sin aura genérica ni cooldown world-space', () => {
 
 t('efectos legítimos por piloto preservados en fuente', () => {
   const p = fs.readFileSync('js/render/player.js', 'utf8');
-  for (const needle of ['PHASE_AURA_RADIUS', 'player.bulwark', 'player.shield > 0', 'player.overdrive', 'criticalHealth', 'cid === \'swarm\'', 'ctx.ellipse']) {
+  if (!p.includes('NV.drawSpecialPlayerLayer')) throw new Error('sin integración del renderer de especiales');
+  const special = fs.readFileSync('js/render/specialEffects.js', 'utf8');
+  if (!special.includes('NV.BALANCE.PHASE_AURA_RADIUS')) throw new Error('aura no usa radio autoritativo');
+  for (const needle of ['player.bulwark', 'player.shield > 0', 'player.overdrive', 'criticalHealth', 'cid === \'swarm\'', 'ctx.ellipse']) {
     if (!p.includes(needle)) throw new Error('falta efecto legítimo: ' + needle);
   }
 });

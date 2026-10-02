@@ -1,10 +1,19 @@
 (() => {
   'use strict';
   const frame = document.getElementById('gameFrame');
+  const encounterSelect = document.getElementById('encounterSelect');
   const playerSelect = document.getElementById('playerSelect');
   const waveInput = document.getElementById('waveInput');
+  const waveField = document.getElementById('waveField');
   const difficultySelect = document.getElementById('difficultySelect');
   const durationInput = document.getElementById('durationInput');
+  const enemyConfig = document.getElementById('enemyConfig');
+  const bossConfig = document.getElementById('bossConfig');
+  const bossSelect = document.getElementById('bossSelect');
+  const weaponSelect = document.getElementById('weaponSelect');
+  const weaponLevelInput = document.getElementById('weaponLevelInput');
+  const weaponFusionInput = document.getElementById('weaponFusionInput');
+  const firePolicySelect = document.getElementById('firePolicySelect');
   const rows = document.getElementById('compositionRows');
   const errors = document.getElementById('errors');
   const startBtn = document.getElementById('startBtn');
@@ -15,6 +24,7 @@
     status: document.getElementById('tStatus'), wave: document.getElementById('tWave'),
     difficulty: document.getElementById('tDifficulty'), time: document.getElementById('tTime'),
     active: document.getElementById('tActive'), hp: document.getElementById('tHp'),
+    bossHp: document.getElementById('tBossHp'), bossDamage: document.getElementById('tBossDamage'),
     fps: document.getElementById('tFps'), composition: document.getElementById('tComposition'),
   };
   let runtime = null;
@@ -78,17 +88,37 @@
   }
 
   function readConfig() {
-    return {
+    const common = {
       characterId: playerSelect.value,
-      wave: Number(waveInput.value),
       difficultyId: difficultySelect.value,
       durationMode: selectedDurationMode(),
       durationSeconds: Number(durationInput.value),
+    };
+    if (encounterSelect.value === 'boss') {
+      return Object.assign(common, {
+        encounterMode: 'boss',
+        bossIndex: Number(bossSelect.value),
+        weaponId: weaponSelect.value,
+        weaponLevel: Number(weaponLevelInput.value),
+        weaponFusion: Number(weaponFusionInput.value),
+        firePolicy: firePolicySelect.value,
+      });
+    }
+    return Object.assign(common, {
+      encounterMode: 'enemies',
+      wave: Number(waveInput.value),
       composition: Array.from(rows.querySelectorAll('.composition-row')).map((row) => ({
         enemyId: row.querySelector('.enemy-select').value,
         quantity: Number(row.querySelector('.enemy-quantity').value),
       })),
-    };
+    });
+  }
+
+  function syncEncounterControls() {
+    const bossMode = encounterSelect.value === 'boss';
+    enemyConfig.hidden = bossMode;
+    bossConfig.hidden = !bossMode;
+    waveField.hidden = bossMode;
   }
 
   function applyResult(result) {
@@ -134,14 +164,23 @@
     telemetry.difficulty.textContent = String(snapshot.difficulty).toUpperCase();
     telemetry.time.textContent = formatTime(snapshot.elapsed) + ' / ' + formatTime(snapshot.remaining);
     telemetry.active.textContent = String(snapshot.activeEnemies);
+    telemetry.bossHp.textContent = snapshot.boss && snapshot.boss.present
+      ? Math.max(0, Math.ceil(snapshot.boss.hp)) + ' / ' + Math.ceil(snapshot.boss.maxHp)
+      : '—';
+    const bossReport = snapshot.telemetry && snapshot.telemetry.bosses
+      ? (snapshot.telemetry.bosses.active || snapshot.telemetry.bosses.completed.slice(-1)[0])
+      : null;
+    telemetry.bossDamage.textContent = bossReport ? Math.round(bossReport.damage) + ' / ' + bossReport.hits + ' HITS' : '—';
     telemetry.hp.textContent = Math.max(0, Math.ceil(snapshot.player.hp)) + ' / ' + Math.ceil(snapshot.player.maxHp);
     telemetry.fps.textContent = snapshot.fps == null ? '—' : snapshot.fps.toFixed(1);
-    telemetry.composition.textContent = snapshot.requestedComposition.length
-      ? snapshot.requestedComposition.map((row) => row.enemyId + ' × ' + row.quantity).join(' · ')
-      : 'No test started.';
+    telemetry.composition.textContent = snapshot.encounterMode === 'boss' && snapshot.boss
+      ? (snapshot.boss.name || 'BOSS') + (snapshot.loadout ? ' · ' + snapshot.loadout.weaponId + ' LV.' + snapshot.loadout.weaponLevel + ' · FUS.' + snapshot.loadout.weaponFusion : '')
+      : (snapshot.requestedComposition.length
+        ? snapshot.requestedComposition.map((row) => row.enemyId + ' × ' + row.quantity).join(' · ')
+        : 'No test started.');
     pauseBtn.textContent = snapshot.paused ? 'RESUME' : 'PAUSE';
     pauseBtn.disabled = snapshot.status !== 'RUNNING' && snapshot.status !== 'PAUSED';
-    restartBtn.disabled = !snapshot.requestedComposition.length;
+    restartBtn.disabled = !snapshot.requestedComposition.length && !(snapshot.encounterMode === 'boss' && snapshot.loadout);
   }
 
   function populate() {
@@ -158,6 +197,20 @@
       option.textContent = String(entry.label).toUpperCase();
       if (entry.selected) option.selected = true;
       difficultySelect.appendChild(option);
+    }
+    for (const entry of runtime.getBosses()) {
+      const option = document.createElement('option');
+      option.value = String(entry.index);
+      option.textContent = entry.name + ' — WAVE ' + entry.canonicalWave;
+      bossSelect.appendChild(option);
+    }
+    for (const entry of runtime.getWeapons()) {
+      const option = document.createElement('option');
+      option.value = entry.id;
+      option.textContent = entry.name + ' — ' + entry.id;
+      weaponSelect.appendChild(option);
+      weaponLevelInput.max = String(entry.maxLevel || 100);
+      weaponFusionInput.max = String(entry.maxFusion || 3);
     }
     addCompositionRow(catalog[0] && catalog[0].id, 1);
     startBtn.disabled = false;
@@ -194,6 +247,7 @@
   }
 
   document.getElementById('addEnemyBtn').addEventListener('click', () => addCompositionRow(catalog[0] && catalog[0].id, 1));
+  encounterSelect.addEventListener('change', syncEncounterControls);
   document.querySelectorAll('input[name="durationMode"]').forEach((radio) => {
     radio.addEventListener('change', () => { durationInput.disabled = selectedDurationMode() === 'infinite'; });
   });
@@ -219,6 +273,7 @@
   resetBtn.disabled = true;
   pauseBtn.disabled = true;
   restartBtn.disabled = true;
+  syncEncounterControls();
   frame.addEventListener('load', waitForRuntime, { once: true });
   window.addEventListener('beforeunload', () => { if (telemetryTimer) window.clearInterval(telemetryTimer); });
 })();

@@ -73,6 +73,28 @@
     return { type: 'direct', pierce: weapon.pierce || 1 };
   };
 
+  // Fusión II desbloquea una propiedad de rol, no otra escalera infinita de daño.
+  NV.WEAPON_EVOLUTIONS = Object.freeze({
+    pistol: 'Perfora 2 blancos', rifle: 'Perfora 3 blancos', smg: 'Empuje de supresión +50%',
+    shotgun: 'Abanico: hasta 6 enemigos por descarga', sniper: 'Perfora 6 blancos',
+    laser: 'Perfora 4 blancos y sus escudos', plasma: 'Explosión ampliada: radio 76',
+    flamethrower: 'Alcance de llama ampliado a 205', bow: 'Busca rebotes hasta 230 de distancia', railgun: 'Empuje de impacto +75%',
+  });
+  NV.evolvedWeaponImpact = function (weapon, fusion) {
+    const result = NV.weaponImpactProfile(weapon);
+    result.range = weapon.range;
+    if (!(fusion >= 2)) return result;
+    const id = weapon.id;
+    const pierce = { pistol: 2, rifle: 3, sniper: 6, laser: 4 };
+    if (pierce[id]) result.pierce = pierce[id];
+    if (id === 'plasma') result.radius = 76;
+    if (id === 'bow') result.radius = 230;
+    if (id === 'flamethrower') result.range = 205;
+    if (id === 'smg') result.knockback = 90;
+    if (id === 'railgun') result.knockback = 105;
+    return result;
+  };
+
   function emitWeaponAudio(state, weapon, player, projectileCount, crit) {
     const audioEvent = Object.assign({}, state.audioPosition || { x: player.x, worldWidth: state.W || 900 }, {
       projectileCount,
@@ -98,6 +120,7 @@
   //          weaponVisualTier, BULLET_TIER_COLORS, MAX_BULLETS, permDamageBonus, playWeaponSound }
   NV.shoot = function (state) {
     const { player, enemies, boss, bullets, currentWeapon: weapon } = state;
+    const impact = NV.evolvedWeaponImpact(weapon, state.currentWeaponFusion);
     const configuredCount = weapon.id === 'shotgun'
       ? (NV.BALANCE.SHOTGUN_PELLET_COUNT || weapon.count || 12)
       : (weapon.count || 1);
@@ -114,7 +137,7 @@
     // Devuelve false para que game.js reintente pronto sin consumir la cadencia del arma.
     if (!manualAim) {
       if (!target) return false;
-      const range = weapon.range || Infinity;
+      const range = impact.range || Infinity;
       if (Math.hypot(target.x - player.x, target.y - player.y) > range) return false;
     }
 
@@ -123,10 +146,10 @@
     if (manualAim && !aim) return false;
     const baseAngle = manualAim ? Math.atan2(aim.y, aim.x) : Math.atan2(target.y - player.y, target.x - player.x);
 
-    const lvlBonus = NV.weaponLevelDamageBonus(state.currentWeaponLevel());
-    const baseDmg = (weapon.damage + state.permDamageBonus * 2 + lvlBonus) * NV.waveWeaponMult(state.wave);
+    const levelMult = NV.weaponLevelDamageMultiplier(state.currentWeaponLevel());
+    const scaledWeaponBase = weapon.damage * levelMult;
+    const baseDmg = (scaledWeaponBase + state.permDamageBonus * 2) * NV.waveWeaponMult(state.wave);
     const finalDmg = NV.weaponFusionDamage(baseDmg, state.currentWeaponFusion, state.fusionStep);
-    const impact = NV.weaponImpactProfile(weapon);
 
     if (impact.type === 'flame') {
       const crit = Math.random() < (0.1 + player.luck * 0.002 + (player.permCrit || 0) * NV.BALANCE.CRIT_PERM_CHANCE);
@@ -135,7 +158,7 @@
           x: player.x,
           y: player.y - 20,
           angle: baseAngle,
-          range: weapon.range || 170,
+          range: impact.range || 170,
           damage: crit ? finalDmg * 2 : finalDmg,
           crit,
           color: weapon.color,
@@ -156,7 +179,12 @@
     const projectileCount = pelletsPerBurst * shotBursts;
     const shotGroups = [];
     for (let burst = 0; burst < shotBursts; burst++) {
-      shotGroups.push({ targets: [], cap: NV.BALANCE.SHOTGUN_UNIQUE_TARGET_CAP || 3 });
+      shotGroups.push({
+        targets: [],
+        cap: (NV.BALANCE.SHOTGUN_UNIQUE_TARGET_CAP || 3) + (state.currentWeaponFusion >= 2 ? 1 : 0),
+        bossHits: 0,
+        bossCap: NV.BALANCE.SHOTGUN_BOSS_PELLET_CAP || 8,
+      });
     }
     const shotgunRose = [
       [0.00, 0.00], [0.52, 0.05], [-0.28, 0.42], [-0.24, -0.45],
@@ -190,6 +218,7 @@
         color: weapon.color, dead: false, isEnemy: false, pierce: impact.pierce,
         crit, stunChance: 0,
         impactType: impact.type, splashRadius: impact.radius || 0, bounceLeft: impact.bounces || 0, hitTargets: [],
+        knockback: impact.knockback || 60,
         // Estética de tier (visual; no se usa en colisiones). wid selecciona la forma.
         tier: vTier, glowColor, wid: weapon.id,
         // Crecimiento por nivel/fusión + halo dorado si el arma está fusionada.

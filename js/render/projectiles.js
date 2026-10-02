@@ -212,6 +212,7 @@
   // Shockwave genérico: doble anillo (frontal brillante + estela interna que se desvanece).
   NV.drawShockwaves = function (ctx, shockwaves) {
     for (const s of shockwaves) {
+      if (NV.drawSpecialShockwave && NV.drawSpecialShockwave(ctx, s)) continue;
       const ease = 1 - s.life;              // ease-out cuadrático
       const radius = s.maxRadius * (1 - (1 - ease) * (1 - ease));
       // Anillo frontal
@@ -234,12 +235,16 @@
   const HOSTILE_DAMAGE_COLOR = '#ff3b4f';
   const HOSTILE_STUN_COLOR = '#ffd84a';
   const HOSTILE_PROJECTILE_STYLES = Object.freeze([
-    'genericBolt', 'spectralArrowhead', 'stunDroplet', 'coreSpike', 'voidStunNucleus',
+    'genericBolt', 'spectralArrowhead', 'stunDroplet', 'coreSpike', 'voidStunNucleus', 'tankShell',
     'bossRepeater', 'bossHeavyShell', 'bossSpreadDisc', 'bossChargedLance',
     'bossVolleyDart', 'bossBomb', 'bossOrb', 'bossSplitShard', 'bossRageCore',
   ]);
   NV.HOSTILE_DAMAGE_COLOR = HOSTILE_DAMAGE_COLOR;
   NV.HOSTILE_STUN_COLOR = HOSTILE_STUN_COLOR;
+  // Paleta compartida: identidad del robot/sector no cambia el significado del daño.
+  // Aviso = borde discontinuo; activo = borde continuo. Amarillo sólo para stun.
+  NV.HOSTILE_SIGNALS = Object.freeze({ damage: HOSTILE_DAMAGE_COLOR, warning: '#ff6474',
+    stun: HOSTILE_STUN_COLOR, text: '#ffdce2', warningDash: Object.freeze([12, 9]) });
   NV.HOSTILE_PROJECTILE_STYLES = HOSTILE_PROJECTILE_STYLES;
 
   function isKnownHostileStyle(style) {
@@ -403,6 +408,24 @@
     ctx.fill();
   }
 
+  // Proyectil del Tanque común: masa compacta de cañón con punta frontal.
+  // Se diferencia del obús de jefe para que el jugador reconozca su fuente.
+  function hostileTankShell(ctx, r, hasStun) {
+    ctx.beginPath();
+    ctx.moveTo(r * 1.6, 0);
+    ctx.lineTo(r * 0.55, -r * 1.05);
+    ctx.lineTo(-r * 0.95, -r * 0.72);
+    ctx.lineTo(-r * 1.45, 0);
+    ctx.lineTo(-r * 0.95, r * 0.72);
+    ctx.lineTo(r * 0.55, r * 1.05);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = hasStun ? HOSTILE_STUN_COLOR : '#ffb36b';
+    ctx.beginPath();
+    ctx.arc(r * 0.15, 0, r * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   function hostileSpreadDisc(ctx, r, hasStun) {
     ctx.beginPath();
     for (let i = 0; i < 12; i++) {
@@ -550,6 +573,7 @@
       case 'stunDroplet': hostileDroplet(ctx, r, hasStun); break;
       case 'coreSpike': hostileCoreSpike(ctx, r, hasStun); break;
       case 'voidStunNucleus': hostileVoidNucleus(ctx, r, hasStun); break;
+      case 'tankShell': hostileTankShell(ctx, r, hasStun); break;
       case 'bossRepeater': hostileRepeater(ctx, r, hasStun); break;
       case 'bossHeavyShell': hostileHeavyShell(ctx, r, hasStun); break;
       case 'bossSpreadDisc': hostileSpreadDisc(ctx, r, hasStun); break;
@@ -563,6 +587,10 @@
     }
 
     ctx.shadowBlur = 0;
+    if (b.cameraWarningRemaining > 0) {
+      ctx.strokeStyle = '#ff6474'; ctx.lineWidth = 1; ctx.setLineDash([2, 3]);
+      ctx.beginPath(); ctx.arc(0, 0, r + 7, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    }
     ctx.restore();
   };
 })();

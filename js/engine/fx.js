@@ -200,10 +200,126 @@
     return floatTexts.filter((ft) => ft.life > 0);
   };
 
-  // Actualiza las estelas; devuelve el array filtrado.
+  // Dash: segmentos pequeños en el MISMO array de trails. Los sparkles se derivan
+  // de una semilla visual, sin consumir Math.random del combate ni crear objetos
+  // por micropunto. Pool/cap y vida breve impiden crecer con dash repetidos.
+  const DASH_TRAIL_CAP = 96, DASH_TRAIL_LIFE = 0.42;
+  const dashTrailPool = [];
+  const dashGlowCache = new Map();
+  let dashTrailSerial = 0;
+  function sparkleHash(n) {
+    n = Math.imul(n ^ (n >>> 16), 0x45d9f3b);
+    n = Math.imul(n ^ (n >>> 16), 0x45d9f3b);
+    return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+  }
+  function recycleTrail(t) {
+    if (t.kind === 'dashStar' && dashTrailPool.length < DASH_TRAIL_CAP) dashTrailPool.push(t);
+  }
+  // active = retorno autoritativo de updatePlayerDash (incluye su último frame,
+  // cuando dashActive ya se apagó). Coordenadas DESPUÉS del clamp real de arena.
+  NV.emitDashTrail = function(trails, active, x, y, endX, endY, color) {
+    if (!active) return trails;
+    const dx = endX - x, dy = endY - y, distance = Math.hypot(dx, dy);
+    if (!Number.isFinite(distance) || distance < 0.01) return trails;
+    const count = Math.min(32, Math.ceil(distance / 5));
+    const nx = -dy / distance, ny = dx / distance;
+    for (let i = 0; i < count; i++) {
+      if (trails.length >= DASH_TRAIL_CAP) recycleTrail(trails.shift());
+      const t = dashTrailPool.pop() || {};
+      t.kind = 'dashStar'; t.color = color; t.life = DASH_TRAIL_LIFE; t.age = 0;
+      t.x = x + dx * i / count; t.y = y + dy * i / count;
+      t.endX = x + dx * (i + 1) / count; t.endY = y + dy * (i + 1) / count;
+      t.nx = nx; t.ny = ny; t.serial = dashTrailSerial++;
+      trails.push(t);
+    }
+    return trails;
+  };
+  // Solo un sprite de halo de 32px por tint, creado una vez y cacheado (máx8).
+  // Sin DOM en la partida: el canvas auxiliar nunca se inserta en la página.
+  function dashGlow(color) {
+    if (dashGlowCache.has(color)) return dashGlowCache.get(color);
+    if (typeof document === 'undefined' || !document.createElement) return null;
+    const c = document.createElement('canvas'); c.width = c.height = 32;
+    const g = c.getContext('2d'), gradient = g.createRadialGradient(16,16,0,16,16,16);
+    gradient.addColorStop(0,'#ffffff'); gradient.addColorStop(0.10,color);
+    gradient.addColorStop(0.35,color + '60'); gradient.addColorStop(1,color + '00');
+    g.fillStyle = gradient; g.fillRect(0,0,32,32);
+    if (dashGlowCache.size >= 8) dashGlowCache.delete(dashGlowCache.keys().next().value);
+    dashGlowCache.set(color,c); return c;
+  }
+  function dashStar(ctx, x, y, radius, extraRays) {
+    // Cuatro puntas largas con valles finos; a veces diagonales de 6/8 puntas.
+    ctx.beginPath();
+    ctx.moveTo(x,y-radius);ctx.lineTo(x+radius*.12,y-radius*.12);
+    ctx.lineTo(x+radius,y);ctx.lineTo(x+radius*.12,y+radius*.12);
+    ctx.lineTo(x,y+radius);ctx.lineTo(x-radius*.12,y+radius*.12);
+    ctx.lineTo(x-radius,y);ctx.lineTo(x-radius*.12,y-radius*.12);
+    ctx.closePath();ctx.fill();
+    if (extraRays) {
+      const r = radius*.48; ctx.lineWidth=.55;ctx.beginPath();
+      ctx.moveTo(x-r,y-r);ctx.lineTo(x+r,y+r);
+      if (extraRays === 8) {ctx.moveTo(x-r,y+r);ctx.lineTo(x+r,y-r);}
+      ctx.stroke();
+    }
+  }
+  NV.drawTrails = function(ctx, trails, budget) {
+    const b = budget || (NV.getVisualBudget && NV.getVisualBudget()) || {};
+    const density = b.trailDensity == null ? 1 : b.trailDensity;
+    const microCount = b.decorativeParticleScale === 0 ? 0 : (density >= 1 ? 12 : (density >= .5 ? 5 : 3));
+    ctx.save();ctx.lineCap='round';
+    for (const t of trails) {
+      if (t.kind !== 'dashStar') {
+        ctx.globalAlpha=Math.max(0,t.life/.3);ctx.fillStyle=t.color;
+        ctx.beginPath();ctx.arc(t.x,t.y,t.size,0,Math.PI*2);ctx.fill();continue;
+      }
+      const fade=Math.max(0,t.life/DASH_TRAIL_LIFE), alpha=fade*fade;
+      // Taper temporal: la cola vieja se adelgaza, pierde puntos y se dispersa.
+      ctx.strokeStyle=t.color;ctx.globalAlpha=alpha*.28;ctx.lineWidth=3.5*fade;
+      ctx.beginPath();ctx.moveTo(t.x,t.y);ctx.lineTo(t.endX,t.endY);ctx.stroke();
+      ctx.strokeStyle='#faffff';ctx.globalAlpha=alpha*.68;ctx.lineWidth=.65*fade;
+      ctx.stroke();
+      for (let i=0;i<microCount;i++) {
+        const seed=t.serial*131+i*17+1, u=sparkleHash(seed);
+        if (sparkleHash(seed+7)>Math.min(1,fade*1.65)) continue;
+        const scatter=(sparkleHash(seed+3)-.5)*(12+18*t.age)*fade;
+        const x=t.x+(t.endX-t.x)*u+t.nx*scatter;
+        const y=t.y+(t.endY-t.y)*u+t.ny*scatter;
+        ctx.globalAlpha=alpha*(.35+.65*sparkleHash(seed+5));
+        ctx.fillStyle=i%3===0?'#ffffff':t.color;
+        ctx.beginPath();ctx.arc(x,y,(.3+.65*sparkleHash(seed+9))*fade,0,Math.PI*2);ctx.fill();
+      }
+      // ~1 destello mediano cada20 unidades, grande cada65: no estrellas enormes
+      // repetidas ni una estrella terminal pegada al jugador.
+      if (t.serial%4===0 || t.serial%13===0) {
+        const large=t.serial%13===0, seed=t.serial*97;
+        const offset=(sparkleHash(seed+2)-.5)*6*fade;
+        const x=(t.x+t.endX)*.5+t.nx*offset, y=(t.y+t.endY)*.5+t.ny*offset;
+        const radius=(large?7.5:3)*fade;
+        if (b.secondaryGlow && (large || density>=1)) {
+          const glow=dashGlow(t.color);
+          if(glow) {const r=radius*2.4;ctx.globalAlpha=alpha*.32;ctx.drawImage(glow,x-r,y-r,r*2,r*2);}
+        }
+        if (!large || density>=1 || t.serial%2===0) {
+          ctx.globalAlpha=alpha*.9;ctx.fillStyle='#ffffff';ctx.strokeStyle=t.color;
+          dashStar(ctx,x,y,radius,t.serial%3===0?8:(t.serial%3===1?6:0));
+        }
+      }
+    }
+    ctx.restore();
+  };
+  NV.getDashTrailStats = function(trails) {
+    let count=0;for(const t of trails)if(t.kind==='dashStar')count++;
+    return {count,cap:DASH_TRAIL_CAP,life:DASH_TRAIL_LIFE,pool:dashTrailPool.length,glowCache:dashGlowCache.size};
+  };
+  // Compactar el mismo array: sin allocations/filter por frame para esta estela.
   NV.updateTrails = function (dt, trails) {
-    for (const t of trails) { t.life -= dt; t.size *= 0.9; }
-    return trails.filter((t) => t.life > 0);
+    let write=0;
+    for (const t of trails) {
+      t.life -= dt;
+      if(t.kind==='dashStar')t.age+=dt;else t.size*=.9;
+      if(t.life>0)trails[write++]=t;else recycleTrail(t);
+    }
+    trails.length=write;return trails;
   };
 
   // ---- Shockwave reutilizable (onda expansiva radial): ROOK, detonación de NOVA, futuros FX ----
@@ -213,7 +329,7 @@
     // secondaryShockwaves (P2): la onda marcada como decorativa puede omitirse
     // en tiers bajos; las ondas principales siempre se dibujan.
     if (o.secondary && NV.getVisualBudget && !NV.getVisualBudget().secondaryShockwaves) return shockwaves;
-    shockwaves.push({ x, y, life: 1, maxRadius: o.maxRadius || 130, color: o.color || '#ffcf76', width: o.width || 5 });
+    shockwaves.push({ x, y, life: 1, maxRadius: o.maxRadius || 130, color: o.color || '#ffcf76', width: o.width || 5, style: o.style });
     return shockwaves;
   };
 

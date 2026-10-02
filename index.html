@@ -4,8 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Neon Void</title>
+    <link rel="icon" href="assets/brand/neon-void-mark.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="css/styles.css" />
     <link rel="stylesheet" href="css/lobby-f093.css" />
+    <link rel="stylesheet" href="css/alpha.css" />
     <!-- Capa móvil: detección por capacidad (se carga primero; solo etiqueta <html>). -->
     <script src="js/core/capabilities.js"></script>
     <script type="importmap">
@@ -15,10 +17,12 @@
       }
     }
     </script>
+    <!-- La distribución Canvas2D funciona offline. WebGL legado sólo a pedido. -->
     <script type="module">
-      import * as THREE from 'three';
-      window.NV = window.NV || {};
-      window.NV.THREE_READY = Promise.resolve(THREE);
+      if (new URLSearchParams(location.search).get('legacy3d') === '1') {
+        window.NV = window.NV || {};
+        window.NV.THREE_READY = import('three').catch(() => null);
+      }
     </script>
   </head>
   <body>
@@ -87,7 +91,7 @@
                 <p class="hero-info-passive"><span>PASIVA</span><strong id="heroPassive">Regenera 1 HP cada 5s</strong></p>
                 <div class="hero-info-skill">
                   <canvas class="hero-skill-icon" id="heroSkillIcon" width="24" height="24"></canvas>
-                  <p><span>ESPECIAL</span><strong id="heroSkillName">Lluvia Estelar</strong><small id="heroSkillDesc">Meteoritos devastadores contra enemigos normales</small></p>
+                  <p><span>ESPECIAL</span><strong id="heroSkillName">Lluvia Criocósmica</strong><small id="heroSkillDesc">12 cometas fríos, con daño reducido contra jefes</small></p>
                 </div>
                 <p class="hero-info-identity" id="heroIdentity">Supervivencia estable · especial de alto impacto y recarga larga</p>
               </div>
@@ -314,10 +318,11 @@
             </div>
             <div id="panelControls" class="settings-tab-panel" role="tabpanel" aria-labelledby="tabControls" aria-hidden="true" data-tab="controls" hidden>
               <div class="quality-options" role="radiogroup" aria-label="Política de disparo en escritorio">
-                <label><input type="radio" name="firePolicy" value="manual" /><span><b>Manual</b><small>Apunta con el mouse y mantén LMB para disparar.</small></span></label>
+                <label><input type="radio" name="firePolicy" value="manual" /><span><b>Manual</b><small>Apuntá con mouse o stick derecho; dispará con clic o gatillo.</small></span></label>
                 <label><input type="radio" name="firePolicy" value="legacy-auto" /><span><b>Auto clásico</b><small>Dispara al objetivo más cercano como hasta ahora.</small></span></label>
               </div>
-              <p class="settings-note">En móvil se conserva el auto clásico hasta una futura iteración twin-stick.</p>
+              <p id="gamepadStatus" class="settings-note" role="status">Mando: no detectado. Estándar: stick izq. mover · stick der. apuntar · RT disparar · B dash · A especial.</p>
+              <p class="settings-note">En móvil se conserva el auto clásico. Los mandos estándar y Steam Input usan la misma lógica que teclado/mouse.</p>
             </div>
             <div id="panelGraphics" class="settings-tab-panel" role="tabpanel" aria-labelledby="tabGraphics" aria-hidden="true" data-tab="graphics" hidden>
               <div class="quality-options" role="radiogroup" aria-label="Calidad visual">
@@ -359,7 +364,9 @@
     <script src="js/ui/settingsPanel.js"></script>
     <script src="js/ui/characters.js"></script>
     <script src="js/render/canvas.js"></script>
+    <script src="js/render/sectors.js"></script>
     <script src="js/render/projectiles.js"></script>
+    <script src="js/render/specialEffects.js"></script>
     <script src="js/render/consumableEffects.js?v=shield-2"></script>
     <script src="js/render/spectralEnemies2D.js"></script>
     <script src="js/render/enemies.js"></script>
@@ -368,6 +375,9 @@
     <script src="js/render/hazards.js"></script>
     <script src="js/render/espectroLite.js"></script>
     <script src="js/render/bosses.js"></script>
+    <script src="js/data/pilotAnimationBaseline.js"></script>
+    <script src="js/render/pilotGeometry.js"></script>
+    <script src="js/render/pilotAppearance.js"></script>
     <script src="js/render/player.js"></script>
     <script src="js/render/weaponIcons.js"></script>
     <script src="js/render/consumableIcons.js"></script>
@@ -384,16 +394,26 @@
     <script src="js/engine/hostileBudget.js"></script>
     <script src="js/engine/enemySpawnRegistry.js"></script>
     <script src="js/engine/performanceMonitor.js"></script>
-    <script src="js/engine/hazards.js"></script>
-    <script src="js/engine/enemies.js"></script>
+      <script src="js/engine/cameraSafety.js"></script>
+      <script src="js/engine/hazards.js"></script>
+      <script src="js/engine/sectorEncounters.js"></script>
+      <script src="js/engine/enemies.js"></script>
+      <script src="js/engine/enemyArrival.js"></script>
+      <script src="js/engine/wavePressure.js"></script>
     <script src="js/engine/combat.js"></script>
     <script src="js/engine/playerStun.js"></script>
+    <script src="js/engine/playtestTelemetry.js"></script>
+    <script src="js/engine/expedition.js"></script>
     <script src="js/engine/boss.js"></script>
+    <script src="js/engine/bossEncounters.js"></script>
     <script src="js/engine/bullets.js"></script>
     <script src="js/engine/flame.js"></script>
     <script src="js/engine/weapons.js"></script>
     <script src="js/engine/special.js"></script>
     <script src="js/game.js"></script>
+    <script src="js/ui/onboarding.js"></script>
+    <script src="js/ui/gamepadControls.js"></script>
+    <script src="js/ui/alpha.js"></script>
     <!-- Último: necesita NV.input (expuesto por game.js) y NV.viewport. -->
     <script src="js/ui/mobileControls.js"></script>
   </body>

@@ -185,5 +185,13 @@ t('Fade de cabecera al cambiar de arma (weaponFadeAt)', () => {
   if (!h.includes('lastWeaponText')) throw new Error('sin lastWeaponText');
 });
 
+t('Stats TAB comparte la curva proporcional y deja permanente fuera del multiplicador', () => {
+  const h = fs.readFileSync('js/render/hud.js', 'utf8');
+  if (!h.includes('weapon.damage * NV.weaponLevelDamageMultiplier(currentWeaponLevel()) + permUpgrades.damage * 2')) {
+    throw new Error('HUD no usa el cálculo proporcional compartido');
+  }
+  if (h.includes('weaponLevelDamageBonus')) throw new Error('HUD conserva helper aditivo antiguo');
+});
+
 console.log('RESULT hud_v2: pass=' + pass + ' fail=' + fail);
 process.exit(fail ? 1 : 0);

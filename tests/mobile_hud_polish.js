@@ -43,7 +43,7 @@ t('estado especial reutiliza cooldown existente sin cambiar valores ni activaci�
 
 t('contador enemigo y combo quedan apilados upper-left en canvas', () => {
   if (!game.includes('viewY() + (mobilePresentation ? 58 : 43)')) throw new Error('contador no separa mobile/desktop upper-left');
-  if (!game.includes("mobilePresentation ? { x: viewX() + 12, y: viewY() + 83 } : null")) throw new Error('combo mobile no queda bajo el contador');
+  if (!game.includes('ctx.translate(vx, vy)') || !game.includes("mobilePresentation ? { x: 12, y: 83 } : null")) throw new Error('combo mobile no queda bajo el contador en la vista trasladada');
   if (game.includes('ctx.fillText(countText, barX + barW + 8, barY + 10)')) throw new Error('contador superior-centro antiguo sigue activo');
 });
 
@@ -51,7 +51,7 @@ t('desktop conserva la posición legacy del combo y sólo relocaliza enemigos', 
   const hud = fs.readFileSync('js/render/hud.js', 'utf8');
   if (!hud.includes('opts.x == null ? 10')) throw new Error('x legacy del combo desktop cambió');
   if (!hud.includes('opts.y == null ? 20')) throw new Error('y legacy del combo desktop cambió');
-  if (!game.includes("mobilePresentation ? { x: viewX() + 12, y: viewY() + 83 } : null")) throw new Error('desktop no delega al default legacy');
+  if (!game.includes("mobilePresentation ? { x: 12, y: 83 } : null")) throw new Error('desktop no delega al default legacy');
 });
 
 t('switching e input especial conservan las rutas existentes', () => {

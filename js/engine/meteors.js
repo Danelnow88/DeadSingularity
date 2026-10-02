@@ -21,7 +21,9 @@
         continue;
       }
       if (m.y > H + 20) { m.dead = true; continue; }
-      // Impacto
+      // Cada meteoro impacta una sola vez. Antes podía aplicar daño en cada frame
+      // mientras atravesaba al jefe: la especial lo destruía casi instantáneamente.
+      let impacted = false;
       for (const e of enemies) {
         if (NV.isEnemyDamageable ? !NV.isEnemyDamageable(e) : e.dead) continue;
         const d = Math.hypot(e.x - m.x, e.y - m.y);
@@ -31,14 +33,23 @@
           e.hitFlash = Math.max(e.hitFlash || 0, 0.10);
           if (e.hp <= 0) killEnemy(e);
           applyKnockback(e, m.x, m.y, 150);
+          impacted = true;
+          break;
         }
       }
-      if (boss && !boss.dead) {
+      if (!impacted && boss && !boss.dead) {
         const d = Math.hypot(boss.x - m.x, boss.y - m.y);
-        if (d < m.radius + boss.radius) { boss.hp -= 30 * (NV.BALANCE.METEOR_BOSS_DMG_MULT || 1); boss.hitFlash = Math.max(boss.hitFlash || 0, 0.10); }
+        if (d < m.radius + boss.radius) {
+          const damage = 30 * (NV.BALANCE.METEOR_BOSS_DMG_MULT || 1);
+          boss.hp -= damage;
+          if (NV.playtest && NV.playtest.enabled) NV.playtest.bossHit('special:meteor', damage, 'meteor');
+          boss.hitFlash = Math.max(boss.hitFlash || 0, 0.10);
+          impacted = true;
+        }
       }
-      if (m.y > H - 20) {
+      if (impacted || m.y > H - 20) {
         m.dead = true;
+        if (NV.specialVisualEvent) NV.specialVisualEvent(ctxState.player, 'impact', m.x, m.y);
         spawnExplosion(m.x, m.y, 8, m.color, 0.4);
         shake = Math.max(shake, 0.1);
       }

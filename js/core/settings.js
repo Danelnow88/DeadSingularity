@@ -35,6 +35,9 @@
     }),
     gameplay: Object.freeze({
       difficulty: 'normal',
+      familyFriendly: true,
+      reducedEffects: false,
+      largeText: false,
     }),
   });
   const listeners = [];
@@ -83,6 +86,9 @@
       },
       gameplay: {
         difficulty: ['easy', 'normal', 'hard'].indexOf(gameplay.difficulty) >= 0 ? gameplay.difficulty : DEFAULTS.gameplay.difficulty,
+        familyFriendly: gameplay.familyFriendly !== false,
+        reducedEffects: gameplay.reducedEffects === true,
+        largeText: gameplay.largeText === true,
       },
     };
   }
@@ -108,6 +114,11 @@
   }
 
   NV.settings = load();
+  function applyComfortRoot() {
+    if (typeof document === 'undefined' || !document.documentElement) return;
+    document.documentElement.setAttribute('data-large-text', NV.settings.gameplay.largeText ? 'true' : 'false');
+  }
+  applyComfortRoot();
   NV.settingsDefaults = DEFAULTS;
   NV.getSettings = function () { return normalize(NV.settings); };
   // Única vía de escritura de las categorías de audio: normaliza, aplica, persiste
@@ -173,8 +184,13 @@
     NV.settings.gameplay.difficulty = id;
     save(); notify(); return true;
   };
+  NV.setComfortOption = function (key, value) {
+    if (!['familyFriendly', 'reducedEffects', 'largeText'].includes(key)) return false;
+    NV.settings.gameplay[key] = !!value; applyComfortRoot(); save(); notify(); return true;
+  };
   NV.resetSettings = function () {
     NV.settings = normalize(DEFAULTS);
+    applyComfortRoot();
     applyAudio();
     save(); notify();
   };

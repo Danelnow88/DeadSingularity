@@ -1,0 +1,479 @@
+NEON VOID — PROMPT Y PLAN MAESTRO PARA LA PRÓXIMA SESIÓN
+Preparado: 30 de septiembre de 2026
+Proyecto: C:\Users\party\Desktop\JuegoDemo
+Documento de origen: C:\Users\party\Desktop\NEON_VOID_investigacion_mejora_sistemica.txt
+
+======================================================================
+PROMPT PARA ARRANCAR LA PRÓXIMA SESIÓN
+======================================================================
+
+Continuá el desarrollo de NEON VOID usando como autoridad este archivo y
+NEON_VOID_investigacion_mejora_sistemica.txt. Tomá el volante y avanzá de forma
+autónoma. El objetivo es transformar la alpha actual en una versión mucho más
+coherente, profunda, atractiva y cercana a un producto publicable.
+
+Trabajá por etapas seguras. Antes de modificar, inspeccioná el repositorio real,
+el estado de Git, la documentación y la entrega vigente. Preservá todos los
+cambios locales. No hagas commit, push, publicación ni borres builds previas.
+No reescribas el proyecto desde cero ni dupliques gameplay para desktop/móvil.
+
+En cada etapa:
+1. diagnosticá el problema real en código y en pantalla;
+2. definí el resultado jugable y visual esperado;
+3. implementá una porción completa y coherente;
+4. ejecutá pruebas dirigidas y la suite general;
+5. verificá visualmente desktop y móvil;
+6. dejá el juego iniciable y jugable antes de pasar a la siguiente etapa;
+7. si se acerca el límite de uso, cerrá la etapa actual, generá un build nuevo,
+   actualizá el lanzador y escribí claramente qué queda pendiente.
+
+Priorizá primero la calidad de lo existente: enemigos con conducta, lectura del
+combate, identidad visual, arsenal útil, bosses interesantes, audio reactivo,
+economía con decisiones y rendimiento. Agregá contenido nuevo solamente cuando
+complete una función concreta. Las capturas que entregue el usuario son evidencia
+de problemas visuales y deben incorporarse a la auditoría, no tratarse como una
+orden aislada de mover elementos.
+
+No detengas el trabajo para consultar decisiones rutinarias. Pedí al usuario que
+pruebe únicamente cuando exista una versión concreta y estable, indicando:
+- qué modo, piloto, arma, oleada o boss elegir;
+- qué comportamiento observar;
+- qué sensación comparar;
+- dónde informar un fallo.
+
+======================================================================
+ESTADO ACTUAL QUE NO DEBE PERDERSE
+======================================================================
+
+La versión vigente es una alpha jugable con:
+- expedición de 20 oleadas, cuatro sectores y modo infinito;
+- diez armas, fusiones/evoluciones, consumibles y mejoras;
+- cuatro pilotos, especiales y movimiento/dash progresivo;
+- diez bosses con patrones diferenciados, telegraphs y fase avanzada;
+- eventos de oleada, preparación, contratos y rutas de bosses;
+- checkpoint entre oleadas, Guardar y salir, Continuar, exportar/importar;
+- música y SFX procedurales, controles de volumen y mute;
+- ejecutable Windows offline y versión web;
+- laboratorio de combate, telemetría y una suite de 134 grupos de pruebas.
+
+Correcciones ya realizadas que no se deben deshacer:
+- Plasma no duplica daño directo y explosión sobre el mismo boss.
+- La escopeta tiene un límite de impactos por descarga contra bosses.
+- La especial de BOTI ya no aplica el mismo meteorito muchas veces por frame.
+- El botón Desplegar recuperó su tamaño y posición original en la tienda.
+- La tienda no tiene scroll general; Preparar oleada usa una ventana clara.
+- Guardar y salir fue probado en navegador y ejecutable Windows.
+- El modo fresh informa Salir sin guardar y no pisa el checkpoint normal.
+- Mutante es un núcleo que genera brotes; no afirma que se divide físicamente.
+- La vida de bosses usa crecimiento moderado y sus ataques tienen ventanas
+  legibles de aviso, ejecución y descanso.
+- Las armas secundarias reciben sincronización parcial y existe Entrenamiento.
+- Las fusiones enemigas avanzadas tienen al menos un pulso anticipable y evitable.
+
+Entrega Windows vigente al preparar este plan:
+releases\NEON-VOID-0.10.0-alpha-windows-FYmbjV\NEON VOID.exe
+
+El lanzador JUGAR NEON VOID.cmd apunta a esa entrega. Editar los fuentes no cambia
+el EXE: al finalizar una sesión hay que crear una carpeta de release nueva,
+verificarla y recién entonces actualizar el lanzador.
+
+======================================================================
+PENDIENTES REALES DEL DOCUMENTO DE INVESTIGACIÓN
+======================================================================
+
+1. ARSENAL Y PROGRESIÓN
+
+Sigue pendiente lograr que una run use naturalmente 2 o 3 armas con funciones
+reales. La sincronización y el entrenamiento reducen el castigo por cambiar, pero
+no garantizan una decisión táctica. Hay que revisar:
+- solapamiento rifle/láser y francotirador/cañón de riel;
+- Plasma y otras armas de área/control;
+- escopeta como burst cercano sin volverla la respuesta universal a bosses;
+- atribución de progreso: todavía debe auditarse cuándo una baja acredita el arma
+  equipada y cuándo acredita la fuente real del daño;
+- cambio rápido de arma, información del HUD y legibilidad de la función de cada
+  herramienta;
+- viabilidad de una favorita sin convertirla en estrategia dominante.
+
+2. BOSSES
+
+Los patrones existen, pero falta balance humano de las peleas completas:
+- duración real con builds pobres, medias y fuertes;
+- cantidad de ciclos de ataque que llega a mostrar cada boss;
+- primera mitad aburrida o demasiado simple;
+- fase 2 perceptible y con cambio real de decisiones;
+- interacción con especiales, consumibles y cada familia de armas;
+- ataques siempre esquivables y telegraphs coherentes con el hitbox real;
+- identidad visual y sonora distinta por boss/sector.
+
+Atención especial: Señor del Vacío, Destructor, Mutante, Guardián, Némesis y
+Apocalipsis. También volver a probar BOTI después de la corrección de meteoritos.
+
+3. ENEMIGOS Y SINERGIAS
+
+Hay familias avanzadas con habilidades, pero todavía deben localizarse todos los
+enemigos cuyo comportamiento efectivo es solo perseguir y tocar al jugador.
+Cada tipo debe tener una función reconocible. No todos necesitan un ataque nuevo,
+pero sí una decisión distinta: rodear, cortar rutas, preparar una carga, custodiar,
+empujar, bloquear disparos, marcar una zona, retirarse, disparar, multiplicarse o
+crear una oportunidad al morir.
+
+Falta una matriz completa de roles y combinaciones para que las oleadas generen
+presión táctica por composición, sin IA perfecta ni situaciones inevitables.
+
+4. FUSIÓN DE ENEMIGOS
+
+El pulso avanzado es un primer paso. Sigue pendiente convertir la fusión en una
+identidad central:
+- silueta y animación que cambien con el nivel;
+- modificación de conducta en hitos claros;
+- una herramienta nueva en fusión alta;
+- miniélite/mutación máxima con recompensa y riesgo;
+- compatibilidad con el presupuesto de hostiles y con equipos modestos;
+- forma clara de impedir o priorizar una fusión antes de que ocurra.
+
+5. ECONOMÍA Y PROGRESIÓN TARDÍA
+
+Preparaciones, contratos y eventos agregaron usos, pero no resuelven por completo
+el exceso de shards en runs largas ni el final de las mejoras permanentes. Falta:
+- medir cuándo deja de importar la tienda;
+- gastos tardíos con elecciones y costes crecientes;
+- reroll o reconfiguración limitada;
+- modificaciones temporales de armas/build;
+- uso interesante para metaShards después de maximizar mejoras;
+- revisar Codicia, Recompensa y Día de Pago cuando el dinero ya no tiene valor.
+
+6. DIFICULTAD, SKILL Y RITMO
+
+Falta medir y corregir el punto donde jugar bien deja de importar. La dificultad
+debe crecer mediante composiciones, prioridades, movimiento y adaptación. Revisar:
+- curva por oleada y por dificultad;
+- daño inevitable, saturación y muertes sin lectura;
+- valor real del dash, posicionamiento y cambio de herramienta;
+- tiempo muerto al inicio de oleadas/bosses;
+- ritmo de recompensas, hitos y sensación de crecimiento;
+- diferencia observable entre una ejecución mediocre y una excelente.
+
+7. ARTE, GRÁFICOS Y LORE VISUAL
+
+Éste es un pendiente grande y debe tratarse como un sistema, no como efectos
+aislados. Falta definir y aplicar:
+- biblia visual: formas, materiales, paleta, luces, escala y nivel de detalle;
+- lenguaje de facciones y relación visual entre pilotos, enemigos, bosses y Vacío;
+- cuatro sectores que se sientan diferentes en arena, fondo, hazards, color,
+  iluminación, audio y UI contextual;
+- siluetas más fuertes y menos aspecto de primitivas genéricas;
+- jerarquía visual: jugador, amenaza inmediata, pickup, proyectil hostil y adorno;
+- efectos de impacto, muerte, evolución, fusión y fase de boss más expresivos;
+- coherencia entre lobby, HUD, tienda, combate, pausas y game over;
+- narrativa ambiental breve: nombres, transmisiones, señales, símbolos y progresión
+  del mundo sin frenar el arcade;
+- icono, logo, arte de portada y materiales comerciales, después de estabilizar la
+  dirección artística interna.
+
+Las capturas futuras del usuario deben catalogarse por pantalla, resolución,
+problema observado, causa y criterio de corrección. Antes de retocar una captura,
+revisar si el problema se repite en otras pantallas o tamaños.
+
+8. SONIDO Y MÚSICA
+
+Existe una base procedural, pero falta una pasada artística completa:
+- leitmotiv por sector y variación de intensidad por oleada;
+- identidad musical y SFX propia de cada boss;
+- sonidos únicos por familia enemiga y telegraph peligroso;
+- impactos que comuniquen arma, armadura, crítico, bloqueo y muerte;
+- mezcla que mantenga audibles avisos importantes bajo disparo continuo;
+- transiciones musicales suaves entre lobby, tienda, combate, boss y game over;
+- pruebas de fatiga auditiva, volumen bajo y parlantes modestos;
+- revisar que mute, categorías y pausa liberen correctamente voces continuas.
+
+9. ARENAS, EVENTOS Y VARIEDAD
+
+Los sectores hoy organizan la expedición, pero todavía no son cuatro experiencias
+visuales/jugables completas. Falta:
+- identidad de arena por sector sin perder rendimiento;
+- obstáculos o hazards legibles que cambien movimiento;
+- eventos que cambien una decisión real y no solo estadísticas;
+- objetivos secundarios cortos compatibles con la supervivencia;
+- combinación controlada de evento, enemigos y boss para evitar injusticias.
+
+10. PRODUCTO, ACCESIBILIDAD Y PUBLICACIÓN
+
+Después del núcleo jugable:
+- tutorial interactivo corto;
+- mando/Steam Input;
+- opciones extra de accesibilidad y revisión de texto;
+- pruebas en distintas GPU y equipos modestos;
+- perfiles de rendimiento y mínimos medidos;
+- identidad final del ejecutable, instalador/firma, licencias y revisión de marca;
+- materiales de tienda, tráiler, capturas, descripción, precio y Steamworks.
+
+======================================================================
+ORDEN DE EJECUCIÓN RECOMENDADO
+======================================================================
+
+ETAPA 0 — CONGELAR BASELINE Y MAPA DEL JUEGO
+
+Objetivo: saber qué se cambia y poder demostrar que mejora.
+
+- Leer README, docs/AI_START_HERE.md, docs/AI_WORKFLOW.md, arquitectura, UI,
+  testing y deployment.
+- Revisar git status y distinguir cambios del usuario, cambios de alpha y archivos
+  residuales. No limpiar nada sin autorización explícita.
+- Ejecutar baseline de tests y verificación del build vigente.
+- Crear una tabla real de armas, enemigos, bosses, oleadas, economía, audio, VFX y
+  pantallas. Marcar: completo, parcial, genérico, roto o no medido.
+- Mejorar la telemetría para registrar DPS por fuente, duración de boss, ataques
+  ejecutados, daño recibido por causa, cambios de arma, dinero ganado/gastado,
+  tiempo de oleada, FPS y cantidad máxima de entidades.
+- Preparar escenarios reproducibles en Combat Lab sin alterar el modo normal.
+
+Cierre: baseline documentado, build vigente intacto y pruebas verdes.
+
+ETAPA 1 — AUDITORÍA VISUAL Y DIRECCIÓN ARTÍSTICA
+
+Objetivo: definir una identidad antes de seguir agregando efectos.
+
+- Capturar lobby, selección, oleada común, cada familia enemiga, cada boss, tienda,
+  pausa, game over y los tres viewports de referencia.
+- Incorporar las capturas que entregue el usuario.
+- Crear una biblia visual pequeña y concreta para NEON VOID.
+- Definir facciones, cuatro sectores, materiales, siluetas, paletas y símbolos.
+- Corregir primero jerarquía, contraste, escala, espaciado y consistencia.
+- Implementar una primera pasada en un sector, una familia y un boss como vertical
+  slice; validar estética y rendimiento antes de propagarla.
+
+Cierre: vertical slice aprobado visualmente y sin pérdida relevante de FPS.
+
+ETAPA 2 — ROLES ENEMIGOS Y MECÁNICAS FALTANTES
+
+Objetivo: eliminar perseguidores redundantes y crear decisiones claras.
+
+- Inventariar todos los tipos y detectar cuáles solo hacen chase/contacto.
+- Asignar a cada uno un verbo y un rol táctico.
+- Diseñar conductas simples, anticipables y reutilizables.
+- Implementar por familias, con telegraph, estado, cooldown, recuperación y audio.
+- Crear composiciones de 2–3 roles con contrajuego comprobable.
+- Evitar subir densidad para reemplazar diseño.
+
+Cierre: cada enemigo tiene una razón de existir y las combinaciones siguen siendo
+legibles/esquivables.
+
+ETAPA 3 — FUSIÓN COMO IDENTIDAD
+
+Objetivo: hacer que ignorar enemigos produzca una mutación visible y táctica.
+
+- Definir hitos de fusión y presupuesto máximo.
+- Agregar evolución visual, comportamiento y recompensa.
+- Permitir anticipar/interrumpir/priorizar la fusión.
+- Probar con eventos, élites, guards y enemigos espectrales.
+- Medir rendimiento y evitar multiplicar lógica por cada pareja posible.
+
+Cierre: la fusión cambia cómo se juega, no solamente HP/daño/tamaño.
+
+ETAPA 4 — ARSENAL TÁCTICO Y PROGRESIÓN JUSTA
+
+Objetivo: que una run tenga normalmente 2–3 herramientas útiles.
+
+- Medir todas las armas contra grupos, élites y cada boss en niveles comparables.
+- Escribir el rol, fortaleza, debilidad y evolución de cada arma.
+- Resolver solapamientos sin destruir el gusto de dispararlas.
+- Corregir atribución de progreso según fuente/contribución elegida.
+- Afinar sincronización, Entrenamiento, HUD y cambio de arma.
+- Usar vulnerabilidades suaves solamente si son visibles y necesarias.
+
+Cierre: cambiar de arma responde a una situación, no a un bonus arbitrario.
+
+ETAPA 5 — BOSSES COMPLETOS
+
+Objetivo: diez pruebas distintas, justas y memorables.
+
+- Medir duración y ciclos con build baja/media/alta.
+- Garantizar una primera fase activa y una segunda fase perceptible.
+- Dar a cada boss una prueba principal y un lenguaje visual/sonoro propio.
+- Auditar hitboxes, proyectiles, descansos, adds y esquiva por arriba/abajo/lados.
+- Probar armas, especiales y consumibles que puedan trivializar encuentros.
+- Ajustar HP al final, una vez corregidas interacciones y ritmo.
+
+Cierre: ningún boss muere sin mostrar identidad ni sobrevive como esponja aburrida.
+
+ETAPA 6 — ECONOMÍA, BUILD Y MOTIVACIÓN
+
+Objetivo: mantener decisiones hasta el final de la run.
+
+- Graficar entradas/salidas de shards por tramo.
+- Introducir gastos tardíos con coste de oportunidad.
+- Mejorar recompensas y feedback de crecimiento entre niveles/sectores.
+- Revisar contratos, preparaciones y eventos con el arsenal ya estabilizado.
+- Dar uso limitado y significativo al excedente permanente.
+
+Cierre: siempre hay una elección útil, sin daño infinito comprable.
+
+ETAPA 7 — SECTORES, LORE VISUAL, AUDIO Y PRESENTACIÓN
+
+Objetivo: convertir los cuatro tramos en un viaje reconocible.
+
+- Propagar la biblia visual aprobada a arenas, fondos, hazards y UI contextual.
+- Añadir narrativa ambiental breve y consistente.
+- Crear variaciones musicales y paisajes sonoros por sector/boss.
+- Pulir impactos, muertes, fusión, pickups y transiciones.
+- Mantener un presupuesto visual adaptable por calidad.
+
+Cierre: una captura o unos segundos de audio permiten reconocer el sector.
+
+ETAPA 8 — CURVA GLOBAL, ONBOARDING Y RENDIMIENTO
+
+Objetivo: una expedición completa justa, comprensible y fluida.
+
+- Playtests completos en Fácil, Normal y Difícil.
+- Afinar spawns, combinaciones, oleadas, recompensas y duración.
+- Crear tutorial breve y mejorar mensajes que hoy dependen del manual.
+- Verificar teclado, mouse, touch y preparar mando.
+- Perfil de FPS, memoria, audio y picos de entidades en hardware disponible.
+- Revisar accesibilidad, flashes, movimiento, texto y volúmenes.
+
+Cierre: completar, morir, continuar y reiniciar funcionan sin fallos críticos.
+
+ETAPA 9 — EMPAQUETADO Y CANDIDATA PUBLICABLE
+
+Objetivo: generar una nueva alpha candidata, sin publicar automáticamente.
+
+- Suite completa, pruebas visuales y recorridos reales.
+- Build web y Windows en carpetas nuevas.
+- Verificar inicio, guardado, reanudación y partida en el EXE empaquetado.
+- Actualizar lanzador, README, changelog y pendientes conocidos.
+- Preparar checklist separado de Steam, arte comercial, licencias y hardware.
+
+Cierre: una versión concreta, jugable y recuperable queda como último estado bueno.
+
+======================================================================
+REGLAS DE CALIDAD DURANTE LA IMPLEMENTACIÓN
+======================================================================
+
+- Código actual es la autoridad si contradice documentación; corregir la doc.
+- Conservar un solo motor de gameplay para desktop y móvil.
+- No crear un segundo viewport, mixer, AudioContext ni estado paralelo de UI.
+- No usar más HP, daño o enemigos como primera respuesta de diseño.
+- Ningún ataque dañino sin aviso legible y hitbox coherente.
+- Ningún efecto decorativo debe cambiar dificultad según calidad gráfica.
+- Todo enemigo/arma/boss nuevo o modificado necesita propósito y contrajuego.
+- Probar fuente real del daño; especiales, burn, splash y adds no deben generar
+  múltiples impactos accidentales ni atribuir progreso al arma incorrecta.
+- Comparar antes/después con datos y con sensación humana.
+- No confundir tests automáticos con balance divertido.
+- No sobrescribir el último build verificado.
+- Ante poco límite disponible: terminar una etapa pequeña, probar, empaquetar y
+  documentar. Nunca dejar el lanzador apuntando a una build fallida.
+
+======================================================================
+QUÉ DEBE PROBAR EL USUARIO
+======================================================================
+
+Solicitar pruebas cortas y específicas, una por vez. Ejemplos:
+
+- Visual: enviar captura y decir qué elemento distrae, se ve barato, no se entiende
+  o no corresponde al mundo.
+- Enemigos: oleada exacta, dificultad y qué combinación pareció aburrida/injusta.
+- Armas: nivel/fusión, boss o grupo probado y si existió motivo real para cambiar.
+- Boss: nombre, porcentaje donde cambió de fase, ataques vistos, causa de daño y
+  duración aproximada.
+- Economía: oleada donde empezó a sobrar dinero y qué compras ya no interesaban.
+- Audio: qué sonido tapa otro, cansa, no se oye o no comunica peligro.
+- Rendimiento: resolución, modo gráfico y momento donde se percibió una caída.
+
+Registrar cada devolución como: observado, reproducido, causa, cambio, verificación
+y pendiente. No asumir que una sola captura representa todos los viewports.
+
+======================================================================
+PRIMERA ACCIÓN CUANDO EL USUARIO DIGA «ARRANCÁ»
+======================================================================
+
+1. Leer este plan y el documento de investigación.
+2. Revisar el estado real del checkout y la documentación obligatoria.
+3. Confirmar que JUGAR NEON VOID.cmd abre la última entrega verificada.
+4. Ejecutar baseline sin modificar el perfil de juego del usuario.
+5. Crear el inventario/matriz de estado de todos los sistemas.
+6. Empezar ETAPA 1 con una auditoría visual completa y, en paralelo conceptual,
+   preparar el inventario de enemigos chase para ETAPA 2.
+7. Entregar una primera vertical slice jugable antes de propagar cambios masivos.
+
+Mensaje suficiente del usuario para iniciar:
+
+«Arrancá con PLAN_MAESTRO_PROXIMA_SESION_NEON_VOID.txt. Tomá el volante y avanzá
+por etapas, manteniendo siempre una versión jugable y verificada.»
+
+======================================================================
+PROTOCOLO DE ELECCIÓN DEL MODELO
+======================================================================
+
+Antes de cada sesión de trabajo, informar al usuario en una línea:
+
+MODELO RECOMENDADO: [modelo] — [motivo breve] — [alcance de esta sesión].
+RAZONAMIENTO: [nivel] — [por qué ese nivel alcanza].
+
+Usar este criterio para cuidar el límite de uso:
+
+- GPT-5.6 Sol: opción predeterminada para implementar fases del plan, corregir
+  bugs, editar varias partes relacionadas y ejecutar pruebas. Es el equilibrio
+  recomendado entre capacidad, velocidad y consumo para este proyecto.
+- GPT-6 Astra: reservarlo para decisiones de arquitectura difíciles, diagnóstico
+  sistémico, rediseño de combate que toque muchos subsistemas, dirección visual
+  compleja o revisión final de una etapa grande. No usarlo por defecto para una
+  edición pequeña.
+- GPT-6 Luna: usarlo para leer documentos, ordenar tareas, preparar reportes,
+  hacer cambios muy acotados o revisar información sin implementación compleja.
+- GPT-6 Sol / GPT-6.1 Sol: usarlo si la interfaz los ofrece y la tarea necesita
+  una ejecución rápida de complejidad media; elegir el modelo que muestre el
+  mejor equilibrio de límite disponible en ese momento.
+- Si el selector muestra un nombre diferente, como «Terra», no asumir sus
+  capacidades ni elegirlo automáticamente: informar que no está contemplado en
+  este protocolo y pedir que se use el modelo disponible equivalente que se haya
+  recomendado.
+
+Reglas de uso del límite:
+- Para una etapa grande, dividir el trabajo en cortes verificables y dejar una
+  versión jugable antes de consumir el siguiente bloque.
+- Evitar gastar un modelo de máxima capacidad en lectura, documentación o una
+  corrección localizada.
+- No prometer una cantidad exacta de tokens ni un tiempo exacto: el consumo real
+  depende del contexto, herramientas, pruebas y cambios encontrados.
+- Si el usuario informa que queda poco límite, reducir el alcance de la etapa,
+  cerrar con pruebas y empaquetar una build funcional antes de continuar.
+- Al volver después de una renovación, revisar el estado real del proyecto y este
+  protocolo antes de retomar; no repetir trabajo ya verificado.
+
+Recomendación inicial para ejecutar este plan: GPT-5.6 Sol. Si la primera sesión
+se convierte en un rediseño arquitectónico que cruza combate, render, audio y
+progresión, cambiar a GPT-6 Astra para esa etapa puntual. Para una sesión dedicada
+solo a auditar capturas, ordenar el backlog o actualizar documentación, usar GPT-6
+Luna.
+
+Configuración del razonamiento:
+
+- Medio: documentación, inventarios, lectura de capturas, reportes, cambios CSS
+  acotados y tareas cuyo resultado se puede verificar en una pasada.
+- Alto: implementación normal de una fase, correcciones de bugs, balance local,
+  pruebas dirigidas y cambios que tocan varios archivos relacionados. Será el
+  valor por defecto para GPT-5.6 Sol.
+- Muy alto / xhigh: diagnóstico sistémico, rediseño de una mecánica que cruza
+  combate y progresión, diseño de bosses, enemigos, economía o una auditoría
+  visual con muchas dependencias. Usarlo por bloques concretos, no durante toda
+  una sesión de edición rutinaria.
+- Extra alto / max / ultra: reservarlo para una decisión arquitectónica difícil,
+  una revisión final de una etapa grande o un fallo que persiste después de
+  pruebas razonables. No usarlo solo porque la tarea sea larga.
+
+Parejas recomendadas para este proyecto:
+
+- GPT-5.6 Sol + Alto: implementación y correcciones habituales.
+- GPT-5.6 Sol + Muy alto: fase compleja con varios subsistemas.
+- GPT-6 Astra + Muy alto: rediseño sistémico o arquitectura difícil.
+- GPT-6 Astra + Extra alto: solamente una etapa crítica y acotada, con criterio
+  de cierre definido antes de empezar.
+- GPT-6 Luna + Medio: documentación, análisis de capturas y preparación.
+
+Si el selector usa otros nombres para los niveles, elegir el equivalente visible
+de la interfaz. Antes de trabajar, escribir siempre una recomendación explícita,
+por ejemplo: «GPT-5.6 Sol · Alto; hoy implementamos la matriz de roles enemigos y
+la verificamos con tests». Si el usuario tiene poco límite, bajar un nivel y
+reducir el alcance de la etapa antes de iniciar.

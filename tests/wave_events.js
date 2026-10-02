@@ -49,7 +49,7 @@ t('Campo Minado NO marca enemigos: las minas viven en hazards[]', () => {
 
 t('game.js conecta selección %3, evento, hazards y niebla legacy separada', () => {
   const g = fs.readFileSync('js/game.js', 'utf8');
-    const ps = ['function pickWaveEvent', 'waveEvent = (wave % 5 !== 0 && wave % 3 === 0)', 'WAVE_EVENTS[waveEvent]', 'updateHazards(dt)', 'drawHazards(ctx, hazards', "waveEvent === 'fog'", 'waveEvent = null;'];
+    const ps = ['function pickWaveEvent', 'waveEvent = (!bossWave && wave % 3 === 0)', 'NV.expedition.isBossWave(expeditionRun, wave)', 'WAVE_EVENTS[waveEvent]', 'updateHazards(dt)', 'drawHazards(ctx, hazards', "waveEvent === 'fog'", 'waveEvent = null;'];
   for (const p of ps) if (!g.includes(p)) throw new Error('falta ' + p);
 });
 

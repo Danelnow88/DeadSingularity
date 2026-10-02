@@ -19,15 +19,35 @@
     return NV.isEnemyTargetable ? NV.isEnemyTargetable(enemy) : !!enemy && !enemy.dead;
   }
 
-  function applyPlayerBulletDamage(b, e, st) {
+  function weaponDamageSource(b, mode) {
+    if (!b || b.reflected || typeof b.wid !== 'string' || !b.wid) return null;
+    return { kind: 'weapon', weaponId: b.wid, mode: mode || 'direct' };
+  }
+
+  // damageOverride: daño YA calculado para este impacto (ej. caída por ordinal de
+  // rebote del Arco). Si falta, se usa b.damage intacto. Nunca se muta b.damage:
+  // el proyectil conserva su daño original durante toda su vida.
+  function applyPlayerBulletDamage(b, e, st, source, damageOverride) {
     const { addFloatText, killEnemy, applyKnockback } = st;
     if (NV.isEnemyDamageable && !NV.isEnemyDamageable(e)) return false;
     if (NV.isElitePredatorProjectileEvading && NV.isElitePredatorProjectileEvading(e)) return false;
     if (NV.tryElitePredatorProjectileEvade && NV.tryElitePredatorProjectileEvade(e, st.player, st.W, st.H)) return false;
-    const resisted = Math.max(1, b.damage - (e.resist || 0));
+    const baseNominal = Number.isFinite(damageOverride) ? damageOverride : b.damage;
+    // El Francotirador tiene una tarea concreta dentro del arsenal: bajar elites.
+    // El bonus es legible en su ficha y no afecta normales ni jefes.
+    const nominal = b.wid === 'sniper' && e.isElite
+      ? baseNominal * ((NV.BALANCE && NV.BALANCE.SNIPER_ELITE_DAMAGE_MULT) || 1.5)
+      : baseNominal;
+    const resisted = Math.max(1, nominal - (e.resist || 0));
     const snapProtected = b.guardProtectionSnapshot && b.guardProtectionSnapshot.has(e);
     const dealt = snapProtected ? resisted * 0.10 : (NV.guardProtectedDamage ? NV.guardProtectedDamage(e, resisted) : resisted);
+    const hpBefore = NV.playtest && NV.playtest.enabled ? e.hp : 0;
     e.hp -= dealt;
+    if (NV.playtest && NV.playtest.enabled && !b.reflected && b.wid) {
+      // El ordinal de rebote viaja en el propio proyectil; solo diagnóstico.
+      NV.playtest.weaponEnemyHit(b.wid, source || 'direct', dealt, hpBefore, e.hp,
+        (source === 'bounce' && Number.isFinite(b.bounceOrdinal)) ? b.bounceOrdinal : 0);
+    }
     if (e.isElite) e.stun = 0.25;
     e.hitFlash = Math.max(e.hitFlash || 0, 0.10);
     var _hsCat = e.isElite ? "ELITE" : "NORMAL";
@@ -38,8 +58,8 @@
     const dfs = hitFloatStyle(dealt, !!b.crit);
     const damageText = NV.formatDamageText ? NV.formatDamageText(dealt) : String(Math.round(dealt * 100) / 100);
     if (damageText !== null) addFloatText(e.x, e.y - e.radius - 6, damageText, dfs.color, dfs.size, { damageValue: dealt });
-    if (e.hp <= 0) killEnemy(e);
-    applyKnockback(e, b.x, b.y, 60);
+    if (e.hp <= 0) killEnemy(e, weaponDamageSource(b, source));
+    applyKnockback(e, b.x, b.y, b.knockback || 60);
     return true;
   }
 
@@ -51,32 +71,69 @@
     return { color: crit ? '#FF2A4B' : '#FFFFFF', size: crit ? 17 : 13 };
   }
 
-  function findBounceTarget(from, enemies, b) {
+  // Arco: caída de daño ABSOLUTA por ordinal de rebote (1=primero, 2, 3).
+  // Son multiplicadores relativos al b.damage ORIGINAL horneado al crear el
+  // proyectil, NO acumulativos. El impacto primario nunca usa estos factores.
+  const BOW_BOUNCE_FALLOFF = [0, 0.85, 0.70, 0.55];
+  // Giro máximo por rebote. cos(120°) = -0.5: se compara producto punto normalizado.
+  const BOW_MAX_TURN_DOT = -0.5;
+
+  function bowBounceDamage(b, ordinal) {
+    const base = b.damage;
+    const mult = BOW_BOUNCE_FALLOFF[Math.max(0, Math.min(3, ordinal | 0))] || 1;
+    return base * mult;
+  }
+
+  function findBounceTarget(from, enemies, b, inX, inY) {
     const radius = b.splashRadius || 180;
-    let next = null, best = Infinity;
+    const inLen = Math.hypot(inX, inY);
+    let next = null, bestCos = -Infinity, bestDist = Infinity;
     for (const e of enemies) {
       if (!isTargetable(e) || hasHitTarget(b, e)) continue;
-      const d = Math.hypot(e.x - from.x, e.y - from.y);
-      if (d <= radius && d < best) { best = d; next = e; }
+      const ox = e.x - from.x, oy = e.y - from.y;
+      const d = Math.hypot(ox, oy);
+      if (d > radius) continue;
+      // Elegibilidad direccional: el objetivo debe estar dentro del arco de 120°
+      // respecto a la dirección de llegada. Sin dirección válida no hay filtro.
+      if (inLen > 1e-6) {
+        if (d < 1e-6) continue;
+        const cos = (inX * ox + inY * oy) / (inLen * d);
+        if (cos < BOW_MAX_TURN_DOT - 1e-9) continue;
+        // Política: mejor continuación angular; desempate por menor distancia;
+        // desempate final por orden de iteración (determinista, sin azar).
+        const betterAngle = cos > bestCos + 1e-12;
+        const tiedAngle = cos > bestCos - 1e-12 && !betterAngle;
+        if (betterAngle || (tiedAngle && d < bestDist)) {
+          bestCos = betterAngle ? cos : bestCos;
+          bestDist = d;
+          next = e;
+        }
+      } else if (d < bestDist) {
+        bestDist = d; next = e;
+      }
     }
     return next;
   }
 
-  function setupBowChain(b, firstTarget, enemies) {
+  function setupBowChain(b, firstTarget, enemies, inX, inY) {
     const targets = [];
     let from = firstTarget;
+    let dirX = inX, dirY = inY;
     let remaining = b.bounceLeft;
     while (remaining > 0) {
-      const next = findBounceTarget(from, enemies, b);
+      const next = findBounceTarget(from, enemies, b, dirX, dirY);
       if (!next) break;
       targets.push(next);
       rememberHitTarget(b, next);
+      // La siguiente dirección de llegada es el segmento realmente recorrido.
+      dirX = next.x - from.x; dirY = next.y - from.y;
       from = next;
       remaining--;
     }
     b.chainTargets = targets;
     b.chainIndex = 0;
     b.chainSpeed = 900;
+    b.bounceOrdinal = 0;
     b.state = 'chain';
   }
 
@@ -88,9 +145,46 @@
     return Math.hypot(cx - (x1 + dx * t), cy - (y1 + dy * t)) < radius;
   }
 
-  function shotgunCanDamage(b, target) {
+  // Los proyectiles de boss tienen siluetas deliberadamente grandes y brillantes.
+  // La colision usa el nucleo peligroso, no el glow ni las puntas decorativas: asi
+  // pasar apenas por debajo/al costado se siente justo. El segmento evita tunneling
+  // en frames lentos sin agrandar ese nucleo.
+  const HOSTILE_COLLISION_SCALE = Object.freeze({
+    bossHeavyShell: 0.72,
+    bossSpreadDisc: 0.72,
+    bossChargedLance: 0.58,
+    bossVolleyDart: 0.62,
+    bossBomb: 0.68,
+    bossOrb: 0.72,
+    bossSplitShard: 0.62,
+    bossRageCore: 0.68,
+  });
+
+  NV.hostileProjectileCollisionRadius = function (projectile) {
+    const visualRadius = Math.max(1, Number(projectile && projectile.radius) || 5);
+    const style = projectile && projectile.projectileStyle;
+    const scale = HOSTILE_COLLISION_SCALE[style] || (projectile && projectile.sourceType === 'boss' ? 0.78 : 0.88);
+    return visualRadius * scale;
+  };
+
+  NV.hostileProjectileHitsPlayer = function (projectile, oldX, oldY, player, characterSize) {
+    if (!projectile || !player) return false;
+    // Hurtbox algo menor que el arte del personaje: los bordes luminosos y
+    // accesorios siguen siendo visuales, no dano invisible.
+    const playerRadius = Math.max(4, (Number(characterSize) || 20) * 0.38);
+    const hitRadius = playerRadius + NV.hostileProjectileCollisionRadius(projectile);
+    return segmentHitsCircle(oldX, oldY, projectile.x, projectile.y, player.x, player.y, hitRadius);
+  };
+
+  function shotgunCanDamage(b, target, isBoss) {
     const group = b.shotGroup;
     if (!group) return true;
+    if (isBoss) {
+      const cap = Math.max(1, group.bossCap || (NV.BALANCE && NV.BALANCE.SHOTGUN_BOSS_PELLET_CAP) || 8);
+      if ((group.bossHits || 0) >= cap) return false;
+      group.bossHits = (group.bossHits || 0) + 1;
+      return true;
+    }
     if (group.targets.indexOf(target) !== -1) return true;
     if (group.targets.length >= group.cap) return false;
     group.targets.push(target);
@@ -104,7 +198,7 @@
     const bloomStart = Math.max(0, Math.min(range - 1, b.shotgunBloomStart || 90));
     const sampleDistance = Math.min(range, (b.traveledDistance || 0) + speed * Math.max(0, dt) * 0.5);
     const raw = Math.max(0, Math.min(1, (sampleDistance - bloomStart) / Math.max(1, range - bloomStart)));
-    const bloom = raw * raw * (3 - 2 * raw);
+    const bloom = 1 - (1 - raw) * (1 - raw);
     const compactHalf = (b.shotgunCompactSpread || 0.018) * 0.5;
     const maxHalf = (b.shotgunMaxSpread || 0.44) * 0.5;
     const offset = (b.shotgunSpreadFactor || 0) * (compactHalf + (maxHalf - compactHalf) * bloom);
@@ -114,7 +208,7 @@
     b.shotgunBloom = bloom;
   }
 
-  function explodeSplash(b, st) {
+  function explodeSplash(b, st, directTarget) {
     const radius = b.splashRadius || 0;
     if (radius <= 0) return;
     const { enemies, boss, spawnExplosion } = st;
@@ -123,10 +217,11 @@
       if (!isTargetable(other) || hasHitTarget(b, other)) continue;
       if (Math.hypot(other.x - b.x, other.y - b.y) > radius + other.radius) continue;
       rememberHitTarget(b, other);
-      applyPlayerBulletDamage(b, other, st);
+      applyPlayerBulletDamage(b, other, st, 'splash');
     }
-    if (boss && !boss.dead && Math.hypot(boss.x - b.x, boss.y - b.y) <= radius + boss.radius) {
+    if (boss && boss !== directTarget && !boss.dead && Math.hypot(boss.x - b.x, boss.y - b.y) <= radius + boss.radius) {
       boss.hp -= b.damage;
+      if (NV.playtest && NV.playtest.enabled) NV.playtest.bossHit(b.wid, b.damage, 'splash');
       boss.hitFlash = Math.max(boss.hitFlash, 0.10);
       NV.bossHitReaction(boss, b.damage, st.addFloatText);
     }
@@ -146,7 +241,8 @@
           while (b.chainIndex < b.chainTargets.length) {
             const target = b.chainTargets[b.chainIndex++];
             if (!isTargetable(target)) continue;
-            applyPlayerBulletDamage(b, target, st);
+            b.bounceOrdinal = b.chainIndex; // ordinal absoluto 1..3
+            applyPlayerBulletDamage(b, target, st, 'bounce', bowBounceDamage(b, b.bounceOrdinal));
           }
           b.dead = true;
           continue;
@@ -161,7 +257,8 @@
         const dist = Math.hypot(dx, dy);
         const speed = b.chainSpeed || 900;
         if (dist <= target.radius + 4) {
-          applyPlayerBulletDamage(b, target, st);
+          b.bounceOrdinal = b.chainIndex + 1; // ordinal absoluto 1..3
+          applyPlayerBulletDamage(b, target, st, 'bounce', bowBounceDamage(b, b.bounceOrdinal));
           b.chainIndex++;
           if (b.chainIndex >= b.chainTargets.length) b.dead = true;
         } else {
@@ -176,6 +273,8 @@
 
       updateShotgunPelletVelocity(b, dt);
       const oldX = b.x, oldY = b.y;
+      const cameraReady = !b.isEnemy || !NV.cameraThreatReady || NV.cameraThreatReady(b, dt,
+        { x:oldX-5, y:oldY-5, w:10, h:10 }, .30);
       let travelStep = Math.hypot(b.vx, b.vy) * dt;
       let expiresAfterStep = false;
       if (!b.isEnemy && b.maxTravelDistance > 0) {
@@ -202,17 +301,17 @@
       }
 
       if (b.isEnemy) {
-        const d = Math.hypot(b.x - player.x, b.y - player.y);
-        const playerRadius = (CHARACTERS[player.character].size || 20) * 0.45;
-        const hitRadius = playerRadius + (b.radius || 5);
-        if (d < hitRadius) {
+        const character = CHARACTERS[player.character] || {};
+        if (cameraReady && NV.hostileProjectileHitsPlayer(b, oldX, oldY, player, character.size || 20)) {
           if (player.bulwark > 0) {
             // Muralla: refleja la bala enemiga hacia el enemigo
             b.isEnemy = false;
+            b.reflected = true;
             b.vx *= -1.1; b.vy *= -1.1;
             b.color = '#ffcf76';
             b.damage = 30; // +50% de reflejo con Muralla activa
             b.pierce = 1;
+            if (NV.specialVisualEvent) NV.specialVisualEvent(player, 'reflect', b.x, b.y, Math.atan2(b.vy, b.vx));
             continue;
           }
           if (player.invuln <= 0) {
@@ -249,7 +348,7 @@
               }
             }
             // ESCUDO (shielder): bloquea balas frontales solo cuando el escudo está listo.
-            if (e.shield) {
+            if (e.shield && b.wid !== 'laser') {
               if (e.shieldCd <= 0) {
                 const facing = Math.atan2(player.y - e.y, player.x - e.x);
                 const toBullet = Math.atan2(b.y - e.y, b.x - e.x);
@@ -264,12 +363,14 @@
             }
             if (b.impactType === 'pellet' && !shotgunCanDamage(b, e)) continue;
             rememberHitTarget(b, e);
-            applyPlayerBulletDamage(b, e, st);
+            applyPlayerBulletDamage(b, e, st, b.impactType === 'pellet' ? 'pellet' : 'direct');
             hitCount++;
             if (NV.playtest) NV.playtest.bulletHit(hitCount); // telemetría opt-in F08 (pierce/alineación)
             if (b.impactType === 'splash') explodeSplash(b, st);
             if (b.impactType === 'bounce' && b.bounceLeft > 0) {
-              setupBowChain(b, e, enemies);
+              // La dirección de llegada es la del propio proyectil en el impacto.
+              const inLen = Math.hypot(b.vx, b.vy);
+              setupBowChain(b, e, enemies, b.vx, inLen > 1e-6 ? b.vy : 0);
               if (!b.chainTargets.length) b.dead = true;
               break;
             }
@@ -285,19 +386,26 @@
           const bossCollision = b.impactType === 'pellet'
             ? segmentHitsCircle(oldX, oldY, b.x, b.y, boss.x, boss.y, boss.radius + 3)
             : d < boss.radius + contactRadius;
-          if (bossCollision && shotgunCanDamage(b, boss)) {
-            boss.hp -= b.damage;
+          const shotgunBossDamageAllowed = bossCollision && shotgunCanDamage(b, boss, true);
+          if (shotgunBossDamageAllowed) {
+            const bossDamage = b.specialId ? b.damage * (b.bossDamageMult || 1) : b.damage;
+            boss.hp -= bossDamage;
+            if (NV.playtest && NV.playtest.enabled) NV.playtest.bossHit(b.specialId ? ('special:' + b.specialId) : b.wid, bossDamage, b.specialId ? 'special' : 'direct');
             boss.hitFlash = Math.max(boss.hitFlash, 0.10);
             var _bhs = NV.hitSlowFor("BOSS");
             var _bossHitstopAllowed = (boss.hitSlowImmunity || 0) <= 0;
             if (_bossHitstopAllowed && (boss.hitSlowUntil || 0) <= 0) { boss.hitSlowUntil = _bhs.activeDuration; boss.hitSlowImmunity = _bhs.activeDuration + _bhs.immunity; }
-            if (b.impactType === 'splash') explodeSplash(b, st);
+            if (b.impactType === 'splash') explodeSplash(b, st, boss);
             // HITSTOP con gate anti-spam: el freeze (juice) solo se rearma tras la
             // ventana de inmunidad del hitSlow (~0.35s). Rearmarlo en CADA bala
             // convertía el impacto en tirones constantes con armas rápidas
             // (0.03s × 15 disparos/s ≈ 45% de frames congelados contra el jefe).
             if (_bossHitstopAllowed) hitstop = 0.03;
-            b.dead = true; NV.bossHitReaction(boss, b.damage, addFloatText);
+            b.dead = true; NV.bossHitReaction(boss, bossDamage, addFloatText);
+          } else if (bossCollision && b.impactType === 'pellet') {
+            // Los perdigones que exceden el presupuesto igualmente chocan: no
+            // atraviesan al jefe ni pueden reaparecer como impactos posteriores.
+            b.dead = true;
           }
         }
       }

@@ -96,9 +96,10 @@
     state.groove = null;
     return state;
   };
-  NV.clearHazards = function (hazards, state) {
+  NV.clearHazards = function (hazards, state, sectorState) {
     if (hazards) hazards.length = 0;
     if (state) NV.resetMinefieldState(state);
+    if (sectorState && NV.clearSectorEncounter) NV.clearSectorEncounter(hazards || [], sectorState);
     // P3.1: las notas musicales decorativas no deben sobrevivir a una transición.
     if (NV.MUSICAL_NOTES) NV.MUSICAL_NOTES.length = 0;
     return hazards || [];
@@ -275,12 +276,14 @@
     state.active = active;
     // Fin de wave/shop/boss/evento distinto: desarmado silencioso. Nunca explota durante
     // una transición ni conserva una mina de la wave anterior.
-    if (!active && (ctx.transitioning || ctx.boss)) {
+    if (!active && ctx.transitioning) {
       hazards.length = 0;
       if (typeof ctx.clearMusicalNotes === 'function') ctx.clearMusicalNotes();
       return { hazards, state, shake: ctx.shake || 0 };
     }
-    if (!active && ctx.waveEvent !== 'mines') {
+    if (!active && (ctx.waveEvent !== 'mines' || ctx.boss)) {
+      // El owner de minas elimina SUS entidades. En bosses deben sobrevivir
+      // los láseres sectoriales y zonas de enemigos, que tienen otra autoridad.
       let keep = 0;
       for (let i = 0; i < hazards.length; i++) {
         if (hazards[i] && hazards[i].type !== 'speakerMine' && hazards[i].state !== 'dead') hazards[keep++] = hazards[i];
@@ -319,6 +322,7 @@
       mine.simTime += dt;
       mine.stateTime += dt;
       NV.updateGrooveMode(mine, musicNow, dt);
+      const cameraReady = !NV.cameraHazardReady || NV.cameraHazardReady(mine, dt);
 
       // Telegraph de 0.9s: posición bloqueada, sin daño ni colisión activa.
       if (mine.state === 'spawning') {
@@ -327,7 +331,7 @@
         }
         continue;
       }
-      if (mine.state === 'armed' && ctx.player) {
+      if (mine.state === 'armed' && ctx.player && cameraReady) {
         const playerRadius = Math.max(1, ctx.playerRadius || 10);
         if (Math.hypot(ctx.player.x - mine.x, ctx.player.y - mine.y) <= mine.triggerRadius + playerRadius) {
           NV.detonateSpeakerMine(mine, ctx);
@@ -340,6 +344,7 @@
       if (!zone || zone.type !== 'coreZone' || zone.state === 'dead') continue;
       zone.simTime += dt;
       zone.stateTime += dt;
+      const cameraReady = !NV.cameraHazardReady || NV.cameraHazardReady(zone, dt);
       if (zone.state === 'arming') {
         if (zone.stateTime >= zone.armTime) {
           zone.state = 'active';
@@ -350,7 +355,7 @@
       }
       if (zone.state === 'active') {
         zone.tickTimer = Math.max(0, zone.tickTimer - dt);
-        if (ctx.player && zone.tickTimer <= 1e-9
+        if (cameraReady && ctx.player && zone.tickTimer <= 1e-9
             && Math.hypot(ctx.player.x - zone.x, ctx.player.y - zone.y) <= zone.radius) {
           const hit = ctx.applyPlayerDamage
             ? ctx.applyPlayerDamage(zone.damage, {

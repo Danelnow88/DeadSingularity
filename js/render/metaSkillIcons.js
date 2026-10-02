@@ -15,9 +15,9 @@
     regen: { c: '#4ade80', c2: '#86efac' },
     greed: { c: '#ffd700', c2: '#fbbf24' },
     meteor: { c: '#7cf8ff', c2: '#bfdbfe' },
-    phase: { c: '#caa7ff', c2: '#f0abfc' },
+    phase: { c: '#ff9d36', c2: '#fff0bc' },
     bulwark: { c: '#ffcf76', c2: '#fde68a' },
-    hivemind: { c: '#8dfaff', c2: '#5eead4' },
+    hivemind: { c: '#fff3a3', c2: '#67f5da' },
   };
 
   function idOf(item) { return typeof item === 'string' ? item : (item && (item.key || item.special || item.id || item.type)) || 'damage'; }
@@ -64,10 +64,10 @@
     dodge(ctx) { path.call(this, ctx, 'base', 'M12 8c4 3 4 13 0 16'); path.call(this, ctx, 'ghost', 'M18 8c4 3 4 13 0 16'); path.call(this, ctx, 'accent', 'M4 16h9'); path.call(this, ctx, 'alt', 'M22 12l5 4-5 4'); },
     regen(ctx) { path.call(this, ctx, 'base', 'M24 11a9 9 0 0 0-15-3'); path.call(this, ctx, 'base', 'M8 21a9 9 0 0 0 15 3'); path.call(this, ctx, 'accent', 'M9 5v5h5M23 27v-5h-5'); path.call(this, ctx, 'alt', 'M16 12v8M12 16h8'); },
     greed(ctx) { path.call(this, ctx, 'base', 'M16 5l8 6-3 12H11L8 11l8-6Z'); path.call(this, ctx, 'accent', 'M8 11h16M11 23l5-18 5 18'); path.call(this, ctx, 'alt', 'M25 5l.8 1.7 1.7.8-1.7.8L25 11l-.8-1.7-1.7-.8 1.7-.8L25 5Z'); },
-    meteor(ctx) { path.call(this, ctx, 'accent', 'M22 4L11 15'); path.call(this, ctx, 'base', 'M9 17l6-6 6 6-6 6-6-6Z'); path.call(this, ctx, 'ghost', 'M5 25c5 3 17 3 22 0'); path.call(this, ctx, 'alt', 'M25 7h3M25 11h2'); },
-    phase(ctx) { path.call(this, ctx, 'base', 'M16 5c5 0 8 4 8 9v10l-4-2-4 2-4-2-4 2V14c0-5 3-9 8-9Z'); path.call(this, ctx, 'accent', 'M11 15c2-2 8-2 10 0'); path.call(this, ctx, 'ghost', 'M6 16H3M29 16h-3M8 9L5 7M24 9l3-2'); circle.call(this, ctx, 'base', 13, 13, 1, true); circle.call(this, ctx, 'base', 19, 13, 1, true); },
-    bulwark(ctx) { path.call(this, ctx, 'base', 'M16 4l8 4v7c0 5.5-3.2 9.4-8 12-4.8-2.6-8-6.5-8-12V8l8-4Z'); path.call(this, ctx, 'accent', 'M16 8v16M11 14h10'); path.call(this, ctx, 'ghost', 'M5 12c-3 2.5-3 6.5 0 9M27 12c3 2.5 3 6.5 0 9'); path.call(this, ctx, 'alt', 'M3 16H1M31 16h-2'); },
-    hivemind(ctx) { circle.call(this, ctx, 'base', 16, 16, 4, false); circle.call(this, ctx, 'ghost', 16, 16, 10, false); path.call(this, ctx, 'accent', 'M16 6v4M16 22v4M6 16h4M22 16h4'); path.call(this, ctx, 'alt', 'M9 9l3 3M23 9l-3 3M9 23l3-3M23 23l-3-3'); circle.call(this, ctx, 'base', 16, 16, 1, true); },
+    meteor(ctx) { path.call(this,ctx,'accent','M27 3L16 12M23 2L12 10M29 8L20 17'); path.call(this,ctx,'base','M14 11l8 6-5 9-10-2-3-7 10-6Z'); path.call(this,ctx,'alt','M14 14l4 4-5 5-5-6 6-3Z'); },
+    phase(ctx) { path.call(this,ctx,'accent','M16 3l3 7 6-3-2 8 6 3-8 3-2 8-5-5-7 2 2-8-6-4 8-2 5-9Z'); path.call(this,ctx,'base','M16 10c-5 6-4 12 1 13 5-2 5-7-1-13Z'); path.call(this,ctx,'alt','M16 16l2 4-2 2-2-2 2-4Z'); },
+    bulwark(ctx) { path.call(this,ctx,'accent','M12 4l4-2 4 2M24 6l5 8M29 18l-5 8M20 28l-4 2-4-2M8 26l-5-8M3 14l5-8'); path.call(this,ctx,'base','M16 8l7 4v8l-7 4-7-4v-8l7-4Z'); path.call(this,ctx,'alt','M16 11v10M12 16h8'); },
+    hivemind(ctx) { circle.call(this,ctx,'base',16,16,4,true);circle.call(this,ctx,'ghost',16,16,10,false);for(let i=0;i<6;i++){const a=i*Math.PI/3;circle.call(this,ctx,i%2?'accent':'alt',16+Math.cos(a)*10,16+Math.sin(a)*10,2,true);} },
   };
 
   NV.META_SKILL_ICON_IDS = Object.keys(DRAW);

@@ -136,12 +136,12 @@ t('F04: penetración finita exacta — daña 2 y el tercero queda intacto, bala 
 });
 
 // ===== Nivel / fusión =====
-t('F04: nivel y fusión se conservan en el Rifle (daño base + bono nivel + fusión)', () => {
+t('F04: nivel proporcional y fusión se conservan en el Rifle', () => {
   const { bullets } = shootRifle({
     currentWeaponLevel: () => 10, currentWeaponFusion: 3, fusionStep: 0.2,
   });
-  // (20 + weaponLevelDamageBonus(10)=10) × ×1 (wave ausente) × (1+3×0.2)=1.6 → round(30×1.6)=48
-  const expected = Math.round(30 * 1.6);
+  // (20 × weaponLevelDamageMultiplier(10)=1.18) ×1 (wave ausente) ×1.6 → round(37.76)=38
+  const expected = Math.round(20 * 1.18 * 1.6);
   if (bullets[0].damage !== expected) throw new Error('damage=' + bullets[0].damage + ' expected=' + expected);
 });
 
@@ -197,9 +197,9 @@ t('F04: waveWeaponMult sigue desconectado en producción — documentado, no hab
   if (NV.waveWeaponMult(undefined) !== 1) throw new Error('wave undefined no cae a ×1');
   const src = fs.readFileSync('js/engine/weapons.js', 'utf8');
   if (!src.includes('NV.waveWeaponMult(state.wave)')) throw new Error('shoot dejó de ser único consumidor de waveWeaponMult');
-  // F04 no silenciosamente activa un scaler global: el daño del Rifle sin `wave` = base+nivel+fusión (×1).
+  // F04 no activa silenciosamente el scaler global: sin `wave`, solo aplican nivel proporcional y fusión (×1).
   const { bullets } = shootRifle();
-  const expected = Math.round((20 + NV.weaponLevelDamageBonus(1)) * 1);
+  const expected = Math.round(20 * NV.weaponLevelDamageMultiplier(1));
   if (bullets[0].damage !== expected) throw new Error('daño=' + bullets[0].damage + ' esperado=' + expected);
 });
 

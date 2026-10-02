@@ -1,6 +1,205 @@
 # Testing
 
+## Remaster de especiales — 02-10-2026
+
+`special_visual_remaster.js`: fixture mecánico determinista previo/post idéntico,
+render puro en4×3 tiempos×3 budgets, radio dinámico autoritativo,6 paneles en
+minimal, contactos≤4/eventos≤24, cleanup, cero RNG y reflejo/impacto reales.
+Los asserts antiguos de NOVA conservan daño, acumulación, kills, anti-boss y
+radio; sólo se actualizan nombres/colores y la ubicación del renderer delegado.
+
+QA Edge: `node --experimental-websocket tools/verify_alpha.cjs BASE OUT
+--special-remaster --special-mobile`. Usa `desktop/special-qa.cjs` compartido con
+el EXE:4 pilotos×3 dificultades en desktop/landscape, quality High/Performance/
+Auto forzado a minimal, pausa/fin, dos stages,4 esquinas por plataforma, atlas
+de tres tiempos y coste Canvas aislado. Fixtures HP5000 son de diagnóstico,
+NO prueba de dificultad ni partida del usuario. Atlas e impactos sintéticos
+no deben confundirse con capturas de un combate natural.
+
+Electron empaquetado: `"NEON VOID.exe" --nv-qa --nv-special-qa
+--nv-qa-report=RUTA_ABSOLUTA`; añade `--nv-perimeter-qa` para regresión de cámara.
+Ver informe SPECIAL_REMASTER_2026-10-02.md y previews/special-remaster-2026-10-02.
+
 Las pruebas automáticas son headless y se ejecutan con Node.js. Validan lógica, integración estática y contratos de módulos; no sustituyen pruebas visuales en navegadores y dispositivos reales.
+
+## Adaptación a arena grande — 02-10-2026
+
+Baseline154/0 → final156/0. `arena_adaptation.js` cubre perfiles de diez bosses,
+regiones X/Y, bounds, casts fijos, densidad+4 acotada, soporte/caps, X/puff,
+gracia de cámara y pipeline minas→láser. `arena_adaptation_performance.js` añade
+High/Auto/Performance con seed1337 y caps. Continuación de estela completada:
+`dash_star_trail.js` lleva el baseline a157/0; cuatro pilotos, caminar sin estrellas,
+desplazamiento real, último frame de dash, física/calidad independientes, mundo,
+expiry/cap/pool y cero RNG de combate. Ver `DASH_TRAIL_2026-10-02.md`.
+
+QA específico: `verify_alpha.cjs BASE OUT --dash-trail` (galería, input real,
+diagonal/vertical/horizontal/repetido, desktop/móvil, boss+soporte+láser y coste
+Canvas aislado). Electron: `--nv-qa --nv-dash-qa --nv-perimeter-qa --nv-qa-report=ABS`.
+Stress A/B: `stress_harness.js --arena-integration [--dash-fx] --frames 1800`.
+El stress mide CPU con Canvas contador, no raster/FPS; QA Edge y Electron sí usa
+Canvas real, pero sigue siendo headless/offscreen, no hardware móvil físico.
+
+Web: `previews/arena-adaptation-2026-10-02/web-final/report.json`; 12 muestras
+de bosses con autoataque e input real, los10 Normal y Guardián Easy/Hard. Las
+activaciones láser se exigen, no sólo la presencia de warning. Esto detectó una
+regresión integrada donde el owner de minas borraba todo hazard al haber boss;
+se corrigió y se añadió test del pipeline completo.
+Perímetro: `perimeter-final/report.json`, 27 posiciones en desktop/dos móviles
+emulados, cuatro stages y laser. Electron real: `desktop-qa.json`, pass/saved,
+perimeter y arena true, errors[], soporte/láser/fase2 en las3 dificultades.
+Fixtures HP5000 y fase2 diagnóstica NO validan balance de una partida natural.
+
+Comandos adicionales:
+
+```powershell
+node --experimental-websocket tools/verify_alpha.cjs http://localhost:8080 previews/arena-recheck --arena-adaptation
+node tools/performance/stress_harness.js --arena-integration --frames 1800 --json previews/arena-stress.json
+```
+
+EXE final: `--nv-qa --nv-perimeter-qa --nv-arena-qa --nv-qa-report=RUTA_ABSOLUTA`.
+No usar el perfil del jugador. Nuevas flags QA no afectan el inicio habitual.
+Sintaxis y diff check correctos;70 archivos de juego coinciden Web/Electron.
+No se modificaron cámara/perímetro/CSS/HUD/dash physics; no commit/push.
+
+## Cierre de perímetro y ventana — 01-10-2026
+
+Baseline actual: `RESULT run_all: total=154 failed=0`. camera_foundation:19,
+camera_perimeter:9. Syntax checks y git diff --check sin errores (warnings CRLF
+no son fallos). Pruebas de perímetro incluyen filamentos fuera de arena y
+fallback sin Path2D; no se debilitan los asserts de física/zoom.
+
+Edge fuente final: previews/perimeter-polish-final-preserved/report.json, 11 grupos. Centro,
+cuatro bordes y cuatro esquinas en desktop1280×800 y móvil táctil emulado
+915×412/844×390; cuatro stages, bosses y láseres. Comparación DOM antes/después
+verifica la caja superior HUD idéntica; regresa aim/pausa/resize en cinco layouts.
+Edge empaquetado final: previews/perimeter-polish-packaged-preserved-final/report.json.
+Electron REAL: previews/perimeter-polish-final-preserved/desktop-qa.json, pass:true,
+perimeter.pass:true,saved:true,errors:[], nueve posiciones y otros tres stages.
+70 archivos de juego idénticos web/Windows; fuentes JS/CSS/assets iguales por SHA256.
+Launcher actualizado después de verificar; builds anteriores preservadas.
+La regla full-bleed móvil se descartó al detectar cambio de arena: el QA final
+compara EXACTAMENTE caja/bounds con la medición anterior. Ver nota en el informe.
+Se corrigió además un fixture de recorrido que ganaba con autoataque móvil
+railgun50 antes de terminar las esquinas; los asserts no se debilitaron.
+No equivale a teléfono físico ni garantía FPS. Informe: PERIMETER_POLISH_2026-10-01.md.
+
+Repetición: `node --experimental-websocket tools/verify_alpha.cjs
+http://localhost:8080 previews/perimeter-recheck --perimeter-only`.
+Electron: `NEON VOID.exe --nv-qa --nv-perimeter-qa --nv-qa-report=RUTA_ABSOLUTA`.
+Cerrar el perfil QA al terminar; nunca usar perfiles/checkpoints del jugador.
+
+## Cierre de escenarios cósmicos — 01-10-2026 (anterior)
+
+Baseline y final: RESULT run_all: total=153 failed=0. Sintaxis de todos los JS
+tocados; sector_visuals cubre cuatro composiciones distintas, cache estable,
+tiers reales, mundo, RNG, resize y fallback; diagnósticos/rhythm actualizados
+para no exigir grilla eliminada. Diff check y revisión de cambios sin errores.
+QA específico reproducible: `node --experimental-websocket tools/verify_alpha.cjs
+http://localhost:8080 previews/cosmic-backgrounds-visual-final --backgrounds-only`.
+17 grupos, desktop y móvil táctil emulado 915×412/844×390; atlas completo,
+movimiento, calidad, boss/hazards y cambio real 10->11. Capturas inspeccionadas.
+Regresión de cámara en cosmic-backgrounds-camera: cinco layouts y cuatro bordes.
+Regresión integral y Electron en cosmic-backgrounds-integral-final, errors:[],
+guardado restaurable y playing. No claims de FPS o prueba en teléfono físico.
+Detalle, archivos y límites: COSMIC_SCENARIOS_2026-10-01.md.
+
+## Cierre de cámara foundation — 01-10-2026 (anterior)
+
+Suite final: RESULT run_all: total=153 failed=0. camera_foundation: 19 casos,
+cámara central y cuatro clamps, conversiones desplazadas, resize/fullscreen,
+desktop, móvil, fallback, culling de mundo, colisión real off-screen y reaviso.
+Pruebas de contratos anteriores actualizadas sólo donde ahora arena!=vista;
+no se relajan checks de aim, bounds o controles para esconder regresiones.
+Edge dirigido táctil: previews/camera-foundation-touch-final; cinco layouts,
+recorrido físico por todos los bordes, cursor, dock, pausa, NO HUD y resize.
+Capturas desktop/móvil inspeccionadas. Regresión integral de fuentes finales
+en previews/camera-integral-final: guardados, tienda, muerte, diez jefes,
+láseres y ausencia de excepciones/peticiones externas. Electron desktop-qa.json:
+pass:true, saved:true, playing y errors:[]. Diez módulos coinciden por hash con
+ambos paquetes y el HTML Windows incluye cameraSafety. Launcher actualizado
+después de verificar; no se borran builds previas. Stress sintético de 19
+escenarios en previews/camera-integral/performance-stress.json, no garantía FPS.
+Informe de arquitectura/archivos y segunda etapa: CAMERA_FOUNDATION_2026-10-01.md.
+Móvil emulado, no validación física; fullscreen comprobado a nivel de contrato.
+
+## Cierre L5 — 01-10-2026 (anterior)
+
+Suite final: RESULT run_all: total=152 failed=0. Edge integral y Electron en
+previews/adult-l5-integral: sin excepciones, guardado restaurable y estado playing.
+boss_encounters cubre patrones avanzados de Difícil y capas sin reorientación;
+enemy_director_c2 cubre agrupación dentro de arena, aviso, cap y protección real
+del Guardia tras aparecer. Runtime dirigido: diez jefes × Fácil/Difícil en
+previews/difficulty-adult-l5; regresión Normal y láseres dirigida separada.
+Tres módulos de gameplay verificados por hash en paquetes Windows/Web.
+Stress sintético: 19 escenarios, previews/adult-l5-integral/performance-stress.json;
+no es promesa de FPS en hardware del usuario.
+Público adolescente/adulto; el balance no está aprobado: en mediciones de una
+semilla el láser avanzado aún ganó con poco movimiento. Ver comparación honesta
+en DIFFICULTY_ADULT_L5_2026-10-01.md y pendientes operativos.
+
+## Alpha 0.10 — 30-09-2026
+
+Actualización local M6 01-10-2026: 152 archivos de prueba, cero fallos. El baseline
+145 de abajo es histórico. Cierre actual: previews/guardian-lasers-integral
+(recorrido completo) y guardian-lasers-published (fuentes finales/Electron).
+guardian_encounter cubre hueco real, bordes y segunda fase. sector_encounters
+comprueba layout compartido en cuatro tamaños y render sin mutación. NO HUD
+también oculta tutorial opcional, no avisos de combate.
+
+Cierre M6: previews/laser-heads-m6-published/report.json (Edge dirigido) y
+desktop-qa.json (Electron, pass:true, saved:true, playing, errors:[]).
+sector_laser_groups cubre grupos 2/4/6, carga, HUD, colisión fina y retirada;
+audio_sector_music cubre voz agregada y cancelación. boss_encounters cubre
+pinza/abanico de Némesis. Runtime dirigido cubre tres tamaños y pausa/mute.
+No sustituye medición de peleas completas ni evaluación sonora humana.
+
+L4f: mismo total 152/152; boss_encounters comprueba dos patrones y ambos estados
+de fase en cuatro bosses tardíos. economy_curve_h comprueba pago productivo,
+presupuesto full-roster y aislamiento legacy/Infinito. consumables comprueba
+precondición antes de gasto y HP real; combat_lab_lifecycle conserva fixture
+legacy explícito. Edge integral en previews/systemic-l4f-final; consumible real
+en previews/consumables-l4f. Medición completa Normal con autoataque en
+previews/nemesis-full-story y previews/coloso-full-story (sin compras/consumibles).
+
+Medición completa con autoataque y HP real de Historia, aislada de guardados:
+`node --experimental-websocket tools/measure_boss_roster.cjs http://localhost:8080 previews/medicion --full-story --boss-index=3`.
+Opcionales: `--matched-builds`, `--small-step-only`, `--difficulty=easy|normal|hard`.
+Sin boss-index recorre diez bosses; cada caso tiene límite 60 s (timeout no es
+victoria). Compara quieto/oscilación horizontal 90 px, no representa bot experto.
+Para sólo QA visual de portales/Guardián/Destructor/emisores: verify_alpha.cjs
+con `--guardian-only`. No confundir este fixture con la medición de dificultad.
+
+Resultado final de referencia: `RESULT run_all: total=145 failed=0`.
+La suite `sector_visuals.js` valida perfiles, mapeo de oleadas, presupuesto de
+operaciones y wiring del fondo sectorial; el contrato visual del Mutante vive en
+`spectral_enemies_render.js`.
+La prueba de audio añade regresión para el drone con frame congelado.
+`sector_encounters.js` verifica geometría bloqueada, aviso sin daño, impacto único,
+exclusión con bosses/eventos/transiciones y render sin mutación.
+`audio_sector_music.js` verifica cuatro firmas musicales, cambio por oleada y
+prioridad perceptual del aviso ambiental.
+`economy_curve_h.js` verifica costes progresivos, calibración tardía y frecuencia
+de escuadras por dificultad.
+`ux_onboarding_gamepad_i.js` cubre tutorial, texto grande, mando y loop único.
+`release_candidate_j.js` cubre marca, empaquetado, diagnóstico y warm-up visual.
+
+`node --experimental-websocket tools/verify_alpha.cjs http://localhost:8123` prueba
+un Edge aislado contra `node tools/serve.js 8123`. Reporte y capturas en
+`previews/alpha-verification/`. Incluye muerte real, victoria, compras/contrato,
+ruta, guardado/restauración, Mutante fase 2 y desktop/móvil. La victoria usa un
+checkpoint controlado y HP del jefe reducido: es QA del flujo, no balance humano.
+
+La build Windows tiene `--nv-qa`: perfil temporal, render fuera de pantalla y
+salida `DESKTOP_QA` con resultado de inicio/combate/aislamiento. No toca guardados.
+El ejecutable normal no expone herramientas Node al renderer.
+
+Desde L1, `tools/verify_alpha.cjs` también inicia el primer boss en Combat Lab,
+deja al piloto inmóvil y comprueba que la presión anti-espera quite HP real;
+captura el aviso de tres carriles del segundo patrón. La prueba usa el runtime
+de producción en Edge, pero no sustituye evaluación humana de dificultad.
+
+Consultar `ALPHA_RELEASE.md` para alcance y limitaciones. Los baselines más abajo
+son históricos y no reemplazan este resultado.
 
 ## Syntax checks
 
@@ -97,10 +296,21 @@ Estos comandos reportan CPU headless, operaciones y unidades raster ponderadas. 
 ### Stress harness (P2/P3/P3.1/P3.1.1)
 
 ```bash
-node tools/performance/stress_harness.js [--frames N]
+npm run measure:performance
 ```
 
-Ejecuta A–J (baseline P2), K–O (mines base), P–R (seis mines `MUSIC_GROOVE`; seis detonaciones secuenciales con notas; 23+7+flamethrower+seis mines musicales) y S (seis mines `IDLE_GROOVE`) sobre módulos reales de engine/render en sandbox headless. Verifica `hostiles<=30`, `heavy<=7`, `speakerMines<=6`, `musicalNotes<=24` y `particles<=200`. P3.1.1 además prueba que el widget y Canvas comparten `computeRhythmGroove`, sin DOM/analyser/loop por mina y con stretch acotado. **Es baseline CPU comparativo, no frame real de browser ni garantía de FPS.**
+Ejecuta A–S durante 600 frames sobre módulos reales de engine/render y guarda el
+reporte en `previews/release-j/performance-stress.json`. Verifica presupuestos de
+hostiles, minas, notas y partículas. **Es baseline CPU comparativo, no frame real
+de browser ni garantía de FPS en otro hardware.**
+
+## Playtest telemetry
+
+Activar en la partida normal con `?playtest=1`; consultar los agregados desde la consola con `NV.playtest.snapshot()`. La telemetría opt-in sirve como baseline humano de uso y cambios de armas y de encuentros con jefes (tiempo de simulación y daño por arma/fuente). Prueba dirigida: `node tests/playtest_telemetry.js`.
+
+`weapons.byId[id].normal` acumula tiempo equipado y disparos sin encuentro de jefe activo, y daño exclusivamente a enemigos normales (incluso si coexisten con un jefe). `hits` cuenta aplicaciones; `rawDamage` es el daño tras resistencias/protección, `effectiveDamage` es HP realmente eliminado, `overkillDamage` su diferencia y `kills` cuenta transiciones de HP positivo a no positivo. `bySource` separa `direct` (incluida penetración), `pellet` (cada pellet), `splash`, `bounce` (cadena del Bow), `flame` (cono) y `burn` (DoT atribuido a su zona de origen). Disparos cuentan pulsaciones, no proyectiles; los especiales, meteoros, consumibles y reflejos no se atribuyen a armas.
+
+`weapons.byId[id].progression` registra el estado real de progresión reportado por gameplay: `currentLevel`/`currentFusion` (último hecho observado), `maxLevelSeen`/`maxFusionSeen` (máximos de la run) y `firstLevelSeen`/`firstFusionSeen` (primer uso). Cada encuentro de jefe guarda `bosses.completed[n].weaponStateStart` y `weaponStateEnd` con `{ id: { level, fusion } }` de las armas poseídas, para separar poder por progresión del poder por daño base.
 
 ## Full suite
 
@@ -182,10 +392,10 @@ Este fallo pertenecía a un baseline histórico y ya no aparece en la suite comp
 
 ## Política de regresiones
 
-El baseline actual es el resultado verificado el 28 de septiembre de 2026: 128 suites y 0 fallos. Cualquier suite fallida, aumento en el número de fallos o cambio inesperado en una prueba dirigida es una regresión hasta investigarlo.
+El baseline actual es el resultado verificado el 29 de septiembre de 2026: 130 suites y 0 fallos (exit code 0). Las suites adicionales son `playtest_telemetry.js` y `weapon_progression_attribution.js`. Cualquier suite fallida, aumento en el número de fallos o cambio inesperado en una prueba dirigida es una regresión hasta investigarlo.
 
 ```text
-RESULT run_all: total=128 failed=0
+RESULT run_all: total=130 failed=0
 ```
 
 Antes de desplegar:

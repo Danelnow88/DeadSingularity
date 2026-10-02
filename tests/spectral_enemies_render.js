@@ -150,6 +150,68 @@ t('specter_lite y specter_core mapean a los modelos del lab sin mutar datos', ()
   }
 });
 
+t('boss_minion: identidad de render moderna, fuera del fallback legacy', () => {
+  // (1) Sigue siendo un PROFILES conocido (perfil cromatico propio).
+  const profile = NV.SPECTRAL_ENEMY_PROFILES.boss_minion;
+  if (!profile) throw new Error('PROFILES.boss_minion ausente');
+  const fallback = NV.SPECTRAL_ENEMY_PROFILES.drone;
+  if (profile === fallback) throw new Error('boss_minion cae al perfil drone');
+  if (profile.radiusMul === fallback.radiusMul && profile.body === fallback.body) {
+    throw new Error('boss_minion no se distingue del fallback drone');
+  }
+  // (2) Tiene entrada en LAB_SPECTER_IDS.
+  const model = NV.LAB_SPECTER_IDS.boss_minion;
+  if (model === undefined) throw new Error('boss_minion sin entrada en LAB_SPECTER_IDS');
+  // (3) NO es el modelo legacy 0.
+  if (model === 0) throw new Error('boss_minion mapea al modelo legacy 0');
+  // (4) Entidad real con enemyTypeId enruta al camino moderno sin crash.
+  const ctx = mkCtx();
+  const enemy = { x: 100, y: 100, radius: 9, color: '#9bb5ff', shape: 'circle', enemyTypeId: 'boss_minion', dead: false };
+  if (NV.drawSpectralEnemy2D(ctx, enemy, 30, player, null) !== true) throw new Error('esperaba true');
+  if (ctx.calls.length < 5) throw new Error('pocos trazos');
+  // Un sin enemyTypeId debe SEGUIR cayendo al fallback (comportamiento intacto).
+  const legacyCtx = mkCtx();
+  const legacy = { x: 100, y: 100, radius: 9, color: '#fff', shape: 'circle', dead: false };
+  if (NV.drawSpectralEnemy2D(legacyCtx, legacy, 30, player, null) !== true) throw new Error('fallback legacy roto');
+  // NO muta datos de gameplay.
+  const snapshot = JSON.stringify(enemy);
+  NV.drawSpectralEnemy2D(mkCtx(), enemy, 31, player, null);
+  if (JSON.stringify(enemy) !== snapshot) throw new Error('mutó datos del enemigo');
+  // La variante del MUTANTE reutiliza la misma entidad canónica, pero toma un
+  // perfil interno verde y más agresivo sin ampliar el roster público.
+  const mutantClone = { ...enemy, summonVariant: 'mutant' };
+  const mutantSnapshot = JSON.stringify(mutantClone);
+  const mutantCtx = mkCtx();
+  if (NV.drawSpectralEnemy2D(mutantCtx, mutantClone, 31, player, null) !== true) throw new Error('clon mutante no renderiza');
+  if (mutantCtx.calls.length < 5 || JSON.stringify(mutantClone) !== mutantSnapshot) throw new Error('clon mutante inválido o mutado');
+});
+
+t('boss_minion no altera los mapeos de espectros, elites ni factors globales', () => {
+  // Mapeos previos intactos.
+  const expected = {
+    specter_lite: 1, specter_grunt: 1, specter_core: 2, specter_archer: 3,
+    specter_guard: 4, specter_elite_void: 5,
+    elite_base: 5, elite_velocity: 5, elite_bulwark: 5, elite_predator: 5,
+    elite_phantom: 5, elite_titan: 5, elite_swift: 5,
+  };
+  for (const [id, model] of Object.entries(expected)) {
+    if (NV.LAB_SPECTER_IDS[id] !== model) throw new Error(id + ' modelo=' + NV.LAB_SPECTER_IDS[id]);
+  }
+  // La tabla global de escalas y los 6 factores de hitbox siguen siendo los mismos.
+  const scales = [0.70, 0.75, 0.80, 0.80, 0.82, 0.85];
+  for (let i = 0; i < 6; i++) {
+    if (Math.abs(NV.LAB_MODEL_SCALE_FACTORS[i] - scales[i]) > 1e-9) throw new Error('escala global alterada ' + i);
+  }
+  const factors = [0.875, 0.9375, 1, 1, 1.025, 1.0625 * 0.65];
+  for (let i = 0; i < 6; i++) {
+    if (Math.abs(NV.labModelHitboxFactor(i) - factors[i]) > 1e-9) throw new Error('factor global alterado ' + i);
+  }
+  // El minion NO es un espectro de produccion: no recibe el body scale 0.65.
+  if (NV.spectralBodyScale('boss_minion') !== 1) throw new Error('boss_minion recibió SPECTRAL_BODY_SCALE');
+  // Perfil base: sigue habiendo exactamente los mismos perfiles.
+  if (Object.keys(NV.SPECTRAL_ENEMY_PROFILES).length !== 12) throw new Error('nº de perfiles alterado');
+});
+
 t('cinco espectros auditados: RB2-RB3-RB4-RB5 intactos por modelo y ×0.65 por enemyTypeId', () => {
   const expected = {
     specter_grunt: { model: 1, scale: 0.75, factor: 0.9375 },
@@ -370,6 +432,41 @@ t('boss muerto devuelve false', () => {
 t('NV.SPECTRAL_BOSS_PROFILES expone 10 perfiles', () => {
   if (!NV.SPECTRAL_BOSS_PROFILES) throw new Error('SPECTRAL_BOSS_PROFILES ausente');
   if (Object.keys(NV.SPECTRAL_BOSS_PROFILES).length !== 10) throw new Error('esperaba 10 perfiles boss, hay ' + Object.keys(NV.SPECTRAL_BOSS_PROFILES).length);
+});
+
+t('los 10 bosses tienen armazones visuales únicos ligados a su ataque', () => {
+  const profiles = Object.values(NV.SPECTRAL_BOSS_PROFILES);
+  const rigs = profiles.map((profile) => profile.rig);
+  if (rigs.some((rig) => !rig)) throw new Error('perfil sin rig');
+  if (new Set(rigs).size !== 10) throw new Error('rig repetido: ' + rigs.join(','));
+  const source = fs.readFileSync('js/render/spectralEnemies2D.js', 'utf8');
+  if (!source.includes('drawBossIdentityRig(ctx, boss, frame, profile)')) throw new Error('rig no conectado al render productivo');
+});
+
+t('fase 2 intensifica la silueta sin mutar gameplay', () => {
+  for (const bt of bossTypes) {
+    const phase1 = { x: 400, y: 300, hp: bt.hp, maxHp: bt.maxHp, radius: bt.radius, color: bt.color, shape: bt.shape, name: bt.name, dead: false, hitFlash: 0, phase2: false };
+    const phase2 = { ...phase1, hp: bt.hp * .49, phase2: true };
+    const snapshot1 = JSON.stringify(phase1), snapshot2 = JSON.stringify(phase2);
+    const ctx1 = mkCtx(), ctx2 = mkCtx();
+    NV.drawSpectralBoss2D(ctx1, phase1, 60, player, null);
+    NV.drawSpectralBoss2D(ctx2, phase2, 60, player, null);
+    if (ctx2.calls.length <= ctx1.calls.length) throw new Error(bt.name + ' no intensifica su fase 2');
+    if (JSON.stringify(phase1) !== snapshot1 || JSON.stringify(phase2) !== snapshot2) throw new Error(bt.name + ' mutado por render');
+  }
+});
+
+t('MUTANTE tiene identidad orgánica propia y conserva gameplay inmutable', () => {
+  const profile = NV.SPECTRAL_BOSS_PROFILES.boss_mutante;
+  if (!profile || !profile.mutateEffect || profile.eyeStyle !== 'mutant') throw new Error('perfil orgánico incompleto');
+  if (profile.body === '#32cd32' || profile.radiusMul >= 1.25) throw new Error('regresó la estrella verde sobredimensionada');
+  const ctx = mkCtx();
+  const boss = { x: 400, y: 300, hp: 180, maxHp: 380, radius: 52, color: '#32cd32', shape: 'hex', name: 'MUTANTE', dead: false, hitFlash: 0, phase2: true };
+  const snapshot = JSON.stringify(boss);
+  if (NV.drawSpectralBoss2D(ctx, boss, 45, player, null) !== true) throw new Error('no renderizó');
+  if (!ctx.calls.includes('ellipse')) throw new Error('faltan cámaras biológicas');
+  if (!ctx.styles.includes(profile.scar)) throw new Error('falta contraste de mutación');
+  if (JSON.stringify(boss) !== snapshot) throw new Error('el render mutó gameplay');
 });
 
 t('render shielder con escudo en cooldown', () => {

@@ -107,17 +107,53 @@ t('IA adaptativa: summoner invoca salvo arena llena; remata si jugador herido y 
   }
 });
 
-t('updateBoss integra la IA: re-selecciona ataque al entrar en fase 2 y periodicamente', () => {
+t('updateBoss preserva primero el ataque característico al entrar en fase 2', () => {
   const b = mkBoss({ hp: 600, maxHp: 1200, pattern: 'chase' }); // 50% exacto -> entra fase 2
   const st = mkSt({}, [], { boss: b, score: 0, shards: 0, shake: 0 });
-  NV.updateBoss(0.1, st); // aiTimer=99 -> debe re-seleccionar en este frame
-  if (b.aiTimer !== 0) throw new Error('fase2 no forzo re-seleccion, aiTimer=' + b.aiTimer);
-  if (typeof b.attack !== 'string') throw new Error('attack invalido post-fase2');
+  NV.updateBoss(0.01, st);
+  if (!b.phase2 || !b.phase2SignaturePending) throw new Error('firma de fase2 no quedó pendiente');
+  if (b.attack !== 'repeater') throw new Error('cambió la firma por ' + b.attack);
   // Escalado temporal: tras 9s en fase 1 re-evalua (cd 8)
   const b3 = mkBoss({ pattern: 'chase' });
   const st3 = mkSt({}, [], { boss: b3, score: 0, shards: 0, shake: 0 });
   NV.updateBoss(4, st3);
   if (b3.primaryAttack !== 'repeater') throw new Error('primaryAttack no inicializado');
+});
+
+t('MUTANTE ejecuta split de fase 2 antes de que la IA pueda reemplazarlo', () => {
+  const minions = [];
+  const b = mkBoss({ hp: 500, maxHp: 1000, pattern: 'split', attack: 'split', primaryAttack: 'split' });
+  const events = [];
+  const st = mkSt({}, [], {
+    boss: b, score: 0, shards: 0, shake: 0, W: 900, H: 520,
+    spawnMinion(x, y, variant) { minions.push({ x, y, variant }); return true; },
+    showBanner(text) { events.push(text); }, triggerFlash() {}, spawnExplosion() {}, addFloatText(x, y, text) { events.push(text); },
+  });
+  NV.updateBoss(1.0, st); // reloj corregido: dt * 1.2, no dt * 2.4
+  if (b.attack !== 'split') throw new Error('split reemplazado por ' + b.attack);
+  if (minions.length !== 3 || !b.split) throw new Error('mutación no ejecutada minions=' + minions.length);
+  if (minions.some((entry) => entry.variant !== 'mutant')) throw new Error('clones sin variante visual');
+  if (new Set(minions.map((entry) => entry.x + ',' + entry.y)).size !== 3) throw new Error('clones superpuestos');
+  if (!events.some((text) => /MUTACIÓN/.test(text)) || !events.some((text) => /DIVIDIÓ/.test(text))) throw new Error('transformación sin anuncio claro');
+  if (b.phase2SignaturePending) throw new Error('firma split no se liberó tras ejecutarse');
+});
+
+t('DESTRUCTOR dispara su beam de fase 2 antes de adaptarse', () => {
+  const b = mkBoss({ hp: 500, maxHp: 1000, pattern: 'burst', attack: 'beam', primaryAttack: 'beam' });
+  const st = mkSt({}, [], { boss: b, score: 0, shards: 0, shake: 0 });
+  NV.updateBoss(3.1, st); // fallback legado: reloj corregido 3.72s; producción usa avisos explícitos
+  if (!st.bullets.length || st.bullets[0].projectileStyle !== 'bossChargedLance') throw new Error('beam distintivo no ejecutado');
+  if (b.phase2SignaturePending) throw new Error('firma beam no se liberó');
+});
+
+t('firma bloqueada expira sin congelar para siempre la IA adaptativa', () => {
+  const b = mkBoss({ hp: 500, maxHp: 1000, pattern: 'summon', attack: 'summon', primaryAttack: 'summon' });
+  const crowded = Array.from({ length: 29 }, () => ({ dead: false }));
+  const st = mkSt({}, crowded, { boss: b, score: 0, shards: 0, shake: 0 });
+  NV.updateBoss(5.1, st);
+  if (b.phase2SignaturePending) throw new Error('firma bloqueada no expiró');
+  NV.updateBoss(5.1, st);
+  if (typeof b.attack !== 'string') throw new Error('IA no retomó selección');
 });
 
 console.log('RESULT boss_ai: pass=' + pass + ' fail=' + fail);

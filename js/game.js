@@ -48,6 +48,16 @@
   function viewH() { return worldMetrics.viewH || REF_H; }
   function viewX() { return worldMetrics.viewX || 0; }
   function viewY() { return worldMetrics.viewY || 0; }
+  // Reutiliza la única cámara del viewport; input y render comparten sus métricas.
+  let aimPointerClient = null;
+  function followPlayerCamera() {
+    if (NV.viewport && NV.viewport.followPlayer) NV.viewport.followPlayer(player.x, player.y);
+    syncEspectroCamera();
+    if (aimPointerClient && NV.screenToGame) {
+      const pt = NV.screenToGame(aimPointerClient.x, aimPointerClient.y);
+      NV.inputIntent.setAimWorld(combatIntent, pt.x, pt.y, player.x, player.y);
+    }
+  }
   function syncEspectroCamera() {
     const lite = NV.espectroLite;
     const camera = lite && lite.camera;
@@ -215,8 +225,13 @@
     const zoom = presentationZoom();
     const halfW = vw / zoom / 2;
     const halfH = vh / zoom / 2;
-    const centerX = Math.max(halfW, Math.min(arenaW() - halfW, presentation.targetX || player.x));
-    const centerY = Math.max(halfH, Math.min(arenaH() - halfH, presentation.targetY || player.y));
+    // El zoom usa la misma regla visual que followPlayer, sin redefinir arena.
+    const centerX = NV.viewport && NV.viewport.clampCameraOrigin
+      ? NV.viewport.clampCameraOrigin((presentation.targetX || player.x) - halfW, arenaW(), halfW * 2) + halfW
+      : Math.max(halfW, Math.min(arenaW() - halfW, presentation.targetX || player.x));
+    const centerY = NV.viewport && NV.viewport.clampCameraOrigin
+      ? NV.viewport.clampCameraOrigin((presentation.targetY || player.y) - halfH, arenaH(), halfH * 2) + halfH
+      : Math.max(halfH, Math.min(arenaH() - halfH, presentation.targetY || player.y));
     return { zoom, centerX, centerY };
   }
 
@@ -264,6 +279,7 @@
   let enemies = [], bullets = [], particles = [], pickups = [], floatTexts = [], shockwaves = [], trails = [], weaponPickups = [], drones = [], meteors = [], bossChests = [], hazards = [];
   let flameZones = [];
   let minefieldState = NV.createMinefieldState ? NV.createMinefieldState() : { spawnTimer: 0, serial: 0, spawned: 0, active: false };
+  let sectorEncounterState = NV.createSectorEncounterState ? NV.createSectorEncounterState() : { timer: 2.8, serial: 0, active: false };
   const MAX_HOSTILES = NV.BALANCE.MAX_HOSTILES, MAX_HEAVY_HOSTILES = NV.BALANCE.MAX_HEAVY_HOSTILES;
   const MAX_ENEMIES = MAX_HOSTILES, MAX_BULLETS = NV.BALANCE.MAX_BULLETS, MAX_PARTICLES = NV.BALANCE.MAX_PARTICLES;
   // Presupuesto separado de balas por bando: evita que las balas enemigas
@@ -455,17 +471,27 @@
 
   // === PROGRESO ===
   let wave = 1, score = 0, shards = 0, waveTimer = 0, spawnTimer = 0, boss = null, transition = 0;
+  let waveDefeats = 0, waveSpawned = 0, waveGoal = null;
+  let wavePressure = NV.createWavePressure ? NV.createWavePressure() : null;
+  let waveGoalNudgeShown = false;
+  let waveDirectorCycle = 0;
   // F3: hookSystem game-owned (un juego, un hookSystem). Fases: idle/windup/projectile/tether.
   let hookSystem = NV.createHookSystem ? NV.createHookSystem() : null;
   // Evento de oleada activo (null si no hay): modifica la run de esa oleada.
   let waveEvent = null;
+  let expeditionRun = null;
+  let expeditionMode = 'expedition';
   const WAVE_EVENTS = NV.WAVE_EVENTS;
   const combatLabState = {
     status: combatLabMode ? 'IDLE' : null,
+    encounterMode: 'enemies',
     elapsed: 0,
     duration: null,
     lastConfig: null,
     requestedComposition: [],
+    selectedBossIndex: null,
+    loadout: null,
+    telemetryWasEnabled: null,
     error: null,
   };
 
@@ -505,6 +531,7 @@
 
   // === INPUT ===
   const moveButtons = { left: false, right: false, up: false, down: false };
+  const analogMove = { x: 0, y: 0 };
   const combatIntent = NV.inputIntent.createCombatIntent(NV.settings.controls.firePolicy);
   let showStats = false, showHUD = true, paused = false;
   let settingsRestorePaused = false;
@@ -514,15 +541,28 @@
   // ya usa el teclado: nada de duplicar física ni lógica. En escritorio este puente
   // queda inactivo (mobileControls no se activa si no hay detección móvil).
   NV.input = NV.input || {};
-  function syncMoveIntent() { NV.inputIntent.setMoveFromButtons(combatIntent, moveButtons); }
+  function syncMoveIntent() {
+    NV.inputIntent.setMoveFromButtons(combatIntent, moveButtons);
+    const combined = NV.inputIntent.normalizeVector(combatIntent.moveX + analogMove.x, combatIntent.moveY + analogMove.y);
+    combatIntent.moveX = combined.x; combatIntent.moveY = combined.y;
+  }
   NV.input.setMoveLeft = (v) => { moveButtons.left = !!v; syncMoveIntent(); };
   NV.input.setMoveRight = (v) => { moveButtons.right = !!v; syncMoveIntent(); };
   NV.input.setMoveUp = (v) => { moveButtons.up = !!v; syncMoveIntent(); };
   NV.input.setMoveDown = (v) => { moveButtons.down = !!v; syncMoveIntent(); };
+  NV.input.setMoveVector = (x, y) => {
+    analogMove.x = Number.isFinite(x) ? Math.max(-1, Math.min(1, x)) : 0;
+    analogMove.y = Number.isFinite(y) ? Math.max(-1, Math.min(1, y)) : 0;
+    syncMoveIntent();
+  };
   NV.input.setSlide = (v) => { combatIntent.dashIntent = !!v; };
   NV.input.setSpecial = (v) => { combatIntent.abilityIntent = !!v; };
   NV.input.setFire = (v) => { combatIntent.fireIntent = !!v; };
-  NV.input.setAimWorld = (x, y) => NV.inputIntent.setAimWorld(combatIntent, x, y, player.x, player.y);
+  NV.input.setAimWorld = (x, y) => {
+    aimPointerClient = null; // Joystick/mando/Lab proveen mundo, no cursor físico.
+    return NV.inputIntent.setAimWorld(combatIntent, x, y, player.x, player.y);
+  };
+  NV.input.getPlayerPosition = () => ({ x: player.x, y: player.y });
   NV.input.getCombatIntent = () => Object.assign({}, combatIntent);
   NV.input.getEffectiveFirePolicy = () => NV.inputIntent.effectiveFirePolicy(combatIntent, !!(NV.capabilities && NV.capabilities.isMobile));
   NV.input.useSelected = () => {
@@ -559,8 +599,9 @@
       ready: active && remaining <= 0,
       remaining,
       max,
+      name: (char && char.skillName) || 'Especial',
       progress: active ? Math.max(0, Math.min(1, 1 - remaining / max)) : 0,
-      color: (char && char.color) || '#7cf8ff',
+      color: (char && (char.skillColor || char.color)) || '#7cf8ff',
     };
   };
   // Notifica a la capa móvil cuando cambia el estado de arma/consumible.
@@ -571,7 +612,7 @@
     const cbs = NV.input._onSpecialChange;
     if (!Array.isArray(cbs) || !cbs.length) return;
     const info = NV.input.getSpecialInfo();
-    const signature = [info.active ? 1 : 0, info.ready ? 1 : 0, info.progress.toFixed(4), Math.ceil(info.remaining), info.color].join('|');
+    const signature = [info.active ? 1 : 0, info.ready ? 1 : 0, info.progress.toFixed(4), Math.ceil(info.remaining), info.color, info.name].join('|');
     if (signature === lastMobileSpecialSignature) return;
     lastMobileSpecialSignature = signature;
     try { cbs.forEach((cb) => { if (typeof cb === 'function') cb(info); }); } catch (_) { /* defensivo */ }
@@ -636,6 +677,14 @@
   let invSwapSel = -1; // origen de intercambio de slots en el dock de armas (shop)
   function stopCurrentWeaponAudio() {
     if (currentWeapon && NV.audio && typeof NV.audio.weaponStop === 'function') NV.audio.weaponStop(currentWeapon.id);
+  }
+  function playtestWeaponStates() {
+    const states = {};
+    for (const weapon of inventory) {
+      if (!weapon || !weapon.id || states[weapon.id]) continue;
+      states[weapon.id] = { level: weaponLevels[weapon.id] || 1, fusion: weaponFus[weapon.id] || 0 };
+    }
+    return states;
   }
   let killCombo = { count: 0, timer: 0 }; // combo de kills (E1)
   let currentAutoTarget = null;
@@ -825,6 +874,7 @@
     target.invuln = 0;
     target.overdrive = 0;
     target.phase = 0;
+    if (NV.clearSpecialVisual) NV.clearSpecialVisual(target);
     target.bulwark = 0;
     target.shield = 0;
     target.bounty = 0;
@@ -892,7 +942,17 @@
     dom.skipWave.addEventListener('click', skipShop);
     if (dom.permBtn) dom.permBtn.addEventListener('click', openPermShop);
     if (dom.permBack) dom.permBack.addEventListener('click', closePermShop);
-    const requestCanvasResize = () => { markCanvasResizeDirty(); resizeCanvas(); };
+    let observedArenaW = arenaW(), observedArenaH = arenaH();
+    const requestCanvasResize = () => {
+      markCanvasResizeDirty(); resizeCanvas();
+      if (observedArenaW !== arenaW() || observedArenaH !== arenaH()) {
+        observedArenaW = arenaW(); observedArenaH = arenaH();
+        if (NV.reconcileArenaAfterResize) NV.reconcileArenaAfterResize({
+          W:arenaW(),H:arenaH(),player,enemies,boss,pickups,weaponPickups,bossChests,hazards,
+        });
+        followPlayerCamera();
+      }
+    };
     window.addEventListener('resize', requestCanvasResize);
     if (NV.viewport && typeof NV.viewport.onChange === 'function') NV.viewport.onChange(requestCanvasResize);
     if (typeof ResizeObserver === 'function') {
@@ -921,7 +981,7 @@
       let mx, my;
       if (NV.screenToGame) {
         const pt = NV.screenToGame(e.clientX, e.clientY);
-        mx = pt.x; my = pt.y;
+        mx = pt.x - viewX(); my = pt.y - viewY();
       } else {
         const rect = canvas.getBoundingClientRect();
         mx = (e.clientX - rect.left) / scaleX; my = (e.clientY - rect.top) / scaleY;
@@ -943,13 +1003,15 @@
     function eventHitsConsumableSlot(e) {
       if (!NV.consumSlotRects || !NV.screenToGame) return false;
       const pt = NV.screenToGame(e.clientX, e.clientY);
-      return NV.consumSlotRects.some((r) => pt.x >= r.x && pt.x <= r.x + r.w && pt.y >= r.y && pt.y <= r.y + r.h);
+      const x = pt.x - viewX(), y = pt.y - viewY();
+      return NV.consumSlotRects.some((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
     }
     // Desktop manual: mouse client -> mundo mediante la autoridad de viewport.
     canvas.addEventListener('mousemove', (e) => {
       if (NV.capabilities && NV.capabilities.isMobile) return;
       const pt = NV.screenToGame(e.clientX, e.clientY);
       NV.input.setAimWorld(pt.x, pt.y);
+      aimPointerClient = { x: e.clientX, y: e.clientY };
     });
     canvas.addEventListener('mousedown', (e) => {
       if (e.button !== 0 || state !== 'playing' || paused || NV.input.getEffectiveFirePolicy() !== 'manual') return;
@@ -957,6 +1019,7 @@
       if (eventHitsConsumableSlot(e)) return;
       const pt = NV.screenToGame(e.clientX, e.clientY);
       NV.input.setAimWorld(pt.x, pt.y);
+      aimPointerClient = { x: e.clientX, y: e.clientY };
       NV.input.setFire(true);
       e.preventDefault();
     });
@@ -1027,6 +1090,7 @@
     function equipFromInventory(index) {
       if (index < 0 || !inventory[index] || inventory[index] === currentWeapon) return;
       stopCurrentWeaponAudio();
+      if (NV.playtest) NV.playtest.weaponSwitch(currentWeapon.id, inventory[index].id);
       currentWeapon = inventory[index];
       addFloatText(arenaW() / 2, arenaH() / 2 - 40, 'EQUIPADO: ' + currentWeapon.name, RARITY_COLORS[currentWeapon.rarity]);
       updateHUD();
@@ -1045,6 +1109,7 @@
       const next = NV.cycleWeapon(list[base], list, dir);
       if (!next || next === list[base]) return;
       stopCurrentWeaponAudio();
+      if (NV.playtest) NV.playtest.weaponSwitch(currentWeapon.id, next.id);
       currentWeapon = next;
       addFloatText(arenaW() / 2, arenaH() / 2 - 40, 'EQUIPADO: ' + currentWeapon.name, RARITY_COLORS[currentWeapon.rarity]);
       updateHUD();
@@ -1065,6 +1130,7 @@
         showHUD = !showHUD;
         dom.hudToggle.classList.toggle('active', showHUD);
         dom.hudToggle.textContent = showHUD ? 'HUD' : 'NO HUD';
+        if (NV.tutorial && NV.tutorial.setHUDVisible) NV.tutorial.setHUDVisible(showHUD);
       });
     }
     if (dom.charBtn) {
@@ -1249,7 +1315,7 @@
   function loadMeta() {
     try {
       const saved = JSON.parse(localStorage.getItem('neonVoidMeta') || '{}');
-      metaShards = saved.metaShards || 0;
+      metaShards = Number.isFinite(saved.metaShards) ? Math.max(0, Math.min(1e9, saved.metaShards)) : 0;
       permUpgrades = NV.normalizePermUpgrades(saved.permUpgrades);
     } catch (e) { console.warn('[META] Error:', e); }
   }
@@ -1275,7 +1341,7 @@
     paused = false;
     state = 'menu';
     resetPresentation();
-    if (NV.clearHazards) NV.clearHazards(hazards, minefieldState); else hazards = [];
+    if (NV.clearHazards) NV.clearHazards(hazards, minefieldState, sectorEncounterState); else hazards = [];
     syncGameState();
     dom.shop.classList.add('hidden');
     dom.gameOver.classList.add('hidden');
@@ -1312,7 +1378,8 @@
     clearCombatIntent();
     if (NV.clearPhantomPossession) NV.clearPhantomPossession(player, true);
     if (hookSystem && typeof NV.resetHookSystem === 'function') NV.resetHookSystem(hookSystem);
-    if (NV.clearHazards) NV.clearHazards(hazards, minefieldState);
+    if (NV.clearHazards) NV.clearHazards(hazards, minefieldState,
+      typeof sectorEncounterState === 'undefined' ? null : sectorEncounterState);
     if (NV.clearMusicalNotes) NV.clearMusicalNotes();
     if (NV.audio && typeof NV.audio.stopAllWeapons === 'function') NV.audio.stopAllWeapons();
     enemies = [];
@@ -1333,6 +1400,11 @@
     boss = null;
     hookSystem = NV.createHookSystem ? NV.createHookSystem() : null;
     minefieldState = NV.createMinefieldState ? NV.createMinefieldState() : minefieldState;
+    // El Combat Lab también ejecuta esta rutina en un sandbox mínimo para sus
+    // pruebas; allí el módulo ambiental puede no estar cargado deliberadamente.
+    if (typeof sectorEncounterState !== 'undefined' && NV.createSectorEncounterState) {
+      sectorEncounterState = NV.createSectorEncounterState();
+    }
     currentAutoTarget = null;
     specialVFX = null;
     fireTimer = 0;
@@ -1347,8 +1419,17 @@
     clearEspectroBridge();
   }
 
+  function restoreCombatLabTelemetry() {
+    if (!NV.playtest || combatLabState.telemetryWasEnabled === null) return;
+    const shouldEnable = combatLabState.telemetryWasEnabled;
+    NV.playtest.reset();
+    if (shouldEnable) NV.playtest.enable(); else NV.playtest.disable();
+    combatLabState.telemetryWasEnabled = null;
+  }
+
   function enterCombatLabIdle() {
     clearCombatLabTransientState();
+    restoreCombatLabTelemetry();
     paused = false;
     state = 'menu';
     waveEvent = null;
@@ -1357,7 +1438,10 @@
     combatLabState.status = 'IDLE';
     combatLabState.elapsed = 0;
     combatLabState.duration = null;
+    combatLabState.encounterMode = 'enemies';
     combatLabState.requestedComposition = [];
+    combatLabState.selectedBossIndex = null;
+    combatLabState.loadout = null;
     combatLabState.error = null;
     hideCombatLabOverlays();
     syncGameState();
@@ -1384,6 +1468,26 @@
       const data = NV.difficultyGet(id);
       return { id: data.id, label: data.label || data.id.toUpperCase(), selected: data.id === selectedId };
     });
+  }
+
+  function combatLabBosses() {
+    return (NV.BOSS_TYPES || []).map((entry, index) => ({
+      index,
+      name: entry.name,
+      pattern: entry.pattern,
+      attack: entry.attack,
+      canonicalWave: (index + 1) * 5,
+    }));
+  }
+
+  function combatLabWeapons() {
+    return WEAPONS.map((weapon) => ({
+      id: weapon.id,
+      name: weapon.name,
+      rarity: weapon.rarity,
+      maxLevel: NV.BALANCE.WEAPON_MAX_LEVEL,
+      maxFusion: NV.BALANCE.MAX_WEAPON_FUSION,
+    }));
   }
 
   function combatLabPlacementCandidates(radius) {
@@ -1432,17 +1536,44 @@
   function validateCombatLabConfig(rawConfig) {
     const config = rawConfig || {};
     const errors = [];
+    const encounterMode = config.encounterMode == null ? 'enemies' : config.encounterMode;
     const character = NV.characterList().find((entry) => entry.id === config.characterId);
     const difficulty = (NV.DIFFICULTY_ORDER || []).indexOf(config.difficultyId) >= 0 ? config.difficultyId : null;
-    const waveValue = Number(config.wave);
-    const waveNumber = Number.isInteger(waveValue) && waveValue >= 1 && waveValue <= 999 ? waveValue : null;
     const durationMode = config.durationMode === 'infinite' ? 'infinite' : (config.durationMode === 'timed' ? 'timed' : null);
     const durationValue = Number(config.durationSeconds);
+    if (encounterMode !== 'enemies' && encounterMode !== 'boss') errors.push('Encounter mode must be enemies or boss.');
     if (!character) errors.push('Unknown production character: ' + String(config.characterId || ''));
     if (!difficulty) errors.push('Difficulty must be one of the production difficulty IDs.');
-    if (waveNumber == null) errors.push('Wave must be an integer from 1 to 999.');
     if (!durationMode) errors.push('Duration mode must be timed or infinite.');
     if (durationMode === 'timed' && (!Number.isFinite(durationValue) || durationValue <= 0)) errors.push('Timed duration must be greater than zero seconds.');
+
+    if (encounterMode === 'boss') {
+      const bossIndex = Number(config.bossIndex);
+      const weapon = WEAPONS.find((entry) => entry.id === config.weaponId);
+      const weaponLevel = Number(config.weaponLevel);
+      const weaponFusion = Number(config.weaponFusion == null ? 0 : config.weaponFusion);
+      const firePolicy = (NV.inputIntent.FIRE_POLICIES || []).indexOf(config.firePolicy) >= 0 ? config.firePolicy : null;
+      if (!Number.isInteger(bossIndex) || bossIndex < 0 || bossIndex >= BOSS_TYPES.length) errors.push('Unknown production boss index.');
+      if (!weapon) errors.push('Unknown production weapon: ' + String(config.weaponId || ''));
+      if (!Number.isInteger(weaponLevel) || weaponLevel < 1 || weaponLevel > NV.BALANCE.WEAPON_MAX_LEVEL) errors.push('Weapon level is outside the production range.');
+      if (!Number.isInteger(weaponFusion) || weaponFusion < 0 || weaponFusion > NV.BALANCE.MAX_WEAPON_FUSION) errors.push('Weapon fusion is outside the production range.');
+      if (!firePolicy) errors.push('Unknown fire policy.');
+      if (Array.isArray(config.composition) && config.composition.length) errors.push('Boss encounters cannot include an arbitrary starting composition.');
+      if (errors.length) return { ok: false, errors };
+      return {
+        ok: true,
+        config: {
+          encounterMode: 'boss', bossIndex, characterId: character.id, difficultyId: difficulty,
+          weaponId: weapon.id, weaponLevel, weaponFusion, firePolicy,
+          durationMode, durationSeconds: durationMode === 'timed' ? durationValue : null,
+        },
+        positions: [],
+      };
+    }
+
+    const waveValue = Number(config.wave);
+    const waveNumber = Number.isInteger(waveValue) && waveValue >= 1 && waveValue <= 999 ? waveValue : null;
+    if (waveNumber == null) errors.push('Wave must be an integer from 1 to 999.');
 
     const requested = [];
     const normalizedComposition = [];
@@ -1472,6 +1603,7 @@
     if (errors.length) return { ok: false, errors };
 
     const cleanConfig = {
+      encounterMode: 'enemies',
       characterId: character.id,
       wave: waveNumber,
       difficultyId: difficulty,
@@ -1491,40 +1623,69 @@
       return validation;
     }
     initAudio();
+    const bossEncounter = validation.config.encounterMode === 'boss';
+    if (bossEncounter) {
+      if (NV.playtest && combatLabState.telemetryWasEnabled === null) combatLabState.telemetryWasEnabled = NV.playtest.enabled;
+    } else {
+      restoreCombatLabTelemetry();
+    }
     clearCombatLabTransientState();
     permUpgrades = NV.defaultPermUpgrades();
     metaShards = 0;
     NV.runDifficulty = validation.config.difficultyId;
-    wave = validation.config.wave;
+    wave = bossEncounter ? (validation.config.bossIndex + 1) * 5 : validation.config.wave;
     waveEvent = null;
     score = 0;
     shards = 0;
     NV.initializeRunPlayer(player, validation.config.characterId, { permUpgrades });
-    inventory = [];
-    inventory.push(NV.starterWeapon());
+    const selectedWeapon = bossEncounter ? WEAPONS.find((entry) => entry.id === validation.config.weaponId) : NV.starterWeapon();
+    inventory = [selectedWeapon];
     currentWeapon = inventory[0];
     consumableItems = [];
     consumSel = 0;
-    weaponLevels = {};
+    weaponLevels = bossEncounter ? { [selectedWeapon.id]: validation.config.weaponLevel } : {};
     weaponKills = {};
-    weaponFus = {};
+    weaponFus = bossEncounter && validation.config.weaponFusion > 0 ? { [selectedWeapon.id]: validation.config.weaponFusion } : {};
     shopBought = {};
     upgradeSlots = [];
     killCombo = { count: 0, timer: 0 };
-    const spawnState = { enemies, boss: null, MAX_HOSTILES, MAX_HEAVY_HOSTILES, wave, W: arenaW(), H: arenaH() };
-    for (const placement of validation.positions) {
-      const result = NV.spawnProductionEnemy(spawnState, placement.enemyId, { position: placement });
-      if (!result.ok) {
+    combatIntent.firePolicy = bossEncounter ? validation.config.firePolicy : (NV.settings.controls.firePolicy || 'manual');
+    if (bossEncounter) {
+      boss = buildBossForWave(wave, validation.config.bossIndex, validation.config.difficultyId);
+      if (!boss || !NV.canSpawnBoss({ enemies, boss: null, MAX_HOSTILES, MAX_HEAVY_HOSTILES })) {
         clearCombatLabTransientState();
         state = 'menu';
         combatLabState.status = 'ERROR';
-        combatLabState.error = ['Spawn failed for ' + placement.enemyId + ': ' + result.code];
+        combatLabState.error = ['Boss could not be created within the production hostile budget.'];
         syncGameState();
         return { ok: false, errors: combatLabState.error.slice() };
       }
+      if (NV.playtest) {
+        NV.playtest.reset();
+        NV.playtest.enable();
+        NV.playtest.startRun(player.character, validation.config.difficultyId, currentWeapon.id);
+        NV.playtest.weaponProgression(currentWeapon.id, currentWeaponLevel(), currentWeaponFusion());
+        NV.playtest.bossStart(wave, boss.name, boss.pattern, boss.maxHp, playtestWeaponStates());
+      }
+    } else {
+      const spawnState = { enemies, boss: null, MAX_HOSTILES, MAX_HEAVY_HOSTILES, wave, W: arenaW(), H: arenaH() };
+      for (const placement of validation.positions) {
+        const result = NV.spawnProductionEnemy(spawnState, placement.enemyId, { position: placement });
+        if (!result.ok) {
+          clearCombatLabTransientState();
+          state = 'menu';
+          combatLabState.status = 'ERROR';
+          combatLabState.error = ['Spawn failed for ' + placement.enemyId + ': ' + result.code];
+          syncGameState();
+          return { ok: false, errors: combatLabState.error.slice() };
+        }
+      }
     }
     combatLabState.lastConfig = JSON.parse(JSON.stringify(validation.config));
-    combatLabState.requestedComposition = validation.config.composition.map((row) => ({ enemyId: row.enemyId, quantity: row.quantity }));
+    combatLabState.encounterMode = validation.config.encounterMode;
+    combatLabState.requestedComposition = bossEncounter ? [] : validation.config.composition.map((row) => ({ enemyId: row.enemyId, quantity: row.quantity }));
+    combatLabState.selectedBossIndex = bossEncounter ? validation.config.bossIndex : null;
+    combatLabState.loadout = bossEncounter ? { weaponId: currentWeapon.id, weaponLevel: currentWeaponLevel(), weaponFusion: currentWeaponFusion(), firePolicy: validation.config.firePolicy } : null;
     combatLabState.elapsed = 0;
     combatLabState.duration = validation.config.durationMode === 'timed' ? validation.config.durationSeconds : null;
     combatLabState.status = 'RUNNING';
@@ -1541,6 +1702,17 @@
     return { ok: true, config: JSON.parse(JSON.stringify(validation.config)) };
   }
 
+  function completeCombatLabBoss() {
+    if (!combatLabMode || combatLabState.status !== 'RUNNING') return false;
+    if (NV.playtest) NV.playtest.bossEnd(playtestWeaponStates());
+    combatLabState.status = 'COMPLETE';
+    paused = true;
+    clearCombatIntent();
+    if (NV.audio && typeof NV.audio.stopAllWeapons === 'function') NV.audio.stopAllWeapons();
+    syncGameState();
+    return true;
+  }
+
   function combatLabSnapshot() {
     const activeById = Object.create(null);
     let activeEnemies = 0;
@@ -1551,8 +1723,19 @@
       activeById[id] = (activeById[id] || 0) + 1;
     }
     const perf = NV.performanceMonitor && NV.performanceMonitor.getSnapshot ? NV.performanceMonitor.getSnapshot() : null;
+    const bossSnapshot = {
+      index: combatLabState.selectedBossIndex,
+      present: !!boss,
+      active: !!boss && !boss.dead,
+      name: boss ? boss.name : null,
+      hp: boss ? boss.hp : 0,
+      maxHp: boss ? boss.maxHp : 0,
+      attack: boss ? boss.attack : null,
+      phase2: !!(boss && boss.phase2),
+    };
     return {
       status: combatLabState.status,
+      encounterMode: combatLabState.encounterMode,
       paused,
       wave,
       difficulty: NV.runDifficulty || 'normal',
@@ -1562,6 +1745,9 @@
       activeEnemies,
       activeById,
       requestedComposition: combatLabState.requestedComposition.map((row) => ({ enemyId: row.enemyId, quantity: row.quantity })),
+      boss: bossSnapshot,
+      loadout: combatLabState.loadout ? Object.assign({}, combatLabState.loadout) : null,
+      telemetry: combatLabState.encounterMode === 'boss' && NV.playtest ? NV.playtest.snapshot() : null,
       player: { characterId: player.character, hp: player.hp, maxHp: player.maxHp },
       fps: perf && perf.frame && perf.frame.p50 > 0 ? 1000 / perf.frame.p50 : null,
       error: combatLabState.error ? combatLabState.error.slice() : null,
@@ -1574,6 +1760,8 @@
       getCatalog: combatLabCatalog,
       getCharacters: combatLabCharacters,
       getDifficulties: combatLabDifficulties,
+      getBosses: combatLabBosses,
+      getWeapons: combatLabWeapons,
       start: startCombatLab,
       reset() { enterCombatLabIdle(); return { ok: true }; },
       restart() {
@@ -1618,9 +1806,13 @@
     player.stun = 0; player.stunReapplyLockout = 0;
 
     wave = 1; score = 0; shards = 0;
+    if (NV.expedition && !combatLabMode) {
+      expeditionRun = NV.expedition.create(expeditionMode, NV.expedition.profile().seed);
+      if (!metaFrozen) NV.expedition.clear();
+    }
     waveEvent = null;
     hookSystem = NV.createHookSystem ? NV.createHookSystem() : null; // F3: hookSystem fresco por run (restart/new run)
-    if (NV.clearHazards) NV.clearHazards(hazards, minefieldState); else hazards = [];
+    if (NV.clearHazards) NV.clearHazards(hazards, minefieldState, sectorEncounterState); else hazards = [];
     shopBought = {};
     upgradeSlots = []; // los slots de mejoras se reinician por partida, igual que shopBought
     killCombo = { count: 0, timer: 0 };
@@ -1631,6 +1823,7 @@
     floatTexts = []; trails = []; weaponPickups = []; bossChests = [];
     shockwaves = []; drones = []; meteors = []; hazards = [];
     minefieldState = NV.createMinefieldState ? NV.createMinefieldState() : minefieldState;
+    sectorEncounterState = NV.createSectorEncounterState ? NV.createSectorEncounterState() : sectorEncounterState;
     inventory = [NV.starterWeapon()]; currentWeapon = inventory[0]; consumableItems = [];
     consumSel = 0;
     weaponLevels = {}; weaponKills = {}; weaponFus = {}; fireTimer = 0;
@@ -1642,6 +1835,8 @@
     NV.musicState.step = 0; NV.musicState.lastBeat = 0; NV.musicState.intensity = 0;
     NV.musicState.phase = 'normal'; NV.musicState.combo = 0; // reset de identidad sonora (Tarea 3)
 
+    if (NV.playtest) NV.playtest.startRun(player.character, NV.runDifficulty, currentWeapon.id);
+
     resizeCanvas();
     nextWave();
     updateHUD();
@@ -1650,13 +1845,48 @@
     console.log('[START] Partida iniciada correctamente');
   }
 
+  function buildBossForWave(wave, bossIndex, difficultyId) {
+    const index = Number.isInteger(bossIndex)
+      ? bossIndex
+      : ((wave / 5 - 1) % BOSS_TYPES.length + BOSS_TYPES.length) % BOSS_TYPES.length;
+    const bt = BOSS_TYPES[index];
+    if (!bt) return null;
+    const difficultyMult = typeof NV.difficultySafeMult === 'function'
+      ? NV.difficultySafeMult('hp', difficultyId)
+      : 1;
+    const hp = NV.bossEncounterHp ? NV.bossEncounterHp(bt, wave, difficultyMult)
+      : Math.round((bt.hp + wave * wave * 12 + wave * 40) * 1.8 * difficultyMult);
+    const bossCandidate = { x: arenaW()/2, y: 100,
+      hp, maxHp: hp,
+      radius: bt.radius, color: bt.color, timer: 0, atkTimer: 0,
+      hitFlash: 0, hitSlowUntil: 0, hitSlowImmunity: 0,
+      name: bt.name, pattern: bt.pattern, attack: bt.attack, shape: bt.shape,
+      isBoss: true, hostileClass: 'heavy', stunChance: bt.stunChance || 0,
+    };
+    return bossCandidate;
+  }
+
   function nextWave() {
     console.log('[WAVE] Oleada ' + wave);
     // Elegir evento ANTES de calcular duración: la duración depende de si hay evento.
-    waveEvent = (wave % 5 !== 0 && wave % 3 === 0) ? pickWaveEvent() : null;
+    const bossWave = NV.expedition && !combatLabMode && expeditionRun
+      ? NV.expedition.isBossWave(expeditionRun, wave) : wave % 5 === 0;
+    waveEvent = (!bossWave && wave % 3 === 0) ? pickWaveEvent() : null;
+    if (NV.expedition && !combatLabMode && expeditionRun) {
+      if (waveEvent && expeditionRun.event) waveEvent = expeditionRun.event;
+      expeditionRun.event = null;
+      NV.expedition.beginWave(expeditionRun);
+      NV.expedition.syncArsenal(inventory, weaponLevels, weaponKills);
+    }
     waveTimer = NV.waveDuration(wave, waveEvent);
+    waveDefeats = 0;
+    waveSpawned = 0;
+    waveGoal = bossWave ? null : NV.waveClearObjective(wave, NV.runDifficulty);
+    wavePressure = NV.createWavePressure ? NV.createWavePressure() : null;
+    waveGoalNudgeShown = false;
     spawnTimer = 0;
-    if (NV.clearHazards) NV.clearHazards(hazards, minefieldState); else hazards = [];
+    waveDirectorCycle = 0;
+    if (NV.clearHazards) NV.clearHazards(hazards, minefieldState, sectorEncounterState); else hazards = [];
     // Limpieza completa de entidades por oleada (rendimiento): no dejar restos de
     // partículas, drones, meteoros, estelas, textos/cofres/armas del suelo de la
     // oleada anterior acumulándose entre oleadas (deuda técnica de rendimiento).
@@ -1668,14 +1898,16 @@
     consumableVfx = []; // #11: los VFX instantáneos no sobreviven al cambio de oleada
     pendingBombImpacts = []; // #11: sin impactos de bomba huérfanos entre oleadas
 
-    if (wave % 5 === 0) {
-      const bossIndex = ((wave / 5 - 1) % BOSS_TYPES.length + BOSS_TYPES.length) % BOSS_TYPES.length;
+    if (bossWave) {
+      const bossIndex = NV.expedition && !combatLabMode && expeditionRun
+        ? NV.expedition.bossIndex(expeditionRun, wave)
+        : ((wave / 5 - 1) % BOSS_TYPES.length + BOSS_TYPES.length) % BOSS_TYPES.length;
       const bt = BOSS_TYPES[bossIndex];
-                  // HP cuadrático en la oleada y durabilidad global: peleas largas y con peso.
-                  const bossHp = Math.round((bt.hp + wave * wave * 12 + wave * 40) * 1.8 * ((typeof NV.difficultySafeMult === "function") ? NV.difficultySafeMult("hp") : 1));
-                  const bossCandidate = { x: arenaW()/2, y: 100, hp: bossHp, maxHp: bossHp, radius: bt.radius, color: bt.color, timer: 0, atkTimer: 0, hitFlash: 0, hitSlowUntil: 0, hitSlowImmunity: 0, name: bt.name, pattern: bt.pattern, attack: bt.attack, shape: bt.shape, isBoss: true, hostileClass: 'heavy', stunChance: bt.stunChance || 0 };
-                  boss = NV.canSpawnBoss({ enemies, boss: null, MAX_HOSTILES, MAX_HEAVY_HOSTILES }) ? bossCandidate : null;
+      const difficultyId = NV.settings && NV.settings.gameplay ? NV.settings.gameplay.difficulty : 'normal';
+      const bossCandidate = buildBossForWave(wave, bossIndex, difficultyId);
+      boss = NV.canSpawnBoss({ enemies, boss: null, MAX_HOSTILES, MAX_HEAVY_HOSTILES }) ? bossCandidate : null;
       if (!boss) return;
+      if (NV.playtest) NV.playtest.bossStart(wave, boss.name, boss.pattern, boss.maxHp, playtestWeaponStates());
       showBanner('¡' + bt.name + '!', bt.color);
       triggerFlash(bt.color);
       spawnExplosion(boss.x, boss.y, 40, boss.color, 1);
@@ -1691,8 +1923,11 @@
         triggerFlash(ev.color);
         sfx.waveEvent(waveEvent);
       } else {
-        showBanner('OLEADA ' + wave, '#7cf8ff');
-        triggerFlash('#7cf8ff');
+        const sectorIntro = NV.sectorEncounterForWave && (wave === 1 || wave === 6 || wave === 11 || wave === 16)
+          ? NV.sectorEncounterForWave(wave) : null;
+        if (sectorIntro) showBanner(sectorIntro.name + ' · ' + sectorIntro.cue, sectorIntro.color);
+        else showBanner('OLEADA ' + wave, '#7cf8ff');
+        triggerFlash(sectorIntro ? sectorIntro.color : '#7cf8ff');
       }
     }
     countdownLastSecond = 0;
@@ -1711,6 +1946,8 @@
   function showBanner(text, color) {
     dom.waveBanner.textContent = text;
     dom.waveBanner.style.color = color;
+    // Los avisos tácticos largos informan sin cubrir al jefe ni la mira.
+    dom.waveBanner.classList.toggle('compact', String(text).length > 20);
     dom.waveBanner.classList.remove('hidden');
     setTimeout(() => dom.waveBanner.classList.add('hidden'), 1500);
   }
@@ -1719,8 +1956,10 @@
   function triggerWaveVictory(isBoss, bossName, bossColor) {
     if (state === 'player_dying' || state === 'gameover' || state === 'wave_end' || state === 'shop_enter' || state === 'shop') return false;
     if (player.hp <= 0) { gameOver(); return false; }
+    if (isBoss && NV.playtest) NV.playtest.bossEnd(playtestWeaponStates());
+    if (NV.expedition && !combatLabMode && expeditionRun) shards += NV.expedition.finishWave(expeditionRun, wave, isBoss);
     // Hazards no bloquean ni dañan durante la transición a tienda.
-    if (NV.clearHazards) NV.clearHazards(hazards, minefieldState); else hazards = [];
+    if (NV.clearHazards) NV.clearHazards(hazards, minefieldState, sectorEncounterState); else hazards = [];
     if (NV.clearPhantomPossession) NV.clearPhantomPossession(player, true);
         clearCombatIntent();
     bullets = [];
@@ -1776,6 +2015,7 @@
   }
 
   function triggerFlash(color, intensity) {
+    if (NV.settings && NV.settings.gameplay && NV.settings.gameplay.reducedEffects) return;
     flashColor = color;
     flashAlpha = Math.max(flashAlpha, intensity == null ? 0.3 : intensity);
   }
@@ -1794,6 +2034,8 @@
 
 
   function skipShop() {
+    if (state !== 'shop') return false;
+    saveExpeditionCheckpoint();
     wave++; // la oleada siguiente "arranca" recién al salir de la tienda
     state = 'playing';
     resetPresentation();
@@ -1804,6 +2046,7 @@
   }
 
   function prepareShopContent() {
+    if (NV.expedition && !combatLabMode) NV.expedition.syncArsenal(inventory, weaponLevels, weaponKills);
     consumableBought = {}; // el tope de consumibles es por visita a la tienda
     invSwapSel = -1;
     updateHUD(); // La habilidad no debe seguir pulsando fuera del combate.
@@ -1844,6 +2087,8 @@
     consumSel = Math.min(consumSel, groups.length - 1);
     if (consumSel < 0) return;
     const selectedType = groups[consumSel].type;
+    const usable = NV.canUseConsumable(selectedType, { player, enemies, boss, pickups, weaponPickups });
+    if (!usable.ok) { addFloatText(player.x, player.y - 34, usable.reason, '#bce9ef'); return; }
     const item = NV.consumeByType(consumableItems, selectedType);
     if (!item) { reconcileConsumSel(); return; }
     NV.applyConsumable(item, { player, enemies, boss, pickups, weaponPickups, addFloatText, triggerFlash, spawnExplosion, spawnShockwave, spawnConsumableVfx, killEnemy, registerBombImpact });
@@ -1903,6 +2148,7 @@
   }
 
   function renderInventory() {
+    if (NV.expedition && !combatLabMode) NV.expedition.syncArsenal(inventory, weaponLevels, weaponKills);
     if (!dom.invSlots) return;
     dom.invSlots.innerHTML = '';
 
@@ -1930,6 +2176,8 @@
           slot.style.outline = '2px solid #ffd700';
           slot.title = 'Origen del intercambio (click en otra arma para intercambiar)';
         }
+        slot.title += ' · Nivel ' + (weaponLevels[weapon.id] || 1) + ' · ' + weapon.pro;
+        if (fusLevel >= 2 && NV.WEAPON_EVOLUTIONS) slot.title += ' · ' + NV.WEAPON_EVOLUTIONS[weapon.id];
 
         // Click = seleccionar para intercambiar / equipar
         slot.addEventListener('click', () => {
@@ -1950,6 +2198,7 @@
           }
           invSwapSel = -1;
           stopCurrentWeaponAudio();
+          if (NV.playtest) NV.playtest.weaponSwitch(currentWeapon.id, weapon.id);
           currentWeapon = weapon;
           addFloatText(arenaW()/2, arenaH()/2, 'EQUIPADO: ' + weapon.name, RARITY_COLORS[weapon.rarity]);
           renderInventory();
@@ -1958,7 +2207,7 @@
         // Botón vender: da shards según rareza (coherente con la economía; < compra siempre).
         const sellBtn = document.createElement('button');
         sellBtn.className = 'inv-remove';
-        sellBtn.textContent = 'SELL';
+        sellBtn.textContent = 'VENDER';
         sellBtn.title = 'Vender por ' + NV.weaponSellValue(weapon, WEAPON_SELL_PRICES) + ' shards';
         sellBtn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -1974,7 +2223,9 @@
           if (currentWeapon === weapon) {
             // Fallback a la siguiente arma válida en el orden visible del loadout.
             stopCurrentWeaponAudio();
-            currentWeapon = inventory[Math.min(i, inventory.length - 1)] || inventory[0];
+            const fallbackWeapon = inventory[Math.min(i, inventory.length - 1)] || inventory[0];
+            if (fallbackWeapon && NV.playtest) NV.playtest.weaponSwitch(currentWeapon.id, fallbackWeapon.id);
+            currentWeapon = fallbackWeapon;
           }
           invSwapSel = -1;
           addFloatText(arenaW() / 2, arenaH() / 2, '+◆ ' + val, '#7cf8ff');
@@ -2081,37 +2332,35 @@
       upgrades.push({
         kind: 'upgrade', metaIcon: 'hp', name: '+25 HP', desc: 'Vida máxima +25 (' + (shopBought.hp || 0) + '/' + SHOP_CAPS.hp + ')', rarity: 'common',
         disabled: hpLvl >= UPGRADE_LEVELS.hp, disabledReason: 'Nivel ' + UPGRADE_LEVELS.hp + '/' + UPGRADE_LEVELS.hp,
-        price: 15, buy: () => { player.maxHp += 25; player.hp += 25; shopBought.hp = (shopBought.hp || 0) + 1; upgradeSlots.push({ icon: 'hp', name: '+25 HP' }); },
+        price: NV.runUpgradePrice ? NV.runUpgradePrice('hp', hpLvl) : 15, buy: () => { player.maxHp += 25; player.hp += 25; shopBought.hp = (shopBought.hp || 0) + 1; upgradeSlots.push({ icon: 'hp', name: '+25 HP' }); },
       });
     }
     if (player.agility < MAX_AGILITY) {
       upgrades.push({
         kind: 'upgrade', metaIcon: 'speed', name: 'Agilidad', desc: 'Acelera y frena mejor (máx +100%)', rarity: 'rare',
         disabled: speedLvl >= UPGRADE_LEVELS.speed, disabledReason: 'Nivel ' + UPGRADE_LEVELS.speed + '/' + UPGRADE_LEVELS.speed,
-        price: 15, buy: () => { player.agility = Math.min(MAX_AGILITY, player.agility + AGILITY_PER_UPGRADE); upgradeSlots.push({ icon: 'speed', name: 'Agilidad' }); },
+        price: NV.runUpgradePrice ? NV.runUpgradePrice('speed', speedLvl) : 15, buy: () => { player.agility = Math.min(MAX_AGILITY, player.agility + AGILITY_PER_UPGRADE); upgradeSlots.push({ icon: 'speed', name: 'Agilidad' }); },
       });
     }
     if ((shopBought.armor || 0) < SHOP_CAPS.armor) {
       upgrades.push({
         kind: 'upgrade', metaIcon: 'armor', name: 'Armadura', desc: '+3 armadura (' + (shopBought.armor || 0) + '/' + SHOP_CAPS.armor + ')', rarity: 'epic',
         disabled: armorLvl >= UPGRADE_LEVELS.armor, disabledReason: 'Nivel ' + UPGRADE_LEVELS.armor + '/' + UPGRADE_LEVELS.armor,
-        price: 20, buy: () => { player.armor += 3; shopBought.armor = (shopBought.armor || 0) + 1; upgradeSlots.push({ icon: 'armor', name: 'Armadura' }); },
+        price: NV.runUpgradePrice ? NV.runUpgradePrice('armor', armorLvl) : 20, buy: () => { player.armor += 3; shopBought.armor = (shopBought.armor || 0) + 1; upgradeSlots.push({ icon: 'armor', name: 'Armadura' }); },
       });
     }
     if ((shopBought.luck || 0) < SHOP_CAPS.luck) {
       upgrades.push({
         kind: 'upgrade', metaIcon: 'luck', name: 'Suerte', desc: '+2 suerte (' + (shopBought.luck || 0) + '/' + SHOP_CAPS.luck + ')', rarity: 'rare',
         disabled: luckLvl >= UPGRADE_LEVELS.luck, disabledReason: 'Nivel ' + UPGRADE_LEVELS.luck + '/' + UPGRADE_LEVELS.luck,
-        price: 20, buy: () => { player.luck += 2; shopBought.luck = (shopBought.luck || 0) + 1; upgradeSlots.push({ icon: 'luck', name: 'Suerte' }); },
+        price: NV.runUpgradePrice ? NV.runUpgradePrice('luck', luckLvl) : 20, buy: () => { player.luck += 2; shopBought.luck = (shopBought.luck || 0) + 1; upgradeSlots.push({ icon: 'luck', name: 'Suerte' }); },
       });
     }
 
     WEAPONS.forEach(w => {
-      const isCurrent = w === currentWeapon;
       const owned = inventory.some((iw) => iw.id === w.id);
       const fus = weaponFusionLevel(w.id);
-      // La equipada actual no se ofrece (conserva el comportamiento previo).
-      if (isCurrent) return;
+      // La equipada también se puede fusionar: no exigir desequipar para mejorar.
       // Poseída al tope de fusión: no se ofrece.
       if (owned && fus >= MAX_WEAPON_FUSION) return;
       const canFuse = owned && fus < MAX_WEAPON_FUSION;
@@ -2119,9 +2368,9 @@
       weapons.push({
         kind: 'weapon', name: w.name, weapon: w, rarity: w.rarity,
         desc: canFuse
-          ? ('FUSIONAR: +' + Math.round(WEAPON_FUSION_DMG * 100) + '% daño (Nv' + (fus + 1) + '/' + MAX_WEAPON_FUSION + ')')
-          : (w.rarity + ' | daño ' + w.damage + ' | ' + (w.pro || '')),
-        price: canFuse ? WEAPON_FUSE_PRICE : 25,
+          ? ('FUSIÓN ' + (fus + 1) + '/' + MAX_WEAPON_FUSION + ' · +' + Math.round(WEAPON_FUSION_DMG * 100) + '% daño' + (fus === 1 && NV.WEAPON_EVOLUTIONS ? ' · ' + NV.WEAPON_EVOLUTIONS[w.id] : ''))
+          : ((w.pro || '') + ' · ' + (w.con || '')),
+        price: canFuse && NV.weaponFusionShopPrice ? NV.weaponFusionShopPrice(fus) : (canFuse ? WEAPON_FUSE_PRICE : 25),
         // Inventario lleno: oferta bloqueada (misma regla que los pickups: sin auto-equipar).
         disabled: invFull,
         disabledReason: invFull ? 'INVENTARIO LLENO' : undefined,
@@ -2232,6 +2481,9 @@
     container.innerHTML = "";
     items.forEach(item => {
       const el = document.createElement("div");
+      el.setAttribute('role', 'button');
+      el.tabIndex = item.disabled ? -1 : 0;
+      el.setAttribute('aria-disabled', String(!!item.disabled));
       const kind = item.kind || (item.weapon ? 'weapon' : item.consumableType ? 'consumable' : 'upgrade');
       el.className = "offer offer-" + kind + " rarity-" + visualRarity(item.rarity, item.price) + (item.disabled ? " disabled" : "");
       const iconHtml = item.weapon || item.consumableType || item.metaIcon ? '<div class="offer-icon"><canvas></canvas></div>' : '<div class="offer-icon">•</div>';
@@ -2239,6 +2491,9 @@
       const badgeHtml = item.badge ? '<div class="offer-badge">' + item.badge + '</div>' : '';
       el.innerHTML = iconHtml + '<div class="offer-name">' + item.name + "</div><div class=\"offer-desc\">" + item.desc + "</div>" + badgeHtml + "<div class='offer-price'>" + priceHtml + "</div>";
       el.addEventListener("click", () => handleShopPurchase(item, el));
+      el.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handleShopPurchase(item, el); }
+      });
       container.appendChild(el);
       const c = el.querySelector("canvas");
       if (c && item.weapon) drawWeaponCanvas(c, item.weapon, 64, 50);
@@ -2248,6 +2503,8 @@
   }
 
   function handleShopPurchase(item, el) {
+    // Evita la doble compra con una tarjeta vieja durante su animación de salida.
+    if (el.dataset && el.dataset.purchased === 'true') return false;
     if (item.disabled) {
       addFloatText(arenaW()/2, arenaH()/2, item.disabledReason || 'Límite alcanzado', '#ff5f9b');
       return false;
@@ -2266,6 +2523,11 @@
       return false;
     }
     el.classList.add('just-bought');
+    if (el.dataset) el.dataset.purchased = 'true';
+    if (typeof NV !== 'undefined' && NV.expedition && !combatLabMode) {
+      NV.expedition.syncArsenal(inventory, weaponLevels, weaponKills);
+      saveExpeditionCheckpoint();
+    }
     dom.shopShards.textContent = shards;
     setTimeout(() => { generateOffers(); updateHUD(); renderInventory(); }, 180);
     if (!item.weapon) sfx.shopBuy();
@@ -2274,18 +2536,20 @@
 
   function gameOver() {
     if (state === 'player_dying' || state === 'gameover') return false;
+    if (NV.expedition && !combatLabMode && !metaFrozen) NV.expedition.clear();
     clearCombatIntent();
     if (NV.clearPhantomPossession) NV.clearPhantomPossession(player, true);
     if (hookSystem && typeof NV.resetHookSystem === 'function') NV.resetHookSystem(hookSystem); // F3: cleanup hook en gameover
     player.stun = 0; player.stunReapplyLockout = 0; // F4: la muerte no deja stun residual
     state = 'player_dying';
     if (combatLabMode) combatLabState.status = 'PLAYER_DEAD';
-    if (NV.clearHazards) NV.clearHazards(hazards, minefieldState); else hazards = [];
+    if (NV.clearHazards) NV.clearHazards(hazards, minefieldState, sectorEncounterState); else hazards = [];
     bullets = [];
     flameZones = [];
     drones = [];
     meteors = [];
     consumableVfx = []; // #11: sin VFX de consumibles huérfanos tras la muerte
+    if (NV.clearSpecialVisual) NV.clearSpecialVisual(player);
     pendingBombImpacts = []; // #11: la carga de la bomba no sobrevive a la muerte
     presentation.kind = 'player_dying';
     presentation.elapsed = 0;
@@ -2328,6 +2592,7 @@
     dom.goWave.textContent = wave;
     metaShards += Math.floor(shards / 2) + Math.floor(score / 100);
     saveMeta();
+    if (NV.expedition && !combatLabMode && expeditionRun && !metaFrozen) NV.expedition.complete(expeditionRun, wave, score, false);
   }
 
   function beginShopEntrance() {
@@ -2337,6 +2602,10 @@
     pickups = result.pickups;
     shards += result.shards;
     if (result.shards > 0) updateHUD();
+    if (NV.expedition && !combatLabMode && expeditionRun && expeditionRun.mode === 'expedition' && wave >= 20) {
+      finishExpedition();
+      return;
+    }
     // Tarea #8: la recompensa pendiente del cofre de jefe ya se resolvió ANTES de
     // llegar acá (updatePresentation auto-recoge al vencer el margen).
     if (NV.audio && typeof NV.audio.stopAllWeapons === 'function') NV.audio.stopAllWeapons();
@@ -2344,7 +2613,7 @@
     combatIntent.dashIntent = false;
     if (hookSystem && typeof NV.resetHookSystem === 'function') NV.resetHookSystem(hookSystem); // F3: cleanup hook en shop_enter
     player.stun = 0; player.stunReapplyLockout = 0; // F4: sin stun residual al entrar a la tienda
-    if (NV.clearHazards) NV.clearHazards(hazards, minefieldState); else hazards = [];
+    if (NV.clearHazards) NV.clearHazards(hazards, minefieldState, sectorEncounterState); else hazards = [];
     state = 'shop_enter';
     presentation.kind = 'shop_enter';
     presentation.elapsed = 0;
@@ -2360,6 +2629,7 @@
     consumableVfx = [];
     pendingBombImpacts = [];
     prepareShopContent();
+    if (NV.clearSpecialVisual) NV.clearSpecialVisual(player);
     showShop();
     syncGameState();
   }
@@ -2371,6 +2641,7 @@
     transition = 0;
     dom.shop.setAttribute('aria-hidden', 'false');
     syncGameState();
+    saveExpeditionCheckpoint();
   }
 
   function updatePresentation(dt) {
@@ -2384,6 +2655,7 @@
       specialVFX.life -= dt;
       if (specialVFX.life <= 0) specialVFX = null;
     }
+    if (NV.updateSpecialVisual) NV.updateSpecialVisual(player, dt, meteors, drones);
     // Guard defensivo: los harnesses que extraen esta función a un sandbox no
     // definen el helper local; en producción siempre existe.
     if (typeof updateConsumableVfx === 'function') updateConsumableVfx(dt);
@@ -2497,6 +2769,11 @@
     } else if (combatLabMode && combatLabState.status === 'RUNNING') {
       combatLabState.elapsed += dt;
     }
+    if (NV.expedition && !combatLabMode && expeditionRun) expeditionRun.seconds += dt;
+    if (NV.playtest && NV.playtest.enabled) {
+      NV.playtest.frame(dt, currentWeapon.id);
+      NV.playtest.weaponProgression(currentWeapon.id, currentWeaponLevel(), currentWeaponFusion());
+    }
     if (NV.SPECTER_ENABLED === false) {
       enemies = enemies.filter((e) => e.shape !== 'specter');
     }
@@ -2531,6 +2808,7 @@
     }
 
     const wasDashing = !!player.dashActive;
+    const trailStartX = player.x, trailStartY = player.y;
     const hookPullActive = !!(hookSystem && hookSystem.phase === 'tether' && hookSystem.srcEnemy && !player.dashActive);
     const effectiveMoveIntent = NV.phantomPossessionIntent
       ? NV.phantomPossessionIntent(player, combatIntent.moveX, combatIntent.moveY, hookPullActive)
@@ -2549,20 +2827,19 @@
     if (hookSystem && typeof NV.applyHookPull === 'function') NV.applyHookPull(dt, hookSystem, player, wasDashing);
     player.x = Math.max(20, Math.min(arenaW() - 20, player.x));
     player.y = Math.max(30, Math.min(arenaH() - 20, player.y));
+    followPlayerCamera();
     // El cursor vive en mundo: si el jugador se mueve, recalcular la dirección
     // sin exigir otro mousemove mantiene aim y movimiento realmente independientes.
     if (combatIntent.aimActive) {
       NV.inputIntent.setAimWorld(combatIntent, combatIntent.aimWorldX, combatIntent.aimWorldY, player.x, player.y);
     }
     // Estela del jugador: densidad decorativa adaptable (visual budget P2).
-    if (frame % trailStep() === 0) {
+    if (!dashing && frame % trailStep() === 0) {
       const char = CHARACTERS[player.character];
       trails.push({ x: player.x, y: player.y, life: 0.3, color: player.color, size: char.size * 0.6 });
     }
-    // Polvo de propulsión durante el dash: chispas hacia atrás del movimiento.
-    if (dashing && frame % 2 === 0) {
-      spawnExplosion(player.x - (player.moveVx || 0) * 0.02, player.y - (player.moveVy || 0) * 0.02 + 8, 1, '#7cf8ff', 0.12);
-    }
+    // Solo VFX: el retorno de dash incluye su último frame de desplazamiento.
+    NV.emitDashTrail(trails, dashing, trailStartX, trailStartY, player.x, player.y, player.color);
 
     // Regeneración pasiva BOTI
     const char = CHARACTERS[player.character];
@@ -2625,20 +2902,29 @@
       // creciente de la oleada (NV.softHostileTarget); MAX_HOSTILES queda como techo
       // duro de emergencia. Lote con techo 5 + piso de reposición 0.35s:
       // matar crea una reducción real y temporal de la presión del enjambre.
-      const perWave = NV.spawnBatchForWave(wave);
+      const perWave = boss ? (NV.runDifficulty === 'hard' ? 2 : 1) : NV.spawnBatchForWave(wave);
       const budget = NV.getHostileBudget({ enemies, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES });
-      const softTarget = NV.softHostileTarget(wave, NV.runDifficulty);
-      if (budget.remainingHostiles > 0 && budget.hostiles < softTarget) {
+      const softTarget = boss ? NV.bossSupportTarget(wave, NV.runDifficulty) : NV.softHostileTarget(wave, NV.runDifficulty, NV.worldMetrics);
+      if (budget.remainingHostiles > 0 && budget.hostiles < softTarget && (boss || !waveGoal || waveSpawned < waveGoal.total)) {
         // Top-up HASTA el objetivo blando (nunca por encima del soft target).
-        const normalAttempts = Math.min(perWave, budget.remainingHostiles, Math.max(0, softTarget - budget.hostiles));
-        for (let i = 0; i < normalAttempts; i++) spawnEnemy();
+        const remainingWave = !boss && waveGoal ? Math.max(0, waveGoal.total - waveSpawned) : Infinity;
+        const normalAttempts = Math.min(perWave, budget.remainingHostiles, Math.max(0, softTarget - budget.hostiles), remainingWave);
+        const composition = NV.planWaveSpawnBatch
+          ? NV.planWaveSpawnBatch(wave, normalAttempts, waveDirectorCycle++, ENEMY_TYPES, NV.runDifficulty)
+          : [];
+        const squadPositions = composition.length > 1 && NV.waveSquadPositions
+          ? NV.waveSquadPositions(composition, {player,enemies,W:arenaW(),H:arenaH(),ENEMY_TYPES,cycle:waveDirectorCycle}) : [];
+        for (let i = 0; i < normalAttempts; i++) spawnEnemy(composition[i], squadPositions[i]);
         // F1: élites controladas — dejan de rellenar al llegar al objetivo heavy
         // blando (SOFT_HEAVY_TARGET); MAX_HEAVY_HOSTILES sigue siendo el techo duro.
-        if (budget.heavy < NV.BALANCE.SOFT_HEAVY_TARGET) spawnElite();
+        if (!boss && budget.heavy < NV.BALANCE.SOFT_HEAVY_TARGET && (!waveGoal || waveSpawned < waveGoal.total)) {
+          const filled = NV.getHostileBudget({ enemies, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES });
+          spawnElite(Math.max(0, softTarget - filled.hostiles));
+        }
       }
       if (Math.random() < 0.03 + wave * 0.002) spawnWeaponPickup();
       // Eventos compensan sólo parte del tiempo extra y conservan actividad adicional.
-      spawnTimer = Math.max(NV.BALANCE.LATE_REFILL_FLOOR, (1.3 - wave * 0.035) * NV.waveSpawnFactor(wave, waveEvent));
+      spawnTimer = NV.spawnRefillInterval(wave, waveEvent, !!boss, NV.runDifficulty, NV.worldMetrics);
     }
 
         waveTimer -= dt;
@@ -2656,6 +2942,12 @@
     if (state !== 'playing') return;
     updateEnemies(dt); // F3: NV.updateEnemies ya ejecuta la state machine del hook
     if (state !== 'playing') return;
+    if (!combatLabMode && NV.updateWavePressure) NV.updateWavePressure(dt, {
+      state: wavePressure, wave, boss, active: true, difficulty: NV.runDifficulty,
+      player, enemies, applyPlayerDamage,
+      onPlayerKilled: () => { if (state === 'playing') gameOver(); },
+    });
+    if (state !== 'playing') return;
     updateBoss(dt);
     if (state !== 'playing') return;
     updateBullets(dt);
@@ -2667,9 +2959,18 @@
     if (transition <= 0 && waveTimer <= 0 && !boss) {
       if (!combatLabMode) {
         if (player.hp <= 0) { gameOver(); return; }
-        shards += 8 + wave * 2;
-        triggerWaveVictory(false, null, null);
-        return;
+        const remainingHostiles = enemies.reduce((count, enemy) => count + (!enemy.dead ? 1 : 0), 0);
+        if (NV.waveClearReady(waveTimer, waveSpawned, remainingHostiles, waveGoal)) {
+          shards += 8 + wave * 2;
+          triggerWaveVictory(false, null, null);
+          return;
+        }
+        // La siguiente escuadra entra cuando hay espacio; una especial no salta
+        // las escuadras pendientes ni borra por reloj a los hostiles vivos.
+        if (!waveGoalNudgeShown) {
+          waveGoalNudgeShown = true;
+          showBanner('¡LIMPIÁ LA ZONA PARA AVANZAR!', '#f5d67c');
+        }
       }
     }
     updateParticles(dt);
@@ -2681,6 +2982,7 @@
     shockwaves = NV.updateShockwaves(dt, shockwaves);
     updateDrones(dt);
     updateMeteors(dt);
+    if (NV.updateSpecialVisual) NV.updateSpecialVisual(player, dt, meteors, drones);
 
     // Aura de daño de Fase Fantasma (NOVA): zona visible que daña enemigos cercanos y al jefe
     if (player.phase > 0) {
@@ -2693,6 +2995,7 @@
           e.hp -= dealt;
           e.hitFlash = Math.max(e.hitFlash || 0, 0.10);
           e.phaseAcc = (e.phaseAcc || 0) + DPS * dt; // acumulado para la Detonación Espectral
+          if (NV.specialVisualEvent) NV.specialVisualEvent(player, 'contact', e.x, e.y, Math.atan2(e.y-player.y,e.x-player.x), e);
           if (e.hp <= 0) killEnemy(e);
         }
       }
@@ -2700,6 +3003,7 @@
         boss.hp -= DPS * NV.BALANCE.PHASE_AURA_BOSS_MULT * dt;
         boss.hitFlash = Math.max(boss.hitFlash || 0, 0.10);
         boss.phaseAcc = (boss.phaseAcc || 0) + DPS * dt; // sin mult: la detonación ya aplica el suyo
+        if (NV.specialVisualEvent) NV.specialVisualEvent(player, 'contact', boss.x, boss.y, Math.atan2(boss.y-player.y,boss.x-player.x), boss);
       }
     }
 
@@ -2748,7 +3052,7 @@
       },
     });
     // Telemetría opt-in F08: solo dispara reales (NV.shoot devuelve false fuera de rango).
-    if (res && NV.playtest) { NV.playtest.shot(); NV.playtest.setFireMode(firePolicy); }
+    if (res && NV.playtest) { NV.playtest.shot(currentWeapon.id); NV.playtest.setFireMode(firePolicy); }
     return res;
   }
 
@@ -2775,17 +3079,16 @@
   }
 
   function updateMeteors(dt) {
-    const res = NV.updateMeteors(dt, meteors, { W: arenaW(), H: arenaH(), enemies, boss, shake }, { killEnemy, applyKnockback, spawnExplosion });
+    const res = NV.updateMeteors(dt, meteors, { W: arenaW(), H: arenaH(), enemies, boss, shake, player }, { killEnemy, applyKnockback, spawnExplosion });
     meteors = res.meteors;
     shake = res.shake;
   }
 
   function updateHazards(dt) {
-    if (!NV.updateSpeakerMines) return;
     const char = CHARACTERS[player.character];
     const playerRadius = ((char && char.size) || 20) * 0.45;
-    const res = NV.updateSpeakerMines(dt, hazards, minefieldState, {
-      waveEvent, wave, boss, transitioning: transition > 0,
+    const hazardContext = {
+      waveEvent, wave, boss, combatLabMode, transitioning: transition > 0,
       player, playerRadius, W: arenaW(), H: arenaH(), rhythm: NV.rhythm,
       // P3.1: notas musicales + política visual en tiempo real.
       musicalNotes: NV.MUSICAL_NOTES,
@@ -2794,16 +3097,31 @@
       clearMusicalNotes: () => { NV.clearMusicalNotes(); },
       applyPlayerDamage, spawnExplosion, spawnShockwave, triggerFlash, sfx, shake,
       onPlayerKilled: () => { if (state === 'playing') gameOver(); },
-    });
-    hazards = res.hazards; minefieldState = res.state; shake = res.shake;
+    };
+    if (NV.updateSpeakerMines) {
+      const res = NV.updateSpeakerMines(dt, hazards, minefieldState, hazardContext);
+      hazards = res.hazards; minefieldState = res.state; shake = res.shake;
+    }
+    if (NV.updateSectorEncounter) {
+      hazardContext.shake = shake;
+      const res = NV.updateSectorEncounter(dt, hazards, sectorEncounterState, hazardContext);
+      hazards = res.hazards; sectorEncounterState = res.state; shake = res.shake;
+    }
   }
 
-  function spawnEnemy() {
-    NV.spawnEnemy({ enemies, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES, wave, ENEMY_TYPES, W: arenaW(), H: arenaH(), waveEvent, forceTypeId: forceSpecterType });
+  function spawnEnemy(plannedTypeId, spawnPosition) {
+    if (NV.spawnEnemy({ enemies, player, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES, wave, ENEMY_TYPES, W: arenaW(), H: arenaH(), waveEvent, allowBossSupport: !!boss && !combatLabMode, announceSpawn: !combatLabMode, spawnPosition, forceTypeId: plannedTypeId || forceSpecterType })) {
+      if (!combatLabMode && !boss) waveSpawned++;
+    }
   }
 
-  function spawnElite() {
-    NV.spawnElite({ enemies, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES, wave, ELITE_TYPES, W: arenaW(), H: arenaH(), waveEvent });
+  function spawnElite(remainingSoftSlots) {
+    const before = enemies.length;
+    NV.spawnElite({ enemies, player, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES, wave, ELITE_TYPES, W: arenaW(), H: arenaH(), waveEvent,
+      announceSpawn: !combatLabMode,
+      maxCount: Math.min(remainingSoftSlots == null ? Infinity : remainingSoftSlots,
+        waveGoal ? Math.max(0, waveGoal.total - waveSpawned) : Infinity) });
+    if (!combatLabMode && !boss) waveSpawned += Math.max(0, enemies.length - before);
   }
 
   // Elegibilidad para NUEVOS drops de arma: una arma poseída que ya alcanzó el tope
@@ -2818,12 +3136,15 @@
     NV.spawnWeaponPickup(WEAPONS, weaponPickups, arenaW(), arenaH(), showBanner, RARITY_COLORS, isWeaponDropEligible);
   }
 
-  function killEnemy(e) {
+  function killEnemy(e, damageSource) {
     if (e.killResolved || e.waveCleanup) return;
+    if (!combatLabMode && !boss) waveDefeats++;
+    if (NV.expedition && !combatLabMode && expeditionRun) NV.expedition.kill(expeditionRun, damageSource);
     // F3: cleanup Hook si muere el source (muerte/fusion/removal invalida el hook).
     if (hookSystem && hookSystem.srcEnemy === e && typeof NV.resetHookState === 'function') NV.resetHookState(hookSystem);
     score = NV.killEnemy({
       e, score, player, weaponLevels, weaponKills, currentWeapon,
+      damageSource,
       WEAPON_KILLS_PER_LEVEL, addFloatText, spawnExplosion, triggerFlash, sfx, pickups, weaponKillProgress,
       waveEvent, applyPlayerDamage, onPlayerKilled: () => { if (state === 'playing') gameOver(); }, W: arenaW(),
     });
@@ -2841,6 +3162,7 @@
       enemies, player, bullets, MAX_BULLETS, MAX_ENEMY_BULLETS, shake,
       enemyBulletCount, applyPlayerDamage, addFloatText, spawnExplosion, waveEvent,
       wave, hookSystem, hazards, W: arenaW(), H: arenaH(), gameState: state,
+      keepInsideArena: !combatLabMode,
       onKill: (e) => killEnemy(e), // autodestrucción de kamikazes: mismo camino que un kill normal
       onPlayerDamaged: recordPlayerDamage,
     });
@@ -2851,9 +3173,11 @@
       else if (typeof NV.resetHookSystem === 'function') NV.resetHookSystem(hookSystem);
     }
     enemies = res.enemies; shake = res.shake;
+    if (NV.updateFusionThreats && state === 'playing' && player.hp > 0) NV.updateFusionThreats(dt, {
+      enemies, player, applyPlayerDamage, addFloatText, spawnExplosion, onPlayerKilled: gameOver,
+    });
     // Telemetría opt-in F08: muestreo agregado de intents Runner/Spitter (sin mutar entidades).
     if (NV.playtest && NV.playtest.enabled) {
-      NV.playtest.frame();
       for (const e of enemies) NV.playtest.observeEnemy(e, dt);
     }
     if (res.gameOver) { gameOver(); return; }
@@ -2862,9 +3186,13 @@
   function updateBoss(dt) {
     const res = NV.updateBoss(dt, {
       boss, player, enemies, bullets, W: arenaW(), H: arenaH(),
-      score, shards, wave, shake,
+      sectorPressureActive: hazards.some(h => h.type === 'sectorHazard' && (h.state === 'telegraph' || h.state === 'active')),
+      score, shards, wave, shake, run: combatLabMode ? null : expeditionRun,
       MAX_BULLETS, MAX_ENEMY_BULLETS, enemyBulletCount, ENEMY_TYPES, MAX_HOSTILES, MAX_HEAVY_HOSTILES,
-      spawnExplosion, showBanner, triggerFlash, triggerWaveVictory, addFloatText, sfx,
+      spawnExplosion, showBanner, triggerFlash,
+      triggerWaveVictory: combatLabMode ? completeCombatLabBoss : triggerWaveVictory,
+      addFloatText, sfx, applyPlayerDamage,
+      onPlayerKilled: () => { if (state === 'playing') gameOver(); },
       spawnBossProj, spawnMinion, runBossAttack, spawnBossChest,
     });
     score = res.score; shards = res.shards; wave = res.wave; shake = res.shake; boss = res.boss;
@@ -2958,8 +3286,8 @@
   }
 
   // Esbirros invocados (funciona incluso durante la pelea con un jefe)
-  function spawnMinion(x, y) {
-    return NV.spawnMinion(x, y, { enemies, boss, wave, ENEMY_TYPES, MAX_HOSTILES, MAX_HEAVY_HOSTILES });
+  function spawnMinion(x, y, summonVariant) {
+    return NV.spawnMinion(x, y, { enemies, player, boss, wave, W: arenaW(), H: arenaH(), ENEMY_TYPES, MAX_HOSTILES, MAX_HEAVY_HOSTILES, announceSpawn: !combatLabMode }, summonVariant);
   }
 
   function runBossAttack(b, dt) {
@@ -2989,6 +3317,7 @@
   }
 
   function recordPlayerDamage(hit) {
+    if (NV.expedition && !combatLabMode && expeditionRun && hit.applied) { expeditionRun.hits++; expeditionRun.waveHits++; }
     const e = hit.enemy || (hit.projectile && hit.projectile.sourceEnemy) || null;
     const hazard = hit.hazard || null;
     damageFeedback = { life: 0.55, critical: !!hit.crit, flash: 0.05 };
@@ -3083,6 +3412,7 @@
     weaponPickups = r.weaponPickups;
     if (currentWeapon !== r.currentWeapon) {
       stopCurrentWeaponAudio();
+      if (NV.playtest) NV.playtest.weaponSwitch(currentWeapon.id, r.currentWeapon.id);
       currentWeapon = r.currentWeapon;
     }
   }
@@ -3130,12 +3460,11 @@
 
   // === RENDER ===
   const RENDER_DIAGNOSTIC_MODES = {
-    full: { backgroundEffects: true, starfield: true, grid: true, metaOverlays: true, decorativeVfx: true },
-    'no-background-effects': { backgroundEffects: false, starfield: false, grid: false, metaOverlays: true, decorativeVfx: true },
-    'no-starfield': { backgroundEffects: true, starfield: false, grid: true, metaOverlays: true, decorativeVfx: true },
-    'no-grid': { backgroundEffects: true, starfield: true, grid: false, metaOverlays: true, decorativeVfx: true },
-    'no-meta-overlays': { backgroundEffects: true, starfield: true, grid: true, metaOverlays: false, decorativeVfx: true },
-    'core-gameplay-only': { backgroundEffects: false, starfield: false, grid: false, metaOverlays: false, decorativeVfx: false },
+    full: { backgroundEffects: true, starfield: true, metaOverlays: true, decorativeVfx: true },
+    'no-background-effects': { backgroundEffects: false, starfield: false, metaOverlays: true, decorativeVfx: true },
+    'no-starfield': { backgroundEffects: true, starfield: false, metaOverlays: true, decorativeVfx: true },
+    'no-meta-overlays': { backgroundEffects: true, starfield: true, metaOverlays: false, decorativeVfx: true },
+    'core-gameplay-only': { backgroundEffects: false, starfield: false, metaOverlays: false, decorativeVfx: false },
   };
   let renderDiagnosticMode = 'full';
   NV.setRenderDiagnosticMode = function (mode) {
@@ -3151,13 +3480,13 @@
   let frameVisualRhythm = NV.rhythm;
   function draw() {
     resizeCanvas();
+    followPlayerCamera();
     // P2: política visual runtime (solo decorativa; sin visualBudget => todo full).
     const vbp = NV.getVisualBudget ? NV.getVisualBudget() : null;
     const rhythmVisualDiag = NV.rhythmVisualDiagnostics;
     const renderDiag = RENDER_DIAGNOSTIC_MODES[renderDiagnosticMode];
     const drawBackgroundEffects = renderDiag.backgroundEffects;
     const drawStarfield = drawBackgroundEffects && renderDiag.starfield;
-    const drawGrid = drawBackgroundEffects && renderDiag.grid;
     const drawMetaOverlays = renderDiag.metaOverlays;
     const drawDecorativeVfx = renderDiag.decorativeVfx;
     const drawRhythmBackground = drawBackgroundEffects && (!rhythmVisualDiag || rhythmVisualDiag.background !== false);
@@ -3187,13 +3516,20 @@
     };
     if (drawMetaOverlays) prepareDensityReadability();
 
-    // Fondo galaxia más oscuro: mejora el contraste de los visuales rítmicos
-    // sin aclarar el campo donde se leen enemigos, balas y HUD.
-    ctx.fillStyle = '#01030d';
+    // Base oscura + identidad del sector. La capa sectorial es decorativa y
+    // hereda el presupuesto visual; nunca altera gameplay ni world metrics.
+    const sectorVisual = NV.sectorVisualForWave ? NV.sectorVisualForWave(wave) : null;
+    ctx.fillStyle = sectorVisual ? sectorVisual.background : '#01030d';
     ctx.fillRect(cameraLeft, cameraTop, cameraW, cameraH);
     if (drawBackgroundEffects) {
       ctx.save();
       ctx.translate(cameraLeft, cameraTop);
+      // El arte de bordes pertenece a la arena, no al rectángulo de la cámara.
+      ctx.save(); ctx.translate(-cameraLeft, -cameraTop);
+      if (NV.drawSectorBackdrop) NV.drawSectorBackdrop(ctx, arenaW(), arenaH(), frame, wave, {
+        tier: vbp ? vbp.tier : 'full',
+      });
+      ctx.restore();
       if (drawStarfield) NV.drawStarfield(ctx, cameraW, cameraH, frame, player.x - cameraLeft, player.y - cameraTop, frameVisualRhythm);
       if (drawRhythmBackground && NV.drawRhythmLayer) {
         // P2: capa rítmica de fondo es decorativa — se throttlea por tier.
@@ -3211,18 +3547,6 @@
       ctx.globalAlpha = 1;
     }
 
-    if (drawGrid) {
-      const gridAlpha = 0.03 + Math.sin(frame * 0.02) * 0.005;
-      ctx.strokeStyle = `rgba(124, 248, 255, ${gridAlpha})`;
-      ctx.lineWidth = 0.5;
-      const gridStartX = Math.floor(cameraLeft / 40) * 40;
-      const gridEndX = cameraLeft + cameraW;
-      const gridStartY = Math.floor(cameraTop / 40) * 40;
-      const gridEndY = cameraTop + cameraH;
-      for (let x = gridStartX; x < gridEndX; x += 40) { ctx.beginPath(); ctx.moveTo(x, cameraTop); ctx.lineTo(x, cameraTop + cameraH); ctx.stroke(); }
-      for (let y = gridStartY; y < gridEndY; y += 40) { ctx.beginPath(); ctx.moveTo(cameraLeft, y); ctx.lineTo(cameraLeft + cameraW, y); ctx.stroke(); }
-    }
-
     // META-VIS-02b: neblina de densidad (capa 1, bajo entidades). Contexto
     // compartido de render: t, saturación por cantidad viva, urgencia por HP.
     if (drawMetaOverlays && NV.drawDensityFog && densityField) {
@@ -3233,21 +3557,43 @@
       });
     }
 
+    // Límites físicos: silueta y exterior EN MUNDO, siempre legibles (NO HUD).
+    // Nunca desplaza bounds de gameplay ni emisores asociados al borde real.
+    if (NV.drawSectorPerimeter) NV.drawSectorPerimeter(ctx, arenaW(), arenaH(), wave, {
+      tier: vbp ? vbp.tier : 'full',
+    });
+
+    // HUD anclado a la vista, nunca al centro del mapa ni al zoom cinemático.
+    ctx.save(); ctx.setTransform(scaleX, 0, 0, scaleY, -vx * scaleX, -vy * scaleY);
     // Barra de progreso de oleada — con contador de enemigos vivos y élites
     if (showHUD && state === 'playing' && !boss) {
             const maxWaveTimer = NV.waveDuration(wave, waveEvent);
-      const progress = Math.max(0, Math.min(1, 1 - (waveTimer / maxWaveTimer)));
-      const barW = 200, barH = 6;
-      const barX = (arenaW() - barW) / 2, barY = 10;
+      const timeProgress = Math.max(0, Math.min(1, 1 - (waveTimer / maxWaveTimer)));
+      const barW = 220, barH = 7;
+      const barX = vx + (vw - barW) / 2, barY = vy + 9;
 
       // Contador de enemigos vivos + heavy hostiles (misma clasificación que
       // el presupuesto autoritativo; el boss se renderiza por una ruta separada).
       const alive = enemies.reduce((count, enemy) => count + (!enemy.dead ? 1 : 0), 0);
       const heavy = NV.heavyHostileCount(enemies);
+      const cleared = Math.max(0, waveSpawned - alive);
+      // Una barra llena significa victoria posible: tiempo y asalto despejado.
+      const progress = waveGoal ? Math.min(timeProgress, cleared / waveGoal.total) : timeProgress;
 
-      // --- Fondo de la barra ---
-      ctx.fillStyle = 'rgba(255,255,255,0.1)';
-      ctx.fillRect(barX, barY, barW, barH);
+      // Cápsula compacta: mejora la lectura sin sumar otra pieza al HUD.
+      ctx.save();
+      ctx.shadowColor = 'rgba(124,248,255,0.18)';
+      ctx.shadowBlur = 9;
+      ctx.fillStyle = 'rgba(3,8,24,0.82)';
+      ctx.beginPath();
+      ctx.roundRect(barX - 5, barY - 4, barW + 10, 29, 7);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      ctx.fillStyle = 'rgba(124,248,255,0.10)';
+      ctx.beginPath();
+      ctx.roundRect(barX, barY, barW, barH, barH / 2);
+      ctx.fill();
 
       // --- Barra de progreso con degradado (Pilar 3: progreso oleada) ---
       const grad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
@@ -3255,37 +3601,63 @@
       grad.addColorStop(0.5, '#b534e6');  // púrpura centro
       grad.addColorStop(1, '#e94850');    // rojo final
       ctx.fillStyle = grad;
-      ctx.fillRect(barX, barY, barW * progress, barH);
+      ctx.beginPath();
+      ctx.roundRect(barX, barY, Math.max(barH, barW * progress), barH, barH / 2);
+      ctx.fill();
+
+      // Reflejo tenue para que el progreso conserve volumen sobre fondos oscuros.
+      ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      ctx.beginPath();
+      ctx.roundRect(barX + 2, barY + 1, Math.max(0, barW * progress - 4), 2, 1);
+      ctx.fill();
 
       // --- Borde de la barra ---
-      ctx.strokeStyle = 'rgba(124,248,255,0.3)';
+      ctx.strokeStyle = 'rgba(124,248,255,0.42)';
       ctx.lineWidth = 1;
-      ctx.strokeRect(barX, barY, barW, barH);
+      ctx.beginPath();
+      ctx.roundRect(barX, barY, barW, barH, barH / 2);
+      ctx.stroke();
 
       // --- Texto de la oleada centrado y contador apilado en upper-left ---
-      ctx.fillStyle = '#7cf8ff';
-      ctx.font = 'bold 10px system-ui';
+      ctx.fillStyle = '#dffcff';
+      ctx.font = '800 10px system-ui';
       ctx.textAlign = 'center';
-      ctx.fillText('OLEADA ' + wave, arenaW() / 2, barY + 16);
+      ctx.fillText('OLEADA ' + wave + (waveTimer <= 0 ? ' · LIMPIEZA' : ' · ' + Math.ceil(waveTimer) + 's'), vx + vw / 2, barY + 18);
+      ctx.restore();
       const countText = 'ENEMIGOS: ' + alive + ' (' + heavy + ')';
       const mobilePresentation = !!(NV.capabilities && NV.capabilities.isMobile);
       ctx.fillStyle = '#9bb0ff';
       ctx.font = 'bold 9px system-ui';
       ctx.textAlign = 'left';
-      ctx.fillText(countText, viewX() + 12, viewY() + (mobilePresentation ? 58 : 43));
+      const arriving = enemies.reduce((count, enemy) => count + (!enemy.dead && enemy.arrival ? 1 : 0), 0);
+      const bossProgress = expeditionRun && expeditionRun.mode === 'expedition'
+        ? ' · JEFES ' + expeditionRun.bosses + '/' + (expeditionRun.bossProgression === 'full-roster' ? 10 : 4) : '';
+      const activeHeavy = arriving ? NV.heavyHostileCount(enemies.filter(enemy => !enemy.arrival)) : heavy;
+      ctx.fillText((arriving ? 'ENEMIGOS: ' + (alive - arriving) + ' (' + activeHeavy + ')' : countText) + bossProgress, viewX() + 12, viewY() + (mobilePresentation ? 58 : 43));
+      // El objetivo vive fuera del centro: el tutorial no puede taparlo.
+      if (waveGoal) {
+        ctx.fillStyle = waveTimer <= 0 ? '#f5d67c' : '#a9dce8';
+        ctx.font = '700 9px system-ui';
+        ctx.fillText('BAJAS ' + waveDefeats,
+          viewX() + 12, viewY() + (mobilePresentation ? 72 : 57));
+        ctx.fillText('FALTAN APARECER ' + Math.max(0, waveGoal.total - waveSpawned + arriving), viewX() + 12,
+          viewY() + (mobilePresentation ? 86 : 71));
+      }
     }
 
+    if (showHUD && state === 'playing' && boss && expeditionRun && expeditionRun.mode === 'expedition') {
+      ctx.save(); ctx.fillStyle = '#a9dce8'; ctx.font = 'bold 9px system-ui'; ctx.textAlign = 'left';
+      ctx.fillText('JEFES ' + expeditionRun.bosses + '/' + (expeditionRun.bossProgression === 'full-roster' ? 10 : 4), viewX() + 12,
+        viewY() + (NV.capabilities && NV.capabilities.isMobile ? 58 : 43)); ctx.restore();
+    }
+    ctx.restore();
     if (drawDecorativeVfx && specialVFX) drawSpecialVFX(specialVFX);
     if (drawDecorativeVfx) NV.drawShockwaves(ctx, shockwaves);
 
     if (drawDecorativeVfx) {
-      for (const t of trails) {
-        ctx.globalAlpha = Math.max(0, t.life / 0.3);
-        ctx.fillStyle = t.color;
-        ctx.beginPath(); ctx.arc(t.x, t.y, t.size, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.globalAlpha = 1;
+      NV.drawTrails(ctx, trails, vbp);
     }
+    if (NV.drawSpecialWorldEffects) NV.drawSpecialWorldEffects(ctx, player);
 
     for (const wp of weaponPickups) {
       if (wp.dead) continue;
@@ -3332,6 +3704,7 @@
 
     // Drones de combate
     for (const d of drones) {
+      if (NV.drawSpecialOrbitant) { NV.drawSpecialOrbitant(ctx, d, player); continue; }
       const dx = Math.cos(d.angle) * d.orbitRadius;
       const dy = Math.sin(d.angle) * d.orbitRadius;
       // Línea de puntería: muestra a qué objetivo apunta cada dron (se desvanece)
@@ -3359,6 +3732,7 @@
 
     // Meteoritos (el count de gameplay NUNCA cambia: solo trail/glow decorativos)
     for (const m of meteors) {
+      if (NV.drawSpecialMeteor) { NV.drawSpecialMeteor(ctx, m); continue; }
       ctx.fillStyle = m.color;
       if (heavyShadowOk) { ctx.shadowBlur = 15; ctx.shadowColor = m.color; }
       ctx.beginPath(); ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2); ctx.fill();
@@ -3378,9 +3752,10 @@
     for (const e of enemies) if (e.atkFlash > 0) drawEnemy(e);
     const autoTargetInRange = currentAutoTarget ? (Math.hypot(currentAutoTarget.x - player.x, currentAutoTarget.y - player.y) <= (currentWeapon.range || Infinity)) : false;
     if (drawMetaOverlays && NV.drawAutofireTarget) NV.drawAutofireTarget(ctx, currentAutoTarget, frame, player, autoTargetInRange, NV.META_DEBUG, metaRenderEnv);
-    if (drawMetaOverlays) for (const e of enemies) if (!e.waveCleanup && NV.drawContactReadability) NV.drawContactReadability(ctx, e, player, NV.META_DEBUG, metaRenderEnv);
-    if (drawMetaOverlays) for (const e of enemies) if (!e.waveCleanup && NV.drawEnemyIntent) NV.drawEnemyIntent(ctx, e, player, metaRenderEnv);
+    if (drawMetaOverlays) for (const e of enemies) if (!e.arrival && !e.waveCleanup && NV.drawContactReadability) NV.drawContactReadability(ctx, e, player, NV.META_DEBUG, metaRenderEnv);
+    if (drawMetaOverlays) for (const e of enemies) if (!e.arrival && !e.waveCleanup && NV.drawEnemyIntent) NV.drawEnemyIntent(ctx, e, player, metaRenderEnv);
     if (boss && !boss.dead) drawBoss();
+    if (NV.drawEncounterWarnings && state === 'playing') NV.drawEncounterWarnings(ctx, boss, enemies);
 
     // Partículas decorativas quedan detrás de hazards/proyectiles: un telegraph
     // peligroso nunca debe desaparecer bajo VFX pesado.
@@ -3389,14 +3764,18 @@
         ctx.globalAlpha = Math.max(0, p.life / (p.fade || 0.5));
         ctx.fillStyle = p.color;
         const psz = p.size || 4;
-        ctx.fillRect(p.x - psz / 2, p.y - psz / 2, psz, psz);
+        if(p.specialEnergy){ctx.beginPath();ctx.arc(p.x,p.y,psz*.35,0,Math.PI*2);ctx.fill();}
+        else ctx.fillRect(p.x - psz / 2, p.y - psz / 2, psz, psz);
       }
       ctx.globalAlpha = 1;
     }
 
     // Hazards sobre partículas y debajo de proyectiles: las minas conservan
     // warning/telegraph legibles y las balas enemigas siguen siendo prioritarias.
+    if (NV.drawSectorEmitters && state === 'playing' && !combatLabMode)
+      NV.drawSectorEmitters(ctx, arenaW(), arenaH(), wave, hazards, sectorEncounterState.active);
     if (NV.drawHazards) NV.drawHazards(ctx, hazards, frameVisualRhythm, vbp, !!NV.META_DEBUG, NV.MUSICAL_NOTES, frameVisualRhythm ? minefieldState.groove : null);
+    if (state === 'playing' && NV.drawWavePressure) NV.drawWavePressure(ctx, wavePressure);
 
     for (const b of bullets) {
       if (b.isEnemy) {
@@ -3417,6 +3796,7 @@
         continue;
       }
       if (!b.wid) {
+        if (NV.drawSpecialProjectile && NV.drawSpecialProjectile(ctx, b)) continue;
         // Balas sin forma definida (p. ej. de drones): círculo pequeño como antes.
         ctx.fillStyle = b.color;
         ctx.shadowBlur = 4;
@@ -3490,8 +3870,8 @@
       ctx.save();
       ctx.fillStyle = 'rgba(8, 10, 22, 0.35)';
       ctx.fillRect(0, 0, arenaW(), arenaH());
-      const rx = arenaW() * 0.3, ry = arenaH() * 0.35; // elipse clara centrada en el jugador
-      const g = ctx.createRadialGradient(player.x, player.y, Math.min(rx, ry) * 0.4, player.x, player.y, Math.max(arenaW(), arenaH()) * 0.75);
+      const rx = vw * 0.3, ry = vh * 0.35; // visibilidad ligada a vista, no al tamaño del mapa
+      const g = ctx.createRadialGradient(player.x, player.y, Math.min(rx, ry) * 0.4, player.x, player.y, Math.max(vw, vh) * 0.75);
       g.addColorStop(0, 'rgba(8, 10, 22, 0)');
       g.addColorStop(1, 'rgba(8, 10, 22, 0.85)');
       ctx.fillStyle = g;
@@ -3518,31 +3898,33 @@
     if (showHUD && (state === 'playing' || state === 'wave_end')) {
       drawSpecialCooldown();
       const mobilePresentation = !!(NV.capabilities && NV.capabilities.isMobile);
-      NV.drawCombo(ctx, arenaW(), arenaH(), killCombo, mobilePresentation ? { x: viewX() + 12, y: viewY() + 83 } : null);
+      ctx.save(); ctx.translate(vx, vy);
+      NV.drawCombo(ctx, vw, vh, killCombo, mobilePresentation ? { x: 12, y: 83 } : null);
+      ctx.restore();
       NV.drawBossHUD(ctx, viewX(), viewY(), viewW(), viewH(), boss, mobilePresentation);
       NV.drawDashStamina(ctx, viewX(), viewY(), viewW(), viewH(), player, mobilePresentation);
       if (!mobilePresentation) drawWeaponHUD();
       else NV.consumSlotRects = [];
     }
 
-    if (showStats) drawStats();
+    if (showStats) { ctx.save(); ctx.translate(vx, vy); drawStats(); ctx.restore(); }
 
     // Pantalla de pausa (tecla P)
     if (paused) {
       ctx.fillStyle = 'rgba(5, 7, 20, 0.68)';
-      ctx.fillRect(0, 0, arenaW(), arenaH());
+      ctx.fillRect(vx, vy, vw, vh);
       ctx.textAlign = 'center';
       ctx.fillStyle = '#7cf8ff';
       ctx.shadowBlur = 30; ctx.shadowColor = '#7cf8ff';
       ctx.font = 'bold 56px system-ui';
-      ctx.fillText('⏸ PAUSA', arenaW() / 2, arenaH() / 2 - 20);
+      ctx.fillText('⏸ PAUSA', vx + vw / 2, vy + vh / 2 - 20);
       ctx.shadowBlur = 0;
       ctx.fillStyle = '#aaa';
       ctx.font = '18px system-ui';
-      ctx.fillText('Pulsa P para continuar', arenaW() / 2, arenaH() / 2 + 24);
+      ctx.fillText('Pulsa P para continuar', vx + vw / 2, vy + vh / 2 + 24);
       ctx.fillStyle = '#666';
       ctx.font = '12px system-ui';
-      ctx.fillText('Oleada ' + wave + ' · Puntos ' + score, arenaW() / 2, arenaH() / 2 + 54);
+      ctx.fillText('Oleada ' + wave + ' · Puntos ' + score, vx + vw / 2, vy + vh / 2 + 54);
     }
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -3570,7 +3952,9 @@
     // las armas recogidas del mapa comparten referencia con WEAPONS y no llevan
     // `fuseLevel` de instancia sincronizado. El HUD consume el estado canonical.
     const weaponFusionLevelFor = (id) => weaponFus[id] || 0;
-    NV.drawWeaponHUD(ctx, arenaW(), arenaH(), CHARACTERS, RARITY_COLORS, player, currentWeapon, currentWeaponLevel, inventory, NV.groupConsumables(consumableItems), consumSel, showHUD, weaponLevelFor, weaponFusionLevelFor);
+    ctx.save(); ctx.translate(viewX(), viewY());
+    NV.drawWeaponHUD(ctx, viewW(), viewH(), CHARACTERS, RARITY_COLORS, player, currentWeapon, currentWeaponLevel, inventory, NV.groupConsumables(consumableItems), consumSel, showHUD, weaponLevelFor, weaponFusionLevelFor);
+    ctx.restore();
   }
 
 
@@ -3745,6 +4129,8 @@
   }
 
   function drawEnemy(e) {
+    if (e.arrival && (state !== 'playing' || e.waveCleanup)) return;
+    if (NV.drawEnemyArrival && NV.drawEnemyArrival(ctx, e)) return;
     // Solo ocultar Canvas2D cuando el mesh WebGL de ESTE enemigo ya existe.
     // Durante carga, fallo o flag apagado, el render original sigue intacto.
     if ((NV.SPECTER_ENABLED === false && e.shape === 'specter') || isEnemyRenderedByLite(e)) return;
@@ -3878,6 +4264,7 @@
       bulwark: 0,
       shield: 0,
       overdrive: 0,
+      specialVisual: null, // el preview no hereda una manifestación de combate.
     });
   }
   function lobbyPreviewVisualRadius(char, characterId) {
@@ -3911,13 +4298,29 @@
   // P2: instrumentación del loop. frameMs = intervalo real entre rAF;
   // updateMs/drawMs = coste de cada fase. El monitor SOLO observa.
   let perfPrevNow = 0, vbEvalTimer = 0;
+  function applyScreenShake() {
+    if (shake > 0 && (state === 'playing' || state === 'player_dying' || state === 'wave_end')) {
+      const deathMult = state === 'player_dying' ? 0.7 : 1;
+      const comfort = NV.settings && NV.settings.gameplay && NV.settings.gameplay.reducedEffects ? 0 : 1;
+      const sx = (Math.random() - 0.5) * 8 * shake * deathMult * comfort;
+      const sy = (Math.random() - 0.5) * 4 * shake * deathMult * comfort;
+      canvas.style.transform = `translate(${sx}px, ${sy}px)`;
+      if (specterCanvas) specterCanvas.style.transform = `translate(${sx}px, ${sy}px)`;
+    } else {
+      canvas.style.transform = '';
+      if (specterCanvas) specterCanvas.style.transform = '';
+    }
+  }
   function loop(now) {
+    if (NV.gamepad && typeof NV.gamepad.poll === 'function') NV.gamepad.poll();
+    if (NV.tutorial && typeof NV.tutorial.poll === 'function') NV.tutorial.poll(now);
     if (!lastTime) lastTime = now;
     perfPrevNow = lastTime;
     let dt = Math.min(0.03, (now - lastTime) / 1000);
     lastTime = now;
 
     if (NV.audio && typeof NV.audio.update === 'function') {
+      if (NV.syncSectorLaserSound) NV.syncSectorLaserSound(hazards, { state, paused, hidden: !!document.hidden });
       NV.audio.update({ state, paused, hidden: !!document.hidden });
     }
 
@@ -3941,6 +4344,9 @@
     }
     const perfUpdateStart = performance.now();
     update(dt);
+    // Resolver el desplazamiento físico antes de reproyectar cursor y dibujar.
+    // Después de draw provocaba un frame de desalineación cursor/retícula.
+    applyScreenShake();
     const perfDrawStart = performance.now();
     draw();
     const perfDrawEnd = performance.now();
@@ -3952,22 +4358,17 @@
     if (vbEvalTimer >= 500) {
       vbEvalTimer = 0;
       if (NV.updateVisualBudget) {
-        NV.updateVisualBudget(NV.performanceMonitor ? NV.performanceMonitor.getSnapshot().frame.p95 : NaN);
+        const perfSnapshot = NV.performanceMonitor ? NV.performanceMonitor.getSnapshot() : null;
+        // El primer arranque de Chromium/Electron incluye compilación y carga de
+        // recursos. Esperar 120 frames evita confundir ese warm-up con presión
+        // sostenida; luego la misma histéresis sigue protegiendo la partida.
+        if (!perfSnapshot || perfSnapshot.frames >= 120) {
+          NV.updateVisualBudget(perfSnapshot ? perfSnapshot.frame.p95 : NaN);
+        }
       }
     }
     updateMetaDiagnostics();
     updateEspectroBridge(dt);
-
-    if (shake > 0 && (state === 'playing' || state === 'player_dying' || state === 'wave_end')) {
-      const deathMult = state === 'player_dying' ? 0.7 : 1;
-      const sx = (Math.random() - 0.5) * 8 * shake * deathMult;
-      const sy = (Math.random() - 0.5) * 4 * shake * deathMult;
-      canvas.style.transform = `translate(${sx}px, ${sy}px)`;
-      if (specterCanvas) specterCanvas.style.transform = `translate(${sx}px, ${sy}px)`;
-    } else {
-      canvas.style.transform = '';
-      if (specterCanvas) specterCanvas.style.transform = '';
-    }
 
     requestAnimationFrame(loop);
   }
@@ -4027,14 +4428,102 @@
       };
     });
   }
+  // Puente reducido de producto. La UI no toca entidades ni simula el combate.
+  function saveExpeditionCheckpoint() {
+    if (!NV.expedition || combatLabMode || metaFrozen || !expeditionRun || (state !== 'shop' && state !== 'shop_enter')) return false;
+    return NV.expedition.save({ version: 1, character: player.character, wave, run: expeditionRun,
+      player, inventory: inventory.map(w => w.id), currentWeapon: currentWeapon.id,
+      levels: weaponLevels, kills: weaponKills, fus: weaponFus, consumables: consumableItems,
+      shopBought, upgradeSlots, score, shards, difficulty: NV.runDifficulty, savedAt: Date.now() });
+  }
+  function resumeExpedition() {
+    if (!NV.expedition || state !== 'menu' || combatLabMode) return false;
+    const saved = NV.expedition.load();
+    if (!saved) return false;
+    // Validar primero. startGame limpia TODO transitorio y el checkpoint aporta sólo datos.
+    selectPilot(saved.character);
+    initAudio();
+    startGame();
+    expeditionRun = saved.run;
+    NV.runDifficulty = saved.difficulty;
+    if (NV.settings && NV.settings.gameplay) NV.settings.gameplay.difficulty = saved.difficulty;
+    Object.assign(player, saved.player);
+    inventory = saved.inventory.map(id => NV.weaponById(id));
+    currentWeapon = NV.weaponById(saved.currentWeapon);
+    weaponLevels = saved.levels; weaponKills = saved.kills; weaponFus = saved.fus;
+    consumableItems = saved.consumables; consumSel = 0;
+    shopBought = saved.shopBought; upgradeSlots = saved.upgradeSlots;
+    score = saved.score; shards = saved.shards; wave = saved.wave + 1;
+    // Mantener el último checkpoint si se cierra durante esta oleada.
+    if (!metaFrozen) NV.expedition.save(saved);
+    nextWave(); updateHUD(); notifyMobileWeapon(); notifyMobileConsumable();
+    return true;
+  }
+  function finishExpedition() {
+    expeditionRun.completed = true;
+    clearCombatIntent();
+    state = 'gameover'; paused = false;
+    resetPresentation();
+    bullets = []; enemies = []; flameZones = [];
+    if (NV.audio && NV.audio.stopAllWeapons) NV.audio.stopAllWeapons();
+    dom.shop.classList.add('hidden');
+    dom.gameOver.classList.remove('hidden');
+    dom.goTitle.textContent = 'VACÍO SELLADO';
+    dom.goText.textContent = 'HISTORIA COMPLETADA · ' + expeditionRun.bosses + ' jefes vencidos, cuatro sectores conquistados. Esta misión terminó. NUEVA HISTORIA empieza desde cero; INFINITO sigue sin final. Tus mejoras permanentes y récords se conservan.';
+    dom.goScore.textContent = formatPoints(score); dom.goWave.textContent = wave;
+    metaShards += Math.floor(shards / 2) + Math.floor(score / 100) + 100;
+    saveMeta();
+    if (!metaFrozen) { NV.expedition.clear(); NV.expedition.complete(expeditionRun, wave, score, true); }
+    syncGameState();
+    sfx.victory(wave, { milestone: true });
+  }
+  NV.alpha = Object.freeze({
+    version: '0.10.0-alpha',
+    snapshot: () => ({ state, paused, showHUD, combatLab: combatLabMode, saveDisabled: metaFrozen, wave, score, shards,
+      run: expeditionRun ? JSON.parse(JSON.stringify(expeditionRun)) : null,
+      mode: expeditionMode, hp: player.hp, maxHp: player.maxHp,
+      inventory: inventory.map(w => ({ id: w.id, name: w.name, level: weaponLevels[w.id] || 1, role: w.pro })),
+      weapon: currentWeapon && currentWeapon.id, character: player.character, event: waveEvent }),
+    setMode: mode => { if (state === 'menu') expeditionMode = mode === 'endless' ? 'endless' : 'expedition'; },
+    resume: resumeExpedition,
+    save: saveExpeditionCheckpoint,
+    dockAndQuit: () => {
+      if (state !== 'shop') return false;
+      // ?fresh=1 es un modo de prueba sin persistencia: salir funciona, pero
+      // jamás promete guardar ni pisa la partida real del navegador.
+      if (!metaFrozen && !saveExpeditionCheckpoint()) return false;
+      showLobby(); return true;
+    },
+    prepare: kind => {
+      if (state !== 'shop' || !expeditionRun) return false;
+      const r = NV.expedition.prepare(kind, { run: expeditionRun, wave, player, shards, inventory, levels: weaponLevels, kills: weaponKills });
+      if (!r.ok) return false;
+      shards = r.shards; dom.shopShards.textContent = shards;
+      renderInventory(); updateHUD(); saveExpeditionCheckpoint(); sfx.shopBuy(); return true;
+    },
+    route: event => {
+      if (state !== 'shop' || !expeditionRun || (wave + 1) % 3 !== 0 || NV.expedition.isBossWave(expeditionRun, wave + 1) || !WAVE_EVENTS[event]) return false;
+      expeditionRun.event = event; saveExpeditionCheckpoint(); return true;
+    },
+  });
   NV.getState = () => state;
   NV.getBoss = () => boss;
+  NV.getWave = () => wave;
   NV.getRuntimeSnapshot = () => ({
     state,
     paused,
     frame,
     wave,
     waveTimer,
+    objective: waveGoal ? {
+      defeats: waveDefeats, spawned: waveSpawned,
+      cleared: Math.max(0, waveSpawned - enemies.filter(enemy => !enemy.dead).length),
+      required: waveGoal.total,
+    } : null,
+    wavePressure: wavePressure && wavePressure.mark ? {
+      x: wavePressure.mark.x, y: wavePressure.mark.y,
+      remaining: wavePressure.mark.t, radius: wavePressure.mark.radius,
+    } : null,
     transition,
     presentation: {
       kind: presentation.kind,
@@ -4044,12 +4533,28 @@
       zoom: presentationZoom(),
     },
     enemies: enemies.filter((enemy) => !enemy.dead).length,
+    arrivals: enemies.reduce((count, enemy) => count + (!enemy.dead && enemy.arrival ? 1 : 0), 0),
+    arrivalPuffs: enemies.reduce((count, enemy) => count + (!enemy.dead && enemy.arrival && enemy.arrival.stage === 'puff' ? 1 : 0), 0),
+    outsideEnemies: enemies.reduce((count, enemy) => count + (!enemy.dead &&
+      (!Number.isFinite(enemy.x) || !Number.isFinite(enemy.y) || enemy.x < 0 || enemy.y < 0 || enemy.x > arenaW() || enemy.y > arenaH()) ? 1 : 0), 0),
+    hostileBudget: NV.getHostileBudget({ enemies, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES }),
+    softHostileTarget: boss ? NV.bossSupportTarget(wave, NV.runDifficulty) : NV.softHostileTarget(wave, NV.runDifficulty, NV.worldMetrics),
+    sectorHazards: hazards.filter(h => h.type === 'sectorHazard' && h.state !== 'dead').map(h => ({
+      kind:h.kind, state:h.state, x:h.x, y:h.y, width:h.width, W:h.W, H:h.H, laserHead:!!h.laserHead, side:h.side, stateTime:h.stateTime,
+    })),
     player: {
       character: player.character,
       x: player.x,
       y: player.y,
       hp: player.hp,
       maxHp: player.maxHp,
+    },
+    dashTrail: NV.getDashTrailStats(trails),
+    special: {
+      phase: player.phase, bulwark: player.bulwark, invuln: player.invuln, cooldown: player.specialCd,
+      meteors: meteors.length, orbitants: drones.length,
+      visual: player.specialVisual ? { type: player.specialVisual.type, age: player.specialVisual.age,
+        end: player.specialVisual.end, events: player.specialVisual.events.length } : null,
     },
   });
 })();

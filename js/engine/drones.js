@@ -28,6 +28,7 @@
       d.life -= dt;
       if (d.life <= 0) { d.dead = true; continue; }
       d.angle += d.speed * dt;
+      if (d.visualShot > 0) d.visualShot = Math.max(0, d.visualShot - dt);
       if (d.aimLife > 0) d.aimLife -= dt; // desvanece la línea de puntería
       d.fireTimer -= dt;
       if (d.fireTimer <= 0) {
@@ -43,10 +44,12 @@
           angle = d.angle;
         }
         if (bullets.length < MAX_BULLETS) {
+          d.visualShot = 0.16; d.visualAim = angle; // sólo feedback del disparo real
           bullets.push({
             x: player.x + dx, y: player.y + dy,
             vx: Math.cos(angle) * 500, vy: Math.sin(angle) * 500,
             damage: 15, color: d.color, dead: false, isEnemy: false,
+            specialId: 'hivemind', bossDamageMult: (NV.BALANCE && NV.BALANCE.DRONE_BOSS_DMG_MULT) || 1,
           });
         }
       }

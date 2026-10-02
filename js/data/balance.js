@@ -61,10 +61,14 @@
     VOID_BOMB_ELITE_DAMAGE_MULT: 0.50,
     VOID_BOMB_BOSS_DAMAGE_MULT: 0.08,
     SHOTGUN_PELLET_COUNT: 12,
-    SHOTGUN_SPREAD: 0.44,
+    SHOTGUN_SPREAD: 0.90,
     SHOTGUN_COMPACT_SPREAD: 0.018,
-    SHOTGUN_BLOOM_START: 90,
-    SHOTGUN_UNIQUE_TARGET_CAP: 3,
+    SHOTGUN_BLOOM_START: 65,
+    SHOTGUN_UNIQUE_TARGET_CAP: 5,
+    // Contra un jefe grande la geometria puede absorber los 12 perdigones. Ocho
+    // conservan el burst cercano sin convertir cada descarga en 12 impactos gratis.
+    SHOTGUN_BOSS_PELLET_CAP: 8,
+    SNIPER_ELITE_DAMAGE_MULT: 1.5,
     FLAME_TICK_RATE: 6,
     FLAME_BURN_DPS: 2,
     FLAME_BURN_DURATION: 0.6,
@@ -109,6 +113,7 @@
     // Misc
     SHIELD_COOLDOWN: 0.9,              // recarga del escudo del shielder (s): vulnerable entre bloqueos
     METEOR_BOSS_DMG_MULT: 0.3,         // Lluvia Estelar: daño de meteoro reducido contra jefes (anti one-shot)
+    DRONE_BOSS_DMG_MULT: 0.35,         // Enjambre: presión sostenida útil sin borrar fases de jefe
     PHASE_AURA_DPS: 40,                // Fase Fantasma (NOVA): daño por segundo del aura espectral
     PHASE_AURA_RADIUS: 70,             // radio de la zona de daño del aura
     PHASE_AURA_BOSS_MULT: 0.3,         // multiplicador del aura contra el jefe (coherente con meteoro)
@@ -167,6 +172,21 @@
     return waveEvent ? Math.min(B.WAVE_EVENT_TIME_CAP, base * B.WAVE_EVENT_DURATION_MULT) : base;
   };
 
+  // Asalto finito: la barra representa enemigos realmente despejados, no pasos
+  // recorridos. La duración sigue siendo el tiempo mínimo de supervivencia.
+  // El presupuesto tiene techo para que las runs largas no crezcan sin límite.
+  NV.waveClearObjective = function (wave, difficultyId) {
+    const w = Math.max(1, Math.floor(wave || 1));
+    const id = NV.difficultyGet(difficultyId).id;
+    const offset = id === 'easy' ? -4 : id === 'hard' ? 4 : 0;
+    return {
+      total: Math.min(60, 22 + Math.floor((w - 1) * 1.5) + offset),
+    };
+  };
+  NV.waveClearReady = function (remaining, spawned, alive, objective) {
+    return !!objective && remaining <= 0 && spawned >= objective.total && alive === 0;
+  };
+
   // Compensación parcial: el evento dura 15% más, pero sólo ralentiza 7.5% el refill.
   NV.waveSpawnFactor = function (wave, waveEvent) {
     if (!waveEvent) return 1;
@@ -190,7 +210,14 @@
 
   // Densidad blanda creciente y acotada. Normal progresa 18 -> 20 -> 24 -> 26;
   // dificultad aplica aproximadamente +/-2 y MAX_HOSTILES=30 queda como techo duro.
-  NV.softHostileTarget = function (wave, diffId) {
+  NV.arenaDensityCompensation = function (metrics) {
+    if (!metrics) return 0;
+    const area = (metrics.arenaW || 900) * (metrics.arenaH || 520);
+    const reference = (metrics.refW || 900) * (metrics.refH || 520);
+    // Área desktop 2.25×: +4, no 2.25× enemigos. También acotado en móvil.
+    return Math.max(0, Math.min(4, Math.round((Math.sqrt(area / reference) - 1) * 8)));
+  };
+  NV.softHostileTarget = function (wave, diffId, metrics) {
     const B = NV.BALANCE;
     const w = Math.max(1, wave || 1);
     let base;
@@ -208,13 +235,80 @@
     base = Math.min(B.SOFT_DENSITY_CAP, Math.round(base));
     const spawnMult = NV.difficultySafeMult('spawn', diffId) || 1;
     const diffAdj = Math.round((spawnMult - 1) * B.SOFT_DENSITY_DIFF_SCALE);
-    return Math.max(B.SOFT_DENSITY_MIN, Math.min(B.SOFT_DENSITY_MAX, base + diffAdj));
+    return Math.max(B.SOFT_DENSITY_MIN, Math.min(B.SOFT_DENSITY_MAX, base + diffAdj + NV.arenaDensityCompensation(metrics)));
+  };
+  // Incluye al jefe: 4/6/8 acompañantes iniciales, +1 en w20 y +2 en w40.
+  // Summons pueden ocupar estos lugares: no existe otro presupuesto paralelo.
+  NV.bossSupportTarget = function (wave, diffId) {
+    const base = diffId === 'easy' ? 5 : diffId === 'hard' ? 9 : 7;
+    return base + Math.min(2, Math.floor(Math.max(0, wave || 1) / 20));
+  };
+  NV.spawnRefillInterval = function (wave, event, bossActive, diffId, metrics) {
+    if (bossActive) return diffId === 'easy' ? 3 : diffId === 'hard' ? 2 : 2.5;
+    const factor = 1 - NV.arenaDensityCompensation(metrics) * .035;
+    return Math.max(NV.BALANCE.LATE_REFILL_FLOOR, (1.3 - wave * .035) * NV.waveSpawnFactor(wave, event) * factor);
   };
   // Lote de refill normal: early idéntico al actual (2 en w1, 3 en w2, 4 en w4,
   // 5 en w6) con techo 5 en oleadas tardías (antes 8). Consumidor: game.js.
   NV.spawnBatchForWave = function (wave) {
     const w = Math.max(1, wave || 1);
     return 2 + Math.min(3, Math.floor(w / 2));
+  };
+  // C2 — Director por composiciones. Dos de cada tres refills siguen usando la
+  // selección ponderada histórica; el tercero despliega una escuadra con función
+  // reconocible. Así aparecen combinaciones intencionales sin convertir cada
+  // oleada en una secuencia rígida ni aumentar la cantidad de hostiles.
+  NV.WAVE_COMPOSITION_CARDS = Object.freeze({
+    early: Object.freeze([
+      Object.freeze(['drone', 'drone', 'runner', 'drone', 'runner']),
+      Object.freeze(['drone', 'specter_archer', 'specter_grunt', 'runner', 'drone']),
+    ]),
+    mid: Object.freeze([
+      Object.freeze(['tank', 'specter_guard', 'specter_archer', 'runner', 'drone']),
+      Object.freeze(['shielder', 'specter_archer', 'tank', 'drone', 'runner']),
+    ]),
+    pressure: Object.freeze([
+      Object.freeze(['kamikaze', 'specter_guard', 'specter_archer', 'runner', 'tank']),
+      Object.freeze(['spitter', 'swarmlet', 'swarmlet', 'runner', 'shielder']),
+    ]),
+    late: Object.freeze([
+      Object.freeze(['wisp', 'runner', 'spitter', 'shielder', 'tank']),
+      Object.freeze(['specter_archer', 'specter_guard', 'drone', 'runner', 'spitter']),
+    ]),
+    endgame: Object.freeze([
+      Object.freeze(['specter_guard', 'specter_archer', 'specter_core', 'drone', 'runner']),
+      Object.freeze(['kamikaze', 'tank', 'spitter', 'wisp', 'shielder']),
+    ]),
+  });
+  NV.waveCompositionStage = function (wave) {
+    const w = Math.max(1, wave || 1);
+    if (w <= 4) return 'early';
+    if (w <= 9) return 'mid';
+    if (w <= 14) return 'pressure';
+    if (w <= 19) return 'late';
+    return 'endgame';
+  };
+  NV.planWaveSpawnBatch = function (wave, count, cycle, enemyTypes, difficultyId) {
+    const size = Math.max(0, Math.floor(count || 0));
+    // La dificultad también altera composición, no sólo estadísticas.
+    const diff = NV.difficultyGet ? NV.difficultyGet(difficultyId) : { id: 'normal' };
+    const tacticalPeriod = diff.id === 'easy' ? 4 : diff.id === 'hard' ? 2 : 3;
+    const safeCycle = Math.max(0, Math.floor(cycle || 0));
+    if (!size || safeCycle % tacticalPeriod !== tacticalPeriod - 1) return [];
+    const stage = NV.waveCompositionStage(wave);
+    const cards = NV.WAVE_COMPOSITION_CARDS[stage] || [];
+    if (!cards.length) return [];
+    const cardIndex = Math.floor(safeCycle / tacticalPeriod) % cards.length;
+    const definitions = Array.isArray(enemyTypes) ? enemyTypes : [];
+    const available = new Set(definitions
+      .filter((entry) => entry && (entry.minWave || 1) <= Math.max(1, wave || 1))
+      .map((entry) => entry.id));
+    const card = cards[cardIndex];
+    const plan = [];
+    for (let i = 0; i < card.length && plan.length < size; i++) {
+      if (available.has(card[i])) plan.push(card[i]);
+    }
+    return plan;
   };
   // Composición: los roles tácticos EXISTENTES ganan peso gradual a partir de
   // TACTICAL_BOOST_START (techo 2.0 → ningún tipo individual domina). Consumidor:
@@ -242,15 +336,15 @@
     return 1 + (w - 1) * 0.05;
   };
 
-  // ===== Bono de daño por nivel de arma (curva con soft-cap) =====
-  // Lineal hasta el nivel 50 (idéntico al comportamiento actual: +1 daño/nivel)
-  // y +0.5 daño por nivel a partir de ahí. El tope duro WEAPON_MAX_LEVEL=100
-  // marca el pico de poder sin romper la curva de dificultad media.
+  // ===== Multiplicador de daño base por nivel de arma =====
+  // Escala proporcionalmente el daño propio del arma sin multiplicar los bonos
+  // permanentes planos. El tope duro WEAPON_MAX_LEVEL=100 marca x1.98.
   // Consumidores: engine/weapons.js (daño de bala) y render/hud.js (stats TAB).
-  NV.weaponLevelDamageBonus = function (level) {
+  NV.weaponLevelDamageMultiplier = function (level) {
     const L = Math.max(1, level || 1);
-    if (L <= 50) return L;
-    return 50 + (L - 50) * 0.5;
+    if (L <= 25) return 1 + 0.02 * (L - 1);
+    if (L <= 50) return 1.48 + 0.01 * (L - 25);
+    return 1.73 + 0.005 * (L - 50);
   };
 
   // ---- Números de daño con código de color por intensidad (sin "CRITICAL!") ----
@@ -274,6 +368,16 @@
   NV.difficultyGet = function (id) { return NV.DIFFICULTY[id] || NV.DIFFICULTY.normal; };
   NV.difficultyHpMult = function (id) { return NV.difficultyGet(id).hpMult; };
   NV.difficultyDmgMult = function (id) { return NV.difficultyGet(id).dmgMult; };
+  // La primera compra conserva el precio conocido; las siguientes absorben el
+  // excedente tardío y obligan a priorizar una build en vez de comprar todo.
+  NV.runUpgradePrice = function (kind, level) {
+    const table = { hp: [15, 4], speed: [15, 4], armor: [20, 5], luck: [20, 5] };
+    const row = table[kind] || [20, 5];
+    return row[0] + Math.max(0, Math.floor(level || 0)) * row[1];
+  };
+  NV.weaponFusionShopPrice = function (currentFusion) {
+    return NV.BALANCE.WEAPON_FUSE_PRICE + Math.max(0, Math.floor(currentFusion || 0)) * 8;
+  };
   NV.HIT_SLOW = {
     NORMAL: { multiplier: 0.85, activeDuration: 0.15, immunity: 0.20 },
     ELITE:  { multiplier: 0.90, activeDuration: 0.12, immunity: 0.23 },

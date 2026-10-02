@@ -233,8 +233,8 @@ t('GAME: sin cleanup el drawEnemy delega exactamente como antes (sin proxy ni sa
 
 t('GAME: los bucles de legibilidad/intención ignoran enemigos en cleanup', () => {
   const g = fs.readFileSync('js/game.js', 'utf8');
-  if (!g.includes('for (const e of enemies) if (!e.waveCleanup && NV.drawContactReadability)')) throw new Error('drawContactReadability no filtra cleanup');
-  if (!g.includes('const e of enemies) if (!e.waveCleanup && NV.drawEnemyIntent)')) throw new Error('drawEnemyIntent no filtra cleanup');
+  if (!g.includes('for (const e of enemies) if (!e.arrival && !e.waveCleanup && NV.drawContactReadability)')) throw new Error('drawContactReadability no filtra cleanup/aparición');
+  if (!g.includes('const e of enemies) if (!e.arrival && !e.waveCleanup && NV.drawEnemyIntent)')) throw new Error('drawEnemyIntent no filtra cleanup/aparición');
 });
 
 t('FUNCIONAL: update real elimina a 0.4 s sin ejecutar combate ni esperar tienda', () => {

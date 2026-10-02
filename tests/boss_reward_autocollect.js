@@ -130,7 +130,7 @@ t('drops normales siguen iguales: nextWave limpia weaponPickups como siempre', (
   const g = fs.readFileSync('js/game.js', 'utf8');
   if (g.includes('preserveBossWeaponPickups')) throw new Error('quedó código de persistencia en game.js');
   const nw = g.indexOf('function nextWave');
-  const fin = g.indexOf('if (wave % 5 === 0)', nw);
+  const fin = g.indexOf('if (bossWave)', nw);
   if (!/weaponPickups\s*=\s*\[\]/.test(g.slice(nw, fin))) throw new Error('nextWave debe limpiar weaponPickups normal');
   if (typeof NV.preserveBossWeaponPickups !== 'undefined') throw new Error('preserveBossWeaponPickups debería estar eliminado');
   if (fs.readFileSync('js/engine/pickups.js', 'utf8').includes('uncredited')) throw new Error('quedó rastro de uncredited');

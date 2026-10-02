@@ -75,7 +75,7 @@
   }
 
   function drawCoreZone(ctx, zone, debugHitbox) {
-    const arming = zone.state === 'arming';
+    const arming = zone.state === 'arming' || zone.cameraWarningRemaining > 0;
     const expiring = zone.state === 'expiring';
     const armProgress = arming ? Math.max(0, Math.min(1, zone.stateTime / Math.max(0.001, zone.armTime))) : 1;
     const fade = expiring ? Math.max(0, 1 - zone.stateTime / 0.18) : 1;
@@ -97,6 +97,110 @@
     if (debugHitbox) {
       ctx.globalAlpha = 0.8; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  NV.drawSectorEmitters = function (ctx, W, H, wave, hazards, enabled) {
+    if(!enabled)return;
+    for(const h of hazards||[]) {
+      if(!h.laserHead||h.state==='dead')continue;
+      const emergence=h.state==='telegraph'?Math.min(1,h.stateTime/h.emergeTime):h.state==='recovery'?Math.max(0,1-h.stateTime/h.recoveryTime):1;
+      const charge=h.state==='telegraph'?Math.max(0,(h.stateTime-h.emergeTime)/(h.telegraphTime-h.emergeTime)):h.state==='active'?1:0;
+      ctx.save();
+      if(h.side==='top')ctx.translate(h.x,0);
+      else {ctx.translate(h.side==='right'?W:0,h.y);ctx.rotate(h.side==='right'?Math.PI/2:-Math.PI/2);}
+      ctx.translate(0,-62*(1-emergence));ctx.shadowBlur=0;
+      const metal=ctx.createLinearGradient(-23,0,23,0);
+      metal.addColorStop(0,'#344858');metal.addColorStop(.28,'#bacbd4');metal.addColorStop(.48,'#eff9ff');metal.addColorStop(.68,'#728a9b');metal.addColorStop(1,'#243642');
+      ctx.fillStyle=metal;ctx.strokeStyle='#8fa7b7';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(-22,-38);ctx.lineTo(-22,-8);ctx.lineTo(-4,30);ctx.lineTo(4,30);ctx.lineTo(22,-8);ctx.lineTo(22,-38);ctx.closePath();ctx.fill();ctx.stroke();
+      for(const [y,r] of [[-6,25],[10,17],[23,10]]) {
+        ctx.strokeStyle='#bddee5';ctx.lineWidth=3;
+        ctx.beginPath();ctx.ellipse(0,y,r,5,0,0,Math.PI*2);ctx.stroke();
+        ctx.strokeStyle='#64ccd4';ctx.lineWidth=1;
+        ctx.beginPath();ctx.ellipse(0,y+1,r-2,3,0,0,Math.PI*2);ctx.stroke();
+      }
+      ctx.fillStyle=metal;ctx.beginPath();ctx.arc(0,38,4,0,Math.PI*2);ctx.fill();
+      if(charge>0) {
+        const radius=2+charge*9;
+        ctx.globalAlpha=.2;ctx.fillStyle='#ff6474';ctx.beginPath();ctx.arc(0,38,radius+5,0,Math.PI*2);ctx.fill();
+        ctx.globalAlpha=1;ctx.beginPath();ctx.arc(0,38,radius,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#fff3ef';ctx.beginPath();ctx.arc(-radius*.2,38-radius*.2,radius*.42,0,Math.PI*2);ctx.fill();
+      }
+      ctx.restore();
+    }
+  };
+
+  function drawSectorHazard(ctx, hazard, visualPolicy, debugHitbox) {
+    if(hazard.laserHead) {
+      if(hazard.state==='recovery'||hazard.stateTime<hazard.emergeTime&&hazard.state==='telegraph')return;
+      ctx.save();ctx.shadowBlur=0;
+      const active=hazard.state==='active' && !(hazard.cameraWarningRemaining>0),vertical=hazard.kind==='vent';
+      const x=vertical?hazard.x:hazard.side==='right'?hazard.W-38:38;
+      const y=vertical?38:hazard.y;
+      const endX=vertical?x:hazard.side==='right'?0:hazard.W,endY=vertical?hazard.H:y;
+      const line=()=>{ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(endX,endY);ctx.stroke();};
+      ctx.strokeStyle='#ff6474';ctx.globalAlpha=active?1:.55;ctx.lineWidth=active?hazard.width:1;
+      ctx.setLineDash(active?[]:[3,9]);line();ctx.setLineDash([]);
+      if(active){ctx.strokeStyle='#fff0ed';ctx.lineWidth=1.5;line();}
+      if(debugHitbox){ctx.strokeStyle='#ffffff';ctx.lineWidth=hazard.width;ctx.globalAlpha=.2;line();}
+      ctx.restore();return;
+    }
+    const warning = hazard.state === 'telegraph' || hazard.cameraWarningRemaining > 0;
+    const recovery = hazard.state === 'recovery';
+    const duration = warning ? hazard.telegraphTime : recovery ? hazard.recoveryTime : hazard.activeTime;
+    const progress = Math.max(0, Math.min(1, hazard.stateTime / Math.max(0.001, duration)));
+    const pulse = 0.5 + 0.5 * Math.sin((hazard.simTime || 0) * (warning ? 12 : 22));
+    const alpha = recovery ? (1 - progress) * 0.25 : warning ? 0.10 + pulse * 0.10 : 0.28 + pulse * 0.10;
+    const signals = NV.HOSTILE_SIGNALS;
+    const damageColor = signals ? signals.damage : '#ff3b4f';
+    const edge = warning ? (signals ? signals.warning : '#ff6474') : damageColor;
+    ctx.save();
+    ctx.fillStyle = damageColor; ctx.strokeStyle = edge;
+    ctx.lineWidth = warning ? 3 : 4;
+    ctx.setLineDash(warning ? [12, 9] : []);
+    ctx.globalAlpha = alpha;
+    if (hazard.kind === 'vent') {
+      ctx.fillRect(hazard.x - hazard.width * 0.5, 0, hazard.width, hazard.H);
+      ctx.strokeRect(hazard.x - hazard.width * 0.5, 1, hazard.width, hazard.H - 2);
+    } else if (hazard.kind === 'rift') {
+      ctx.fillRect(0, hazard.y - hazard.width * 0.5, hazard.W, hazard.width);
+      ctx.strokeRect(1, hazard.y - hazard.width * 0.5, hazard.W - 2, hazard.width);
+    } else if (hazard.kind === 'pulse') {
+      // Banda completa de colisión, con los dos bordes reales visibles.
+      ctx.strokeStyle = damageColor; ctx.lineWidth = hazard.width;
+      ctx.beginPath(); ctx.arc(hazard.x, hazard.y, hazard.radius, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = warning ? 0.72 : 0.95;
+      ctx.lineWidth = warning ? 2.5 : 4; ctx.strokeStyle = edge;
+      for (const radius of [Math.max(0, hazard.radius - hazard.width * 0.5), hazard.radius + hazard.width * 0.5]) {
+        ctx.beginPath(); ctx.arc(hazard.x, hazard.y, radius, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+    if (!warning && !recovery && (hazard.kind === 'vent' || hazard.kind === 'rift')) {
+      // Núcleo brillante dentro del volumen rojo: no agranda el hitbox.
+      ctx.globalAlpha=.9; ctx.fillStyle='#ffe4e7';
+      if(hazard.kind === 'vent') ctx.fillRect(hazard.x-2,0,4,hazard.H);
+      else ctx.fillRect(0,hazard.y-2,hazard.W,4);
+    }
+    ctx.setLineDash([]);
+    ctx.globalAlpha = recovery ? (1 - progress) * 0.5 : 0.90;
+    ctx.fillStyle = '#07101b';
+    const preferredX = hazard.kind === 'vent' ? hazard.x : hazard.kind === 'rift' ? 72 : hazard.x;
+    const preferredY = hazard.kind === 'vent' ? 34 : hazard.kind === 'rift' ? hazard.y : hazard.y - hazard.radius - hazard.width * 0.6;
+    const text = warning ? (hazard.hint || ('SALÍ DE LA ZONA · ' + hazard.label)) : hazard.label + ' ACTIVO · NO TOCAR';
+    ctx.font = '700 12px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const textW = Math.max(110, Math.min(hazard.W - 20, text.length * 7.2));
+    const labelX = Math.max(textW * 0.5 + 10, Math.min(hazard.W - textW * 0.5 - 10, preferredX));
+    const labelY = Math.max(16, Math.min(hazard.H - 16, preferredY));
+    ctx.fillRect(labelX - textW * 0.5, labelY - 12, textW, 24);
+    ctx.strokeStyle = edge; ctx.lineWidth = 1.5; ctx.strokeRect(labelX - textW * 0.5, labelY - 12, textW, 24);
+    ctx.fillStyle = edge; ctx.fillText(text, labelX, labelY + 1);
+    if (debugHitbox) {
+      ctx.globalAlpha = 1; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+      if (hazard.kind === 'vent') ctx.strokeRect(hazard.x - hazard.width * 0.5, 0, hazard.width, hazard.H);
+      else if (hazard.kind === 'rift') ctx.strokeRect(0, hazard.y - hazard.width * 0.5, hazard.W, hazard.width);
+      else { ctx.beginPath(); ctx.arc(hazard.x, hazard.y, hazard.radius, 0, Math.PI * 2); ctx.stroke(); }
     }
     ctx.restore();
   }
@@ -133,8 +237,9 @@
     for (const mine of hazards || []) {
       if (!mine || mine.state === 'dead') continue;
       if (mine.type === 'coreZone') { drawCoreZone(ctx, mine, debugHitbox); continue; }
+      if (mine.type === 'sectorHazard') { drawSectorHazard(ctx, mine, visualPolicy, debugHitbox); continue; }
       if (mine.type !== 'speakerMine') continue;
-      if (mine.state === 'spawning') drawTelegraph(ctx, mine);
+      if (mine.state === 'spawning' || mine.cameraWarningRemaining > 0) drawTelegraph(ctx, mine);
       drawBody(ctx, mine, rhythm, visualPolicy, groove);
       if (debugHitbox) {
         ctx.save(); ctx.strokeStyle = 'rgba(124,248,255,0.75)'; ctx.lineWidth = 1;

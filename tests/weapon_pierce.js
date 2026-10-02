@@ -52,7 +52,7 @@ t('datos rebalanceados: pierce/cadencia por rol sin tocar daño base', () => {
     laser: { damage: 25, fireRate: 20, pierce: 2 },
     bow: { damage: 19, fireRate: 36 },
     flamethrower: { damage: 6, fireRate: 14 },
-    plasma: { damage: 36, fireRate: 35 },
+    plasma: { damage: 21, fireRate: 35 },
     railgun: { damage: 70, fireRate: 84, pierce: 8 },
     rifle: { damage: 20, fireRate: 25, pierce: 2 },
   };
@@ -105,8 +105,15 @@ t('arco rebota hasta 3 enemigos cercanos además del impacto inicial', () => {
     const res = updateOnce(NV, bullets, enemies, null);
     bullets.splice(0, bullets.length, ...res.bullets);
   }
-  const damaged = enemies.filter((e) => e.hp === 90).length;
+  // La cadena sigue alcanzando 3 rebotes + impacto inicial = 4 enemigos. Cada
+  // rebote ahora aplica la caída por ordinal (10 * .85/.70/.55), así que la
+  // aserción comprueba que los 4 recibieron daño, no un hp idéntico.
+  const damaged = enemies.filter((e) => e.hp < 100).length;
   if (damaged !== 4) throw new Error('damaged=' + damaged);
+  if (enemies[0].hp !== 90) throw new Error('primario=' + (100 - enemies[0].hp));
+  if (enemies[1].hp !== 91.5) throw new Error('rebote1=' + (100 - enemies[1].hp));
+  if (enemies[2].hp !== 93) throw new Error('rebote2=' + (100 - enemies[2].hp));
+  if (enemies[3].hp !== 94.5) throw new Error('rebote3=' + (100 - enemies[3].hp));
   if (enemies[4].hp !== 100) throw new Error('rebotó fuera de radio');
 });
 

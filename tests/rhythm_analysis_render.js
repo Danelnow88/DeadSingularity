@@ -371,10 +371,12 @@ t('drawRhythmLayer dibuja solo fondo sutil con alfa acotado', () => {
   if (ctx._lineWidth > 6) throw new Error('borde demasiado grueso: ' + ctx._lineWidth);
 });
 
-t('game.js usa fondo galaxia mas oscuro para contraste sin aclarar combate', () => {
+t('game.js usa fondo sectorial oscuro con fallback galaxia sin aclarar combate', () => {
   const g = fs.readFileSync('js/game.js', 'utf8');
-  if (!g.includes("ctx.fillStyle = '#01030d'")) throw new Error('fondo galaxia no aplicado');
-  const bg = g.indexOf("ctx.fillStyle = '#01030d'");
+  const fill = "ctx.fillStyle = sectorVisual ? sectorVisual.background : '#01030d'";
+  if (!g.includes(fill)) throw new Error('fondo sectorial/fallback no aplicado');
+  if (!g.includes('NV.drawSectorBackdrop(ctx, arenaW(), arenaH()')) throw new Error('identidad sectorial no integrada en mundo real');
+  const bg = g.indexOf(fill);
   const star = g.indexOf('NV.drawStarfield(ctx, cameraW, cameraH, frame, player.x - cameraLeft, player.y - cameraTop, frameVisualRhythm)', bg);
   if (!(star > bg)) throw new Error('fondo no precede starfield');
 });
@@ -383,11 +385,11 @@ t('game.js integra drawRhythmLayer después del starfield y antes de gameplay/HU
   const g = fs.readFileSync('js/game.js', 'utf8');
   const star = g.indexOf('NV.drawStarfield(ctx, cameraW, cameraH, frame, player.x - cameraLeft, player.y - cameraTop, frameVisualRhythm)');
   const rhythm = g.indexOf('NV.drawRhythmLayer(ctx, cameraW, cameraH, frame)');
-  const grid = g.indexOf('const gridAlpha', rhythm);
+  const bounds = g.indexOf('NV.drawSectorPerimeter(ctx', rhythm);
   const special = g.indexOf('if (specialVFX)', rhythm);
   if (!(star >= 0 && rhythm > star)) throw new Error('no va después del starfield');
   const gatedSpecial = g.indexOf('if (drawDecorativeVfx && specialVFX)', rhythm);
-  if (!(grid > rhythm && (special > rhythm || gatedSpecial > rhythm))) throw new Error('no queda antes de capas de gameplay');
+  if (!(bounds > rhythm && (special > rhythm || gatedSpecial > rhythm))) throw new Error('no queda antes de capas de gameplay');
 });
 
 t('game.js aplica aislamiento render-only a fondo, auxiliares, hazards y shake', () => {

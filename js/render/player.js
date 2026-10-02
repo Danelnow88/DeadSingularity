@@ -4,11 +4,12 @@
   'use strict';
   const NV = window.NV;
   // NEW: Visual utility functions for advanced rendering effects
-  function NV_drawLiquidInkBlob(ctx, cx, cy, radius, points, noise, speed, fillColor, strokeColor, glowColor, seed, t) {
+  function NV_drawLiquidInkBlob(ctx, cx, cy, radius, points, noise, speed, fillColor, strokeColor, glowColor, seed, t, appearance, frame, layer) {
     ctx.save();
     ctx.translate(cx, cy);
     ctx.beginPath();
-    for (let i = 0; i <= points; i++) {
+    if (appearance) NV.pilotAppearance.trace(ctx, appearance, frame, layer, radius, points, noise, speed, seed);
+    else for (let i = 0; i <= points; i++) {
       let angle = (i / points) * Math.PI * 2;
       let n1 = Math.sin(angle * 4 + t * 8 * speed + seed);
       let n2 = Math.cos(angle * 3 - t * 10 * speed + seed * 2);
@@ -236,8 +237,10 @@
     return true;
   };
 
-  NV.drawPlayer = function (ctx, player, CHARACTERS, frame, presentation) {
+  NV.drawPlayer = function (ctx, player, CHARACTERS, frame, presentation, nativeAppearance = false) {
     const char = CHARACTERS[player.character];
+    const appearance = !nativeAppearance && NV.pilotAppearance && NV.pilotAppearance.get(player.character);
+    const detailFrame = appearance ? NV.pilotAppearance.detailFrame(appearance, frame) : frame;
     ctx.save();
     ctx.translate(player.x, player.y);
     if (presentation) {
@@ -289,7 +292,7 @@
 
     NV.drawPlayerPhantomPossession(ctx, player, char, frame);
 
-    const invulnBlink = player.invuln > 0 && Math.floor(player.invuln * 20) % 2 === 0;
+    const invulnBlink = player.invuln > 0 && !(player.phase > 0 || player.bulwark > 0) && Math.floor(player.invuln * 20) % 2 === 0;
     const stunBlink = player.stun > 0 && Math.floor(player.stun * 20) % 2 === 0;
     const criticalHealth = player.hp > 0 && player.hp / player.maxHp <= 0.25;
     ctx.globalAlpha = invulnBlink ? 0.4 : (stunBlink ? 0.6 : 1);
@@ -309,46 +312,17 @@
       ctx.restore();
     }
 
-    // Fase Fantasma: zona de daño claramente legible + aura espectral pulsante
-    if (player.phase > 0) {
-      const R = (window.NV.BALANCE ? window.NV.BALANCE.PHASE_AURA_RADIUS : 70);
-      const zonePulse = 0.10 + Math.sin(frame * 0.35) * 0.05; // relleno tenue: "esta zona pega"
-      ctx.fillStyle = '#caa7ff';
-      ctx.globalAlpha = zonePulse;
-      ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
-      // Borde rotante en guiones: gira para leerse como campo activo
-      ctx.strokeStyle = '#caa7ff';
-      ctx.globalAlpha = 0.75;
-      ctx.lineWidth = 2.5;
-      ctx.setLineDash([14, 9]);
-      ctx.lineDashOffset = -frame * 1.4;
-      ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.stroke();
-      ctx.setLineDash([]);
-      // Aura espectral original del personaje (intangibilidad)
-      const ghostPulse = 0.3 + Math.sin(frame * 0.3) * 0.2;
-      ctx.globalAlpha = ghostPulse;
-      ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(0, 0, char.size + 20 + Math.sin(frame * 0.2) * 5, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.arc(0, 0, char.size + 8, 0, Math.PI * 2); ctx.stroke();
-      ctx.globalAlpha = invulnBlink ? 0.4 : 1;
-    }
-
-    // Muralla: escudo dorado visible
-    if (player.bulwark > 0) {
-      const shieldPulse = 0.4 + Math.sin(frame * 0.15) * 0.2;
-      ctx.strokeStyle = '#ffcf76';
-      ctx.globalAlpha = shieldPulse;
-      ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.arc(0, 0, char.size + 15, 0, Math.PI * 2); ctx.stroke();
-      ctx.globalAlpha = invulnBlink ? 0.4 : 1;
-    }
+    // Estado especial pertenece al jugador pero no modifica su posición/hitbox.
+    if (NV.drawSpecialPlayerLayer) NV.drawSpecialPlayerLayer(ctx, player, char, frame, 'behind');
 
     // #11: estelas cinéticas detrás del cuerpo (sin aros genéricos concéntricos).
     if (typeof NV.drawPlayerConsumableEffects === 'function') NV.drawPlayerConsumableEffects(ctx, player, char, frame, 'behind');
 
-    const breathe = Math.sin(frame * 0.05) * 1.5;
-    const bob = Math.sin(frame * 0.12) * 2;
-    ctx.translate(0, bob + breathe);
+    const breathe = Math.sin(detailFrame * 0.05) * 1.5;
+    const bob = Math.sin(detailFrame * 0.12) * 2;
+    ctx.translate(0, (bob + breathe) * (appearance ? NV.pilotAppearance.bobScale : 1));
+    ctx.save();
+    if (NV.applySpecialBodyTransform) NV.applySpecialBodyTransform(ctx, player);
 
     
     // Escudo de consumible: campo de fuerza dedicado (#11). Visible mientras
@@ -410,29 +384,29 @@
     const cid = char.id || player.character;
 
     if (cid === 'boti') {
-      const t = frame * 0.025;
+      const t = detailFrame * 0.025;
       NV_drawDripsAndMelts(ctx, 0, 0, size * 0.9, '#00f0ff', '#00f0ff', 1, t);
-      NV_drawLiquidInkBlob(ctx, 0, 4, size * 0.7, 12, 3.5, 1.2, '#021536', '#0066ff', '#0066ff', 1, t);
-      NV_drawLiquidInkBlob(ctx, 0, 0, size * 0.95, 16, 5, 1.0, '#042b5c', '#00f0ff', '#00f0ff', 2, t);
+      NV_drawLiquidInkBlob(ctx, 0, 4, size * 0.7, 12, 3.5, 1.2, '#021536', '#0066ff', '#0066ff', 1, t, appearance, frame, 0);
+      NV_drawLiquidInkBlob(ctx, 0, 0, size * 0.95, 16, 5, 1.0, '#042b5c', '#00f0ff', '#00f0ff', 2, t, appearance, frame, 1);
       NV_drawFlowingPatterns(ctx, 0, 0, size * 0.86, '#70f3ff', 5, 1, t);
     } else if (cid === 'nova') {
       // NOVA (MARS) – adapted from visual prototype
-      const t = frame * 0.025;
+      const t = detailFrame * 0.025;
       NV_drawDripsAndMelts(ctx, 0, 0, size * (45 / 46), '#ff3300', '#ff6600', 2, t);
-      NV_drawLiquidInkBlob(ctx, size * (-12 / 46), size * (-8 / 46), size * (24 / 46), 10, size * (8 / 46), 1.6, '#4a0800', '#ff9900', '#ff9900', 3, t);
-      NV_drawLiquidInkBlob(ctx, 0, 0, size, 14, size * (12 / 46), 1.1, '#2b0500', '#ff3300', '#ff3300', 4, t);
+      NV_drawLiquidInkBlob(ctx, size * (-12 / 46), size * (-8 / 46), size * (24 / 46), 10, size * (8 / 46), 1.6, '#4a0800', '#ff9900', '#ff9900', 3, t, appearance, frame, 0);
+      NV_drawLiquidInkBlob(ctx, 0, 0, size, 14, size * (12 / 46), 1.1, '#2b0500', '#ff3300', '#ff3300', 4, t, appearance, frame, 1);
       NV_drawFlowingPatterns(ctx, 0, 0, size * (42 / 46), '#ffaa00', 4, 2, t);
     } else if (cid === 'rook') {
       // ROOK (JUPITER) – adapted from visual prototype
-      const t = frame * 0.025;
+      const t = detailFrame * 0.025;
       NV_drawDripsAndMelts(ctx, 0, 0, size, '#eab308', '#a855f7', 3, t);
-      NV_drawLiquidInkBlob(ctx, 0, 0, size, 18, size * (11 / 50), 0.9, '#1e0a2a', '#a855f7', '#a855f7', 5, t);
+      NV_drawLiquidInkBlob(ctx, 0, 0, size, 18, size * (11 / 50), 0.9, '#1e0a2a', '#a855f7', '#a855f7', 5, t, appearance, frame, 0);
       NV_drawFlowingPatterns(ctx, 0, 0, size * (48 / 50), '#fef08a', 6, 3, t);
     } else if (cid === 'swarm') {
       // SWARM (SATURN) – adapted from visual prototype
-      const t = frame * 0.025;
+      const t = detailFrame * 0.025;
       NV_drawDripsAndMelts(ctx, 0, 0, size * (40 / 38), '#ffee77', '#ffee77', 4, t);
-      NV_drawLiquidInkBlob(ctx, 0, 0, size, 12, size * (7 / 38), 1.0, '#241c02', '#ffee77', '#ffee77', 6, t);
+      NV_drawLiquidInkBlob(ctx, 0, 0, size, 12, size * (7 / 38), 1.0, '#241c02', '#ffee77', '#ffee77', 6, t, appearance, frame, 0);
       NV_drawFlowingPatterns(ctx, 0, 0, size * (36 / 38), '#ffffff', 3, 4, t);
 
       // Animated rings for SATURN
@@ -465,14 +439,18 @@
       ctx.restore();
     }
 
+    if (NV.drawSpecialPlayerLayer) NV.drawSpecialPlayerLayer(ctx, player, char, frame, 'front');
     // Ojos
     ctx.fillStyle = '#000';
     ctx.beginPath(); ctx.arc(-5, -1, 2.5, 0, Math.PI * 2); ctx.arc(5, -1, 2.5, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = char.eyeColor;
     ctx.beginPath(); ctx.arc(-5, -1, 1.2, 0, Math.PI * 2); ctx.arc(5, -1, 1.2, 0, Math.PI * 2); ctx.fill();
+    ctx.restore(); // sólo deformación corporal; no afecta efectos mundo/stun.
 
     ctx.shadowBlur = 0;
     NV.drawPlayerStunStars(ctx, player, char, frame);
     ctx.restore();
   };
+  // Sólo diagnóstico del laboratorio; el juego siempre usa la apariencia aprobada.
+  NV.drawPlayerOriginal = (ctx, player, characters, frame, presentation) => NV.drawPlayer(ctx, player, characters, frame, presentation, true);
 })();

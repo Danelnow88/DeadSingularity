@@ -14,10 +14,11 @@
     const char = CHARACTERS[player.character];
     player.specialCd = char.maxCd + 0.5;
     const specialVFX = { x: player.x, y: player.y, life: 1, type: char.special, color: char.color };
-    showBanner(char.skillName.toUpperCase(), char.color);
+    if (NV.beginSpecialVisual) NV.beginSpecialVisual(player, char.special);
+    showBanner(char.skillName.toUpperCase(), char.skillColor || char.color);
 
     if (char.special === 'meteor') {
-      // Lluvia Estelar: meteoritos caen del cielo
+      // Lluvia Criocósmica: conserva trayectoria y cantidad de los meteoros.
       triggerFlash('#7cf8ff');
       shake = 0.4;
       for (let i = 0; i < 12; i++) {
@@ -27,22 +28,22 @@
           vy: 320 + Math.random() * 200,
           vx: (Math.random() - 0.5) * 70,
           radius: 9 + Math.random() * 7,
-          color: i % 2 === 0 ? '#7cf8ff' : '#caa7ff',
+          color: i % 2 === 0 ? '#7cf8ff' : '#a4eaff',
           dead: false,
         });
       }
       spawnExplosion(player.x, player.y, 30, '#7cf8ff', 0.6);
     } else if (char.special === 'phase') {
-      // Fase Fantasma: intangible 3s + rastro de daño
+      // Ignición Astral: la misma invulnerabilidad/aura de 3s (ID phase).
       player.invuln = 3;
       player.phase = 3;
-      triggerFlash('#caa7ff');
+      triggerFlash('#ff9d36');
       for (let i = 0; i < 46; i++) {
         const a = (i / 46) * Math.PI * 2;
-        particles.push({ x: player.x, y: player.y, vx: Math.cos(a) * 360, vy: Math.sin(a) * 360, life: 0.7, color: i % 2 ? '#caa7ff' : '#fff' });
+        particles.push({ x: player.x, y: player.y, vx: Math.cos(a) * 360, vy: Math.sin(a) * 360, life: 0.7, color: i % 2 ? '#ff9d36' : '#fff2bc', specialEnergy: true });
       }
     } else if (char.special === 'bulwark') {
-      // Muralla: escudo + ONDA DE CHOQUE que empuja y aturde a los enemigos cercanos
+      // Bastión Astral: escudo + misma onda de control (stun/knockback).
       player.invuln = 3;
       player.bulwark = 3;
       shake = 0.5;
@@ -60,9 +61,9 @@
           if (sayStun) sayStun(e.x, e.y - 20, '¡ATURDIDO!', '#ffcf76');
         }
       }
-      NV.spawnShockwave(state.shockwaves || [], player.x, player.y, { maxRadius: 130, color: '#ffcf76', width: 5 });
+      NV.spawnShockwave(state.shockwaves || [], player.x, player.y, { maxRadius: 130, color: '#ffcf76', width: 5, style: 'bastion' });
     } else if (char.special === 'hivemind') {
-      // Drones de Combate: 6 drones que orbitan y disparan por 5s
+      // Núcleos Vivos: mismo ID/6 orbitantes que disparan durante 5s.
       triggerFlash('#8dfaff');
       drones = [];
       for (let i = 0; i < 6; i++) {
@@ -81,7 +82,7 @@
     return { specialVFX, drones, shake };
   };
 
-  // ---- Detonación Espectral (NOVA): al terminar la Fase, golpe final = 50% del DoT acumulado ----
+  // ---- Ignición (NOVA): al terminar phase, golpe final = 50% del DoT acumulado ----
   // phaseAcc lo acumula el aura en game.js. Enemigos: acc*0.5 directo; jefe: acc*0.5*mult anti-boss.
   NV.detonatePhase = function (player, enemies, boss, shockwaves, cbs, balance) {
     const B = balance || (window.NV && window.NV.BALANCE);
@@ -96,7 +97,7 @@
         const dealt = NV.guardProtectedDamage ? NV.guardProtectedDamage(e, rawDamage) : rawDamage;
         e.hp -= dealt;
         e.hitFlash = Math.max(e.hitFlash || 0, 0.10);
-        if (cbs && cbs.addFloatText) cbs.addFloatText(e.x, e.y - 24, 'ESPECTRAL', '#caa7ff');
+        if (cbs && cbs.addFloatText) cbs.addFloatText(e.x, e.y - 24, 'IGNICIÓN', '#ff9d36');
         hits++;
         if (e.hp <= 0 && cbs && cbs.killEnemy) cbs.killEnemy(e);
       }
@@ -104,17 +105,18 @@
     }
     if (boss && !boss.dead && boss.phaseAcc > 0) {
       boss.hp -= boss.phaseAcc * MULT * (B && B.PHASE_AURA_BOSS_MULT || 0.3);
+      if (NV.playtest && NV.playtest.enabled) NV.playtest.bossHit('special:nova', boss.phaseAcc * MULT * (B && B.PHASE_AURA_BOSS_MULT || 0.3), 'detonation');
       boss.hitFlash = Math.max(boss.hitFlash || 0, 0.10);
-      if (cbs && cbs.addFloatText) cbs.addFloatText(boss.x, boss.y - 60, 'ESPECTRAL', '#caa7ff');
+      if (cbs && cbs.addFloatText) cbs.addFloatText(boss.x, boss.y - 60, 'IGNICIÓN', '#ff9d36');
       hits++;
       boss.phaseAcc = 0;
     }
-    // VFX de detonación bien diferenciado del aura: doble anillo espectral + estallido
-    NV.spawnShockwave(shockwaves || [], player.x, player.y, { maxRadius: 110, color: '#caa7ff', width: 6 });
+    // Ruptura de plasma: conserva las dos entradas/timers del shockwave existente.
+    NV.spawnShockwave(shockwaves || [], player.x, player.y, { maxRadius: 110, color: '#ff9d36', width: 6, style: 'novaCollapse' });
     // Anillo blanco secundario: decorativo, degradable vía visual budget (P2).
-    NV.spawnShockwave(shockwaves || [], player.x, player.y, { maxRadius: 70, color: '#fff', width: 3, secondary: true });
-    if (cbs && cbs.spawnExplosion) cbs.spawnExplosion(player.x, player.y, 30, '#caa7ff', 0.8);
-    if (cbs && cbs.triggerFlash) cbs.triggerFlash('#caa7ff');
+    NV.spawnShockwave(shockwaves || [], player.x, player.y, { maxRadius: 70, color: '#fff', width: 3, secondary: true, style: 'novaCollapse' });
+    if (cbs && cbs.spawnExplosion) cbs.spawnExplosion(player.x, player.y, 30, '#ff9d36', 0.8);
+    if (cbs && cbs.triggerFlash) cbs.triggerFlash('#ff9d36');
     return hits;
   };
 })();

@@ -52,13 +52,13 @@ function loadViewport(opts) {
   return sbx;
 }
 
-t('worldMetrics defaults ref/view/arena = 900x520 y scale=1', () => {
+t('worldMetrics referencia/vista 900x520, arena independiente 1350x780', () => {
   const sbx = loadViewport({ nv: { capabilities: { isMobile: false } } });
   const m = sbx.NV.worldMetrics;
   eq(m.refW, 900, 'refW'); eq(m.refH, 520, 'refH');
   eq(m.viewW, 900, 'viewW'); eq(m.viewH, 520, 'viewH');
   eq(m.viewX, 0, 'viewX'); eq(m.viewY, 0, 'viewY');
-  eq(m.arenaW, 900, 'arenaW'); eq(m.arenaH, 520, 'arenaH');
+  eq(m.arenaW, 1350, 'arenaW'); eq(m.arenaH, 780, 'arenaH');
   eq(m.scale, 1, 'scale');
   if (sbx.NV.viewport.worldMetrics !== m) throw new Error('viewport no comparte NV.worldMetrics');
 });
@@ -103,8 +103,8 @@ t('player bounds remain 900x520 via ARENA metrics', () => {
 
 t('enemy spawns still receive 900x520 arena dimensions', () => {
   const g = fs.readFileSync('js/game.js', 'utf8');
-  if (!g.includes('NV.spawnEnemy({ enemies, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES, wave, ENEMY_TYPES, W: arenaW(), H: arenaH()')) throw new Error('spawnEnemy no recibe W/H arena runtime');
-  if (!g.includes('NV.spawnElite({ enemies, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES, wave, ELITE_TYPES, W: arenaW(), H: arenaH()')) throw new Error('spawnElite no recibe W/H arena runtime');
+  if (!g.includes('NV.spawnEnemy({ enemies, player, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES, wave, ENEMY_TYPES, W: arenaW(), H: arenaH()')) throw new Error('spawnEnemy no recibe W/H arena runtime');
+  if (!g.includes('NV.spawnElite({ enemies, player, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES, wave, ELITE_TYPES, W: arenaW(), H: arenaH()')) throw new Error('spawnElite no recibe W/H arena runtime');
 });
 
 t('boss center remains x=450', () => {

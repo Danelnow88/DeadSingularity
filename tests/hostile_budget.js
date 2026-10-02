@@ -9,6 +9,13 @@ function setup() {
   for (const f of ['js/data/balance.js', 'js/data/gameData.js', 'js/engine/hostileBudget.js', 'js/engine/enemies.js', 'js/engine/boss.js']) load(f, sbx);
   return sbx.window.NV;
 }
+function setupTrackedRng() {
+  let calls = 0;
+  const math = Object.create(Math); math.random = () => { calls++; return 0.25; };
+  const sbx = { window: { NV: {} }, console, Math: math, Object, Array, Set, Map };
+  for (const f of ['js/data/balance.js', 'js/data/gameData.js', 'js/engine/hostileBudget.js', 'js/engine/enemies.js', 'js/engine/boss.js']) load(f, sbx);
+  return { NV: sbx.window.NV, calls: () => calls };
+}
 function light(i) { return { x: i, y: 0, dead: false, hostileClass: 'light' }; }
 function heavy(i) { return { x: i, y: 0, dead: false, hostileClass: 'heavy', isElite: true }; }
 function assertBudget(NV, st) {
@@ -45,6 +52,30 @@ t('C: boss + máximo legal de summons termina en 30', () => {
   for (let i = 0; i < 40; i++) NV.spawnMinion(i, 0, st);
   const b = assertBudget(NV, st);
   if (enemies.length !== 29 || b.hostiles !== 30 || b.heavy !== 1) throw new Error(JSON.stringify({ len: enemies.length, b }));
+});
+
+t('boss minion migrado conserva stats, identidad moderna y radio exacto', () => {
+  const NV = setup();
+  for (const wave of [1, 10, 25]) {
+    const enemies = [], st = spawnState(NV, enemies); st.wave = wave;
+    if (NV.spawnMinion(120, 80, st) !== true || enemies.length !== 1) throw new Error('spawn fallido w' + wave);
+    const e = enemies[0], hp = Math.round(20 * (1 + wave * 0.3));
+    if (e.hp !== hp || e.maxHp !== hp) throw new Error('hp w' + wave + '=' + e.hp + '/' + e.maxHp);
+    if (e.speed !== NV.ENEMY_TYPES[0].speed + wave * 2) throw new Error('speed w' + wave + '=' + e.speed);
+    if (e.radius !== 9 || e.damage !== 8 || e.score !== 8 || e.xp !== 8) throw new Error('stats w' + wave);
+    if (e.enemyTypeId !== 'boss_minion' || e.hostileClass !== 'light' || e.behavior !== 'chase' || e.movementClass !== 'normal') throw new Error('identidad w' + wave);
+    if (e.isElite !== false || e.eliteDamage !== 8 || e.stun !== 0 || e.noFuse !== true) throw new Error('campos legacy/declarativos w' + wave);
+    if (e.erraticTargetAngle !== 0 || e.shieldCd !== 0 || e.resist !== 0 || e.coreZoneOwnerId !== 0) throw new Error('neutrales w' + wave);
+    if ('visualId' in e) throw new Error('visualId innecesario');
+  }
+});
+
+t('boss minion consume exactamente un Math.random para angle', () => {
+  const tracked = setupTrackedRng(), enemies = [], st = spawnState(tracked.NV, enemies); st.wave = 7;
+  const before = tracked.calls();
+  if (!tracked.NV.spawnMinion(10, 20, st)) throw new Error('spawn fallido');
+  if (tracked.calls() - before !== 1) throw new Error('Math.random=' + (tracked.calls() - before));
+  if (enemies[0].angle !== Math.PI / 2 || enemies[0].erraticTargetAngle !== 0) throw new Error('ángulos=' + enemies[0].angle + '/' + enemies[0].erraticTargetAngle);
 });
 
 t('D: intentos repetidos no exceden 30', () => {
@@ -115,6 +146,34 @@ t('fusión reduce hostiles y no inventa heavy slots', () => {
   const r = NV.updateEnemies(0, st);
   const b = NV.getHostileBudget({ enemies: r.enemies, boss: null });
   if (r.enemies.length !== 1 || b.hostiles !== 1 || b.heavy !== 0) throw new Error(JSON.stringify({ len: r.enemies.length, b }));
+});
+
+t('tres boss minions migrados no fusionan; noFuse se aplica bilateralmente', () => {
+  const NV = setup(), enemies = [], spawnSt = spawnState(NV, enemies); spawnSt.wave = 5;
+  NV.spawnMinion(100, 100, spawnSt);
+  NV.spawnMinion(101, 100, spawnSt);
+  NV.spawnMinion(102, 100, spawnSt);
+  if (enemies.length !== 3 || enemies.some((e) => e.enemyTypeId !== 'boss_minion' || e.noFuse !== true)) throw new Error('spawns no migrados');
+  const st = { enemies, player: { x: 800, y: 500, invuln: 0, stun: 0 }, bullets: [], MAX_BULLETS: 10, MAX_ENEMY_BULLETS: 10, enemyBulletCount: () => 0, applyPlayerDamage() { return { applied: false }; }, addFloatText() {}, spawnExplosion() {}, MAX_HOSTILES: 30, MAX_HEAVY_HOSTILES: 7, boss: null };
+  const r = NV.updateEnemies(0, st);
+  if (r.enemies.length !== 3 || r.enemies.some((e) => e.enemyTypeId !== 'boss_minion' || e.noFuse !== true || e.fusionLevel !== undefined)) throw new Error('fusión cambió');
+});
+
+t('boss minion conserva variante de invocación sin cambiar su identidad ni presupuesto', () => {
+  const NV = setup(), enemies = [], spawnSt = spawnState(NV, enemies); spawnSt.wave = 45;
+  if (!NV.spawnMinion(100, 100, spawnSt, 'mutant')) throw new Error('no invocó clon');
+  const clone = enemies[0];
+  if (!clone || clone.enemyTypeId !== 'boss_minion' || clone.summonVariant !== 'mutant' || !clone.noFuse) throw new Error('identidad clon=' + JSON.stringify(clone));
+  assertBudget(NV, spawnSt);
+});
+
+t('noFuse bilateral excluye un vecino same-key y evita fusión', () => {
+  const NV = setup();
+  const base = (x) => ({ x, y: 100, hp: 10, maxHp: 10, damage: 2, speed: 0, radius: 10, color: '#fff', shape: 'circle', behavior: 'chase', enemyTypeId: 'same_key', dead: false, knockVelX: 0, knockVelY: 0, hostileClass: 'light' });
+  const enemies = [base(100), Object.assign(base(101), { noFuse: true }), base(102)];
+  const st = { enemies, player: { x: 800, y: 500, invuln: 0, stun: 0 }, bullets: [], MAX_BULLETS: 10, MAX_ENEMY_BULLETS: 10, enemyBulletCount: () => 0, applyPlayerDamage() { return { applied: false }; }, addFloatText() {}, spawnExplosion() {}, MAX_HOSTILES: 30, MAX_HEAVY_HOSTILES: 7, boss: null };
+  const r = NV.updateEnemies(0, st);
+  if (r.enemies.length !== 3 || r.enemies.some((e) => e.fusionLevel !== undefined || e.dead)) throw new Error('vecino noFuse consumido');
 });
 
 t('fusión extrema se promociona a heavy cuando hay slot', () => {

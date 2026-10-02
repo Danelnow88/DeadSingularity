@@ -16,8 +16,9 @@
       </header>
 
       <section class="config-grid" aria-label="Configuración del encuentro">
+        <label>ENCOUNTER<select id="encounterSelect"><option value="enemies">ENEMIES</option><option value="boss">BOSS</option></select></label>
         <label>PLAYER<select id="playerSelect"></select></label>
-        <label>WAVE<input id="waveInput" type="number" min="1" max="999" step="1" value="19" /></label>
+        <label id="waveField">WAVE<input id="waveInput" type="number" min="1" max="999" step="1" value="19" /></label>
         <label>DIFFICULTY<select id="difficultySelect"></select></label>
         <fieldset>
           <legend>DURATION MODE</legend>
@@ -27,9 +28,21 @@
         <label>DURATION SECONDS<input id="durationInput" type="number" min="1" step="1" value="60" /></label>
       </section>
 
-      <section>
+      <section id="enemyConfig">
         <div class="section-title"><h2>ENEMY COMPOSITION</h2><button id="addEnemyBtn" type="button">+ ADD ENEMY TYPE</button></div>
         <div id="compositionRows" class="composition-rows"></div>
+      </section>
+
+      <section id="bossConfig" hidden>
+        <h2>BOSS LOADOUT</h2>
+        <div class="config-grid">
+          <label>BOSS<select id="bossSelect"></select></label>
+          <label>WEAPON<select id="weaponSelect"></select></label>
+          <label>WEAPON LEVEL<input id="weaponLevelInput" type="number" min="1" max="100" step="1" value="25" /></label>
+          <label>WEAPON FUSION<input id="weaponFusionInput" type="number" min="0" max="3" step="1" value="0" /></label>
+          <label>FIRE MODE<select id="firePolicySelect"><option value="manual">MANUAL</option><option value="legacy-auto">AUTO</option></select></label>
+        </div>
+        <p class="hint compact">Cada jefe usa su oleada canónica y las reglas reales del juego.</p>
       </section>
 
       <div id="errors" class="errors" role="alert" aria-live="polite"></div>
@@ -49,6 +62,8 @@
           <div><dt>DIFFICULTY</dt><dd id="tDifficulty">—</dd></div>
           <div><dt>TIME</dt><dd id="tTime">—</dd></div>
           <div><dt>ACTIVE</dt><dd id="tActive">0</dd></div>
+          <div><dt>BOSS HP</dt><dd id="tBossHp">—</dd></div>
+          <div><dt>DAMAGE</dt><dd id="tBossDamage">—</dd></div>
           <div><dt>PLAYER HP</dt><dd id="tHp">—</dd></div>
           <div><dt>FPS</dt><dd id="tFps">—</dd></div>
         </dl>

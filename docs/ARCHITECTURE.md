@@ -1,6 +1,70 @@
 # Arquitectura
 
+**Especiales cósmicas (02-10):** `render/specialEffects.js` define las cuatro
+manifestaciones y reemplaza el aro genérico de activación. Gameplay conserva
+`meteor/phase/bulwark/hivemind`; el engine sólo notifica activación/impacto/reflejo
+después del hecho real. `player.specialVisual` almacena edad, cierre y hasta24
+eventos efímeros (contactos≤4), sin collider ni RNG. El coordinator avanza ese
+estado por dt, lo limpia en reset/muerte/shop y no lo hereda en lobby preview.
+Player delega capas detrás/delante + deformación Canvas; meteoros/orbitantes/
+proyectiles/ondas usan renderers puros en mundo. Caché de glow≤8 sprites64²;
+budget elimina decoración, no entidades funcionales. `skillColor` afecta sólo
+presentación, no reemplaza la metadata histórica del cuerpo. Contratos y QA:
+`SPECIAL_REMASTER_2026-10-02.md`; `audit_special_contracts.cjs` y
+`special_visual_remaster.js`. No hacer migraciones de IDs por nombres nuevos.
+
+**Aparición anticipada (M4):** `js/engine/enemyArrival.js` gestiona aviso, nube y
+activación por dt. La entidad se reserva en `enemies` desde el aviso para respetar
+presupuesto/cierre; `isEnemyCombatActive/Targetable/Damageable` la excluyen hasta
+activarse. `announceSpawn` se habilita en producción y esbirros; Lab conserva su
+fixture inmediato. Warning .9s ahora es X roja; cuerpo visible durante puff .22s,
+sin activar contacto/IA antes. Sólo ocupación PRE materialización muda/rearma;
+el puff no traslada una entidad ya visible.
+
+**Arena adaptation (02-10):** `boss.js` mueve perfiles propios en recovery por
+W/H de arena; `bossEncounters` captura casts y espera ambiente/gracia visible.
+El coordinator autoriza soporte normal productivo, con targets/cadencia puros en
+balance.js y el mismo hostileBudget. `BOSS_SECTOR_COMPATIBILITY` habilita grupos
+láser de2, alternados con casts; el owner de minas ya no borra hazards ajenos al
+haber boss. Densidad usa compensación acotada+4 y soft≤28/hard30/heavy7 sin tocar
+worldMetrics ni física. Ver ARENA_ADAPTATION_2026-10-02.md.
+
+**Dash estelar (02-10):** `engine/fx.js` amplía el único `trails[]` con segmentos
+`dashStar` de mundo, pool/cap96, vida0.42s y hash cosmético sin RNG de combate.
+El coordinator toma el retorno de `updatePlayerDash` y el desplazamiento real
+pre-movement/post-clamp; no cambia movement.js ni sus autoridades. El renderer
+compartido conserva las estelas circulares de movimiento normal sin estrellas.
+Micropuntos/starbursts se derivan sin objetos por partícula; el halo32px se cachea
+por tint (máx8). Visual budget sólo degrada decoración, nunca física o conteos de
+combate. Detalles: DASH_TRAIL_2026-10-02.md.
+
 Este documento describe la arquitectura de producción actual. El código es la verificación final cuando una implementación y la documentación difieren.
+
+## Alpha 0.10 (actualización del 30-09-2026)
+
+Esta sección prevalece sobre las notas históricas de balance más abajo.
+
+- `engine/expedition.js`: reglas puras de rutas, recompensas, contratos, sincronización de arsenal y persistencia versionada. `NV.alpha` en `game.js` es el puente de UI; no expone setters de entidades.
+- `ui/alpha.js` y `css/alpha.css`: selección de modo, manual, preparación, informes y traslado de guardados. El intervalo de UI guarda sólo en tienda; nunca avanza la simulación.
+- `engine/bossEncounters.js` es la autoridad de ataques de producción. `boss.js` mantiene movimiento/fases/muerte y un fallback legado para harnesses aislados. No confundir las pruebas del fallback con el balance de producción.
+- `NV.guardianRingPattern` genera hueco y trayectorias fijados; `encounter.origins`
+  representa orígenes reales por proyectil (portales/lanzas), usados tanto por
+  aviso como ejecución. Render no recalcula puntería.
+- `NV.sectorLaserPattern` construye grupos 2/4/6 en hazards; engine controla fases
+  y geometría, drawSectorEmitters sólo observa arena real. Resize cancela/reavisa.
+  sectorEmitterLayout queda para fixtures legados. Claves vent/rift indican ejes.
+- syncSectorLaserSound observa grupo/pausa/visibilidad desde el loop existente.
+  Dos osciladores agregados en sfxAmbient/master, cancelables, sin nuevo AudioContext
+  ni temporizadores de combate. Detalles en LASER_HEADS_M6_2026-10-01.md.
+- Tutorial respeta NO HUD por el puente `setHUDVisible`, sin completar/resetear
+  pasos ni añadir otro loop. Avisos peligrosos permanecen visibles.
+- HP de boss: `(type.hp + 500 + max(0,min(50,wave)-5)*95 + max(0,wave-50)*45) * 1.8 * dificultad`, redondeado.
+- Checkpoint guarda datos permitidos, no objetos vivos, callbacks, posiciones de proyectiles ni temporizadores de ataques. Se reanuda en la oleada siguiente; las compras/preparación ya realizadas se conservan.
+- `neonVoidMeta` y `neonVoidSettings` mantienen compatibilidad. Se añaden `neonVoidExpeditionV1` y `neonVoidCareerV1`. El modo `?fresh=1` no escribe el progreso nuevo.
+- El fin de expedición reutiliza `gameover` con victoria explícita: no introduce un segundo loop ni una escena que pueda seguir recibiendo daño.
+- La evolución de armas vive en `NV.evolvedWeaponImpact`; base y evolución comparten `NV.shoot` y las colisiones existentes.
+- El contenedor opcional `desktop/main.cjs` sirve los mismos archivos por `nvgame://game`, sin Node en renderer, con sandbox/CSP y acceso a archivos limitado. No cambia combate ni guardados web existentes.
+- `tools/build_release.cjs` genera entregas nuevas por allowlist y manifiesto SHA-256; no publica y no borra builds anteriores.
 
 ## Modelo general
 
@@ -34,6 +98,8 @@ Existe **una sola implementación compartida de gameplay**. Desktop y móvil eje
 - `NV.applyPlayerDamage(baseDamage, state)` comprueba invulnerabilidad, resta HP, genera feedback/SFX, dispara `onPlayerDamaged` y devuelve un resultado explícito con `applied`, `dodged`, `crit`, `damage`, `hpBefore`, `hpAfter`, `killed` y `cause`.
 
 Contacto y proyectiles delegan en esta autoridad sin cambiar sus defaults históricos de crítico/esquiva. Speaker Mines y explosiones kamikaze delegan con `allowCrit:false` y `allowDodge:false`; siguen respetando invulnerabilidad, armadura y modificadores de personaje. `NV.killEnemy()` es idempotente por entidad y la detonación NOVA resuelve bajas normales mediante el callback `killEnemy`.
+
+La progresión de arma se acredita exclusivamente a una fuente letal explícita `{ kind: 'weapon', weaponId, mode }` cuyo `weaponId` exista en `NV.WEAPONS`. Proyectiles, splash, pellets, rebotes, llama y burn persistente conservan esa identidad; una baja sin fuente válida —especial, meteorito, drone, reflejo, consumible, ambiente o autodetonación— no concede progreso a ningún arma y nunca usa el arma equipada como fallback.
 
 ### Loadout de armas y consumibles
 
@@ -100,9 +166,58 @@ Arquitectura de medición y degradación decorativa. Tres piezas, con responsabi
 | `viewW/viewH/viewX/viewY` | Rectángulo lógico visible para renderer, cámara y conversión de coordenadas. |
 | `arenaW/arenaH` | Bounds reales de gameplay, spawns, clamps y culling. |
 
-La referencia es `900x520`. Desktop mantiene vista y arena en esa medida. Móvil landscape expande horizontalmente vista y arena según el contrato de [arquitectura móvil](MOBILE_ARCHITECTURE.md).
+Foundation de cámara (01-10-2026): referencia/vista desktop `900x520`, arena
+`1350x780`. Móvil landscape conserva altura lógica 520 y vista proporcional al
+canvas físico; arena=1.5× vista en ambos ejes. `viewport.followPlayer()` modifica
+únicamente `viewX/Y`: centrado sin smoothing y clamp visual de 28 unidades fuera
+del mundo mediante `viewport.clampCameraOrigin()`. Ese padding NO se suma a
+`arenaW/H` ni a colisiones/spawns; el zoom cinemático usa el mismo helper. No existe
+otro viewport manager. Input manual suma/resta cámara; HUD es local a vista;
+entidades/culling siguen en mundo. `engine/cameraSafety.js` sólo protege lectura
+off-screen y reconcilia límites ante resize; no mantiene métricas ni otra cámara.
+Detalle, riesgos y pruebas: [Camera foundation](CAMERA_FOUNDATION_2026-10-01.md).
+Pulido posterior: [Perímetro, exterior y ventana](PERIMETER_POLISH_2026-10-01.md).
 
 ## Render
+
+### Perímetro visual — 01-10-2026
+
+`drawSectorPerimeter()` reutiliza `render/sectors.js` y el padding del viewport.
+El corte interior es exactamente `(0,0,arenaW,arenaH)`; labio ondulado oscuro,
+filamentos abiertos y polvo se dibujan hacia FUERA. Material por sector, una
+geometría Path2D cacheada por arena/sector/padding, fallback Canvas2D sin Path2D.
+No mantiene cámara, bounds ni RNG propios. Se dibuja antes de entidades/hazards.
+El tier mínimo conserva labio/junta legible; los otros agregan filamentos y polvo.
+La CSS full-bleed sólo amplía el contenedor desktop de render hacia el padding
+sobrante, sin mover la barra superior. Móvil conserva su caja/aspecto/arena.
+Reutiliza el resize controller y conversión existentes.
+
+### Escenarios cósmicos — 01-10-2026
+
+`render/sectors.js` sigue siendo el único renderer de escenarios. Conserva
+`SECTOR_VISUALS`, `sectorVisualForWave()` y `drawSectorBackdrop()`; índice
+`min(3, floor((wave-1)/5))`, también en infinito/guardados legacy. No depende
+del índice de boss ni redefine stages. Los datos/reglas de expedición no cambian.
+
+Dos superficies Canvas2D desacopladas del DOM guardan el arte del sector actual:
+nubes, cuerpos celestes y masas esenciales; polvo y fragmentos secundarios.
+El cache se invalida sólo por sector o `arenaW/H`, nunca por cámara, tiempo,
+DPR o calidad. Tamaño máximo 1536×1024 por superficie (~12 MiB RGBA en total);
+no conserva una colección de texturas de partidas anteriores. En producción
+usa OffscreenCanvas o canvas separado; el fallback directo sólo es necesario
+en harnesses sin superficie Canvas. No modifica entidades ni consume RNG real.
+
+El arte se proyecta desde `(0,0,arenaW,arenaH)` con el transform existente,
+incluido zoom cinemático; no es UI ni un segundo viewport. Hitos son visibles
+en todos los tiers; `full` añade detalle, `reduced` lo atenúa y `minimal` lo
+omite. `game.js` pasa el tier REAL (`full/reduced/minimal`); las antiguas ramas
+`performance/medium` no coincidían con visualBudget. Starfield lejano y efectos
+rítmicos conservan sus APIs, pero ya no son la única referencia de movimiento.
+
+El dibujo de cuadrícula y su flag/diagnóstico `no-grid` se eliminan; ese modo
+ya no es válido. No eliminar el spatial grid de enemigos: es optimización de
+simulación, no arte de fondo. `getSectorBackdropStats()` es diagnóstico sólo
+de cache decorativo, no fuente de métricas. Ver COSMIC_SCENARIOS_2026-10-01.md.
 
 - El pipeline de producción principal usa Canvas2D sobre `#game`.
 - `js/render/` dibuja fondo, enemigos, bosses, jugador, proyectiles, HUD e iconos.
@@ -194,7 +309,7 @@ El Rifle (`id: 'rifle'`, raridad uncommon) es la primera arma que materializa la
 - **Recoil/spread (auditoría F04):** el Rifle mantiene spread cero y sin recoil. Añadir bloom haría que la precisión dependiera del azar, contradiciendo que el aim manual importe; no hay camera kick ni random bloom.
 - **Contrato de pierce (explícito):** `pierce` = número TOTAL de objetivos dañables antes de morir. Rifle `pierce: 2` = objetivo primario + 1 enemigo adicional (NUNCA "2 penetraciones tras el primero"). Al alcanzar el límite la bala muere (`hitCount >= b.pierce` en `engine/bullets.js`) → penetración finita y legible. Contrato documentado en `engine/weapons.js` y `engine/bullets.js`.
 - **Visual:** proyectil `bullet` largo (`len 10`), una línea orientada al vuelo; sin partículas ni glow nuevos por frame.
-- **Nivel/fusión:** sin cambios. El daño sigue `(base + perm*2 + bonoNivel) × waveWeaponMult × fusión`; nivel y fusión se conservan (cubierto en tests).
+- **Nivel/fusión:** el nivel escala proporcionalmente solo el daño base del arma: `(base × multiplicadorNivel + perm*2) × waveWeaponMult × fusión`. La curva compartida es x1.00 en nivel 1, x1.48 en 25, x1.73 en 50 y x1.98 en 100; fusión conserva su etapa posterior y su redondeo existente.
 - **Independencia del dash:** el dash no altera daño, pierce, cadencia ni velocidad del proyectil; el disparo solo depende de `aimVector`/target y de la cadencia compartida.
 
 El resto de armas NO se rediseña en F04.

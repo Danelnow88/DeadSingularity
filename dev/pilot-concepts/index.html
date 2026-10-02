@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NEON VOID — laboratorio de estabilidad</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#050914;color:#d9e7f7;font:15px system-ui,sans-serif}
+    main{max-width:1160px;margin:auto;padding:24px}h1{font-size:23px;margin:0 0 8px}
+    p{color:#93a9bf;max-width:900px;line-height:1.5}button{background:#102034;color:#bffaff;border:1px solid #37647b;padding:10px 18px;border-radius:8px;cursor:pointer}
+    canvas{display:block;width:100%;height:auto;margin-top:18px;border:1px solid #20324a;border-radius:12px}
+    .note{font-size:13px}a{color:#88efff}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0}
+    select,input[type=text]{background:#102034;color:#d9e7f7;border:1px solid #37647b;border-radius:6px;padding:8px}
+    input[type=text]{width:200px}button:disabled,input:disabled{opacity:.6;cursor:default}#presetStatus{color:#8df2de;font-size:13px}
+    .controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px;border:1px solid #20324a;border-radius:10px;padding:14px}
+    label{display:grid;gap:6px;font-size:13px}label div{display:flex;gap:8px;align-items:center}input{width:100%;accent-color:#76eafa}output{min-width:34px;color:#a9eaf3}
+    #metrics{font:13px system-ui;white-space:pre-wrap;line-height:1.6;color:#9dc2d3}
+    .captures{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}figure{margin:16px 0}figure img{width:100%;border:1px solid #20324a}figcaption{padding:6px 0}
+    @media(max-width:600px){main{padding:12px}.captures{grid-template-columns:1fr}button{padding:8px}}
+  </style>
+</head>
+<body><main>
+  <h1>NEON VOID · forma y animación independientes</h1>
+  <p>Izquierda: renderer actual del juego. Derecha: tu animación exacta con la forma que elijas. Se conservan ojos, colores, gotas, corrientes y anillos. La base canónica está protegida; duplicala si querés experimentar con sus valores.</p>
+  <p class="note"><a href="references/four-radial-forms.png" target="_blank" rel="noopener">Ver la referencia original de las cuatro formas</a></p>
+  <div class="toolbar"><label for="preset">Animación</label><select id="preset"></select><button id="reset" type="button">Cargar base canónica</button><span id="presetStatus" role="status"></span></div>
+  <div class="toolbar"><input id="presetName" type="text" maxlength="80" aria-label="Nombre de la copia" placeholder="Nombre de tu copia"><button id="duplicatePreset" type="button">Duplicar preset</button><button id="savePreset" type="button">Guardar copia</button><button id="exportPresets" type="button">Exportar JSON</button></div>
+  <div class="toolbar"><label for="pilot">Ajustar piloto</label><select id="pilot"><option value="boti">BOTI</option><option value="nova">NOVA</option><option value="rook">ROOK</option><option value="swarm">ENJAMBRE</option></select><label for="shape">Forma base</label><select id="shape"><option value="woven">Radial entrelazada</option><option value="radial">Radial puntiaguda</option><option value="star">Estrella irregular</option><option value="asymmetric">Angular asimétrica</option><option value="peaks">Picos largos y cortos</option></select></div>
+  <div class="controls">
+    <label>Velocidad del contorno<div><input data-param="speed" type="range" min="0" max="1" step="0.01"><output></output></div></label>
+    <label>Amplitud de deformación<div><input data-param="amplitude" type="range" min="0" max="1.5" step="0.01"><output></output></div></label>
+    <label>Estabilidad de silueta<div><input data-param="stability" type="range" min="0" max="1" step="0.01"><output></output></div></label>
+    <label>Microvariación continua<div><input data-param="micro" type="range" min="0" max="1" step="0.01"><output></output></div></label>
+    <label>Velocidad de detalles<div><input data-param="detailSpeed" type="range" min="0" max="1" step="0.01"><output></output></div></label>
+  </div>
+  <div class="toolbar"><button id="pause" type="button" aria-pressed="false">Pausar</button><button data-step="1" type="button">+1 frame</button><button data-step="6" type="button">+6 frames</button><button data-step="60" type="button">+1 segundo</button><button id="anchor" type="button">Volver al inicio</button><span id="time" aria-live="off"></span></div>
+  <canvas id="comparison" width="1100" height="1330" aria-label="Comparación animada de los cuatro pilotos, original y forma elegida con animación canónica"></canvas>
+  <div class="toolbar"><button data-capture="a" type="button">Capturar A</button><button data-capture="b" type="button">Capturar B</button><button id="measure" type="button">Medir variación</button></div>
+  <pre id="metrics"></pre>
+  <div class="captures"><figure id="capture-a" hidden><figcaption></figcaption><img alt="Captura A de la comparación"><a>Descargar PNG</a></figure><figure id="capture-b" hidden><figcaption></figcaption><img alt="Captura B de la comparación"><a>Descargar PNG</a></figure></div>
+  <p class="note">Laboratorio: la izquierda conserva el dibujo original de diagnóstico. El juego usa las formas aprobadas: BOTI radial entrelazada, NOVA radial puntiaguda, ROOK picos largos y cortos y ENJAMBRE angular asimétrica. Las copias se guardan con «Guardar copia» sólo en este navegador; exportá el JSON para conservarlas. El preset canónico compartido está protegido. El ruido del original usa muestras reproducibles sólo aquí para comparar un frame.</p>
+</main>
+<script src="../../js/core/state.js"></script>
+<script src="../../js/data/gameData.js"></script>
+<script src="../../js/render/player.js"></script>
+<script src="../../js/data/pilotAnimationBaseline.js"></script>
+<script src="../../js/render/pilotGeometry.js"></script>
+<script src="../../js/render/pilotAppearance.js"></script>
+<script src="animation-presets.js"></script>
+<script src="geometry.js"></script>
+<script src="concepts.js"></script>
+</body></html>

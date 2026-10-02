@@ -1,0 +1,10 @@
+{
+  "frame": 5211.637999999551,
+  "paused": false,
+  "settings": {
+    "boti": {"speed": 1, "amplitude": 0.25, "stability": 0.5, "micro": 0.2, "detailSpeed": 0.75},
+    "nova": {"speed": 0.22, "amplitude": 0.8, "stability": 0.55, "micro": 0.3, "detailSpeed": 0.85},
+    "rook": {"speed": 0.14, "amplitude": 0.9, "stability": 0.45, "micro": 0.25, "detailSpeed": 0.6},
+    "swarm": {"speed": 0.18, "amplitude": 0.85, "stability": 0.5, "micro": 0.3, "detailSpeed": 0.72}
+  }
+}

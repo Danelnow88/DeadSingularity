@@ -88,11 +88,11 @@ t('viewport.computeScale: escala uniforme = min(width/900, height/520)', () => {
   if (v.computeScale(1800, 1040, 900, 520) !== 2) throw new Error('1800x1040 no dio 2');
 });
 
-t('viewport.worldMetrics: ref/view/arena permanecen 900x520 en Stage 0/1', () => {
+t('viewport.worldMetrics comparte vista 900x520 y arena separada 1350x780', () => {
   const { sbx } = makeSandbox({ nv: { capabilities: { isMobile: false } } });
   load('js/core/viewport.js', sbx);
   const m = sbx.NV.worldMetrics;
-  const expected = { refW: 900, refH: 520, viewW: 900, viewH: 520, viewX: 0, viewY: 0, arenaW: 900, arenaH: 520, scale: 1 };
+  const expected = { refW: 900, refH: 520, viewW: 900, viewH: 520, viewX: 0, viewY: 0, arenaW: 1350, arenaH: 780, scale: 1 };
   for (const k of Object.keys(expected)) {
     if (m[k] !== expected[k]) throw new Error(k + '=' + m[k]);
   }

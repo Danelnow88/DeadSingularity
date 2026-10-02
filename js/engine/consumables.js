@@ -5,10 +5,23 @@
   const NV = window.NV;
   const CONSUMABLES = NV.CONSUMABLES;
 
+  // Validación previa al inventario: no gastar una carga por pulsar F sin
+  // un efecto posible. Buffs temporales sí pueden renovarse deliberadamente.
+  NV.canUseConsumable = function (type, ctx) {
+    if (!CONSUMABLES[type]) return { ok: false, reason: 'Objeto desconocido' };
+    const live = (ctx.enemies || []).some(e => !e.dead && !e.arrival && !e.waveCleanup && !e.killResolved);
+    if (type === 'potion' && ctx.player.hp >= ctx.player.maxHp) return { ok: false, reason: 'Vida completa · poción conservada' };
+    if (type === 'bomb' && !live && (!ctx.boss || ctx.boss.dead || ctx.boss.hp <= 0)) return { ok: false, reason: 'Sin blancos · bomba conservada' };
+    if (type === 'freeze' && !live) return { ok: false, reason: 'Congelante: sólo enemigos, no jefes' };
+    if (type === 'magnet' && ![...(ctx.pickups || []), ...(ctx.weaponPickups || [])].some(p => !p.dead && !p.magnetPull)) return { ok: false, reason: 'Sin botín · imán conservado' };
+    return { ok: true };
+  };
+
   NV.CONSUMABLE_HANDLERS = {
     potion(ctx) {
+      const healed = Math.min(CONSUMABLES.potion.hp, ctx.player.maxHp - ctx.player.hp);
       ctx.player.hp = Math.min(ctx.player.maxHp, ctx.player.hp + CONSUMABLES.potion.hp);
-      ctx.addFloatText(ctx.player.x, ctx.player.y, '+40 HP', '#0f0');
+      ctx.addFloatText(ctx.player.x, ctx.player.y, '+' + healed + ' HP', '#0f0');
       if (ctx.spawnConsumableVfx) ctx.spawnConsumableVfx('potion', { x: ctx.player.x, y: ctx.player.y });
     },
     overdrive(ctx) {

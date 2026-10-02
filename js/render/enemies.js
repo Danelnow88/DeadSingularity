@@ -518,8 +518,83 @@
         ctx.font = 'bold 11px monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('FUSION ' + lvl, 0, -r - 18);
+        ctx.fillText(NV.fusionMilestoneLabel ? NV.fusionMilestoneLabel(lvl) : ('FUSION ' + lvl), 0, -r - 18);
       }
+      ctx.restore();
+    }
+    if ((e.fusionInterruptFlash || 0) > 0) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, e.fusionInterruptFlash / 0.7);
+      ctx.strokeStyle = '#7cf8ff'; ctx.lineWidth = 3; ctx.shadowBlur = 0;
+      ctx.setLineDash([3, 6]);
+      ctx.beginPath(); ctx.arc(0, 0, r + 12, 0.35, Math.PI * 1.55); ctx.stroke();
+      ctx.setLineDash([]); ctx.restore();
+    }
+
+    // C2 — Dron: el anillo lateral comunica formación; durante la señal, la
+    // trayectoria convergente deja claro que el contacto está por activarse.
+    if (e.enemyTypeId === 'drone' && e.droneState) {
+      const cfg = NV.ENEMY_ROLE_REWORK && NV.ENEMY_ROLE_REWORK.drone;
+      ctx.save();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = 'rgba(240,123,173,.58)';
+      ctx.lineWidth = 1.6;
+      if (e.droneState === 'signal' && cfg) {
+        const progress = Math.max(0, Math.min(1, 1 - (e.droneTimer || 0) / cfg.signal));
+        ctx.globalAlpha = 0.5 + progress * 0.4;
+        ctx.setLineDash([5, 4]);
+        const dx = (player ? player.x : e.x) - e.x;
+        const dy = (player ? player.y : e.y) - e.y;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(dx, dy); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath(); ctx.arc(0, 0, r + 5 + progress * 5, 0, Math.PI * 2 * progress); ctx.stroke();
+      } else if (e.droneState === 'press') {
+        ctx.strokeStyle = 'rgba(255,92,158,.82)';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(0, 0, r + 5, -0.65, 0.65); ctx.stroke();
+      } else {
+        ctx.globalAlpha = e.droneState === 'recovery' ? 0.28 : 0.42;
+        ctx.beginPath(); ctx.arc(0, 0, r + 5, -1.0, 1.0); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // C1/K2 — Tanque: mira fija durante la carga del cañón. La bala irá a la
+    // posición marcada, por lo que salir de la línea es la respuesta legible.
+    if (e.enemyTypeId === 'tank' && !e.isElite && e.tankCannonState) {
+      ctx.save();
+      ctx.shadowBlur = 0;
+      if (e.tankCannonState === 'windup') {
+        const total = (NV.ENEMY_ROLE_REWORK && NV.ENEMY_ROLE_REWORK.tank.windup) || 0.9;
+        const progress = Math.max(0, Math.min(1, 1 - (e.tankCannonTimer || 0) / total));
+        const tx = (Number.isFinite(e.tankCannonTargetX) ? e.tankCannonTargetX : e.x) - e.x;
+        const ty = (Number.isFinite(e.tankCannonTargetY) ? e.tankCannonTargetY : e.y) - e.y;
+        const td = Math.max(1, Math.hypot(tx, ty));
+        ctx.strokeStyle = 'rgba(255,82,92,' + (0.48 + progress * 0.42) + ')';
+        ctx.lineWidth = 2 + progress * 1.4;
+        ctx.setLineDash([8, 6]);
+        ctx.beginPath(); ctx.moveTo(tx / td * (r + 5), ty / td * (r + 5)); ctx.lineTo(tx, ty); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath(); ctx.arc(0, 0, r + 7 + progress * 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,82,92,' + (0.72 + progress * 0.25) + ')';
+        ctx.beginPath(); ctx.arc(tx, ty, 4 + progress * 3, 0, Math.PI * 2); ctx.fill();
+      } else if (e.tankCannonState === 'recovery') {
+        ctx.strokeStyle = 'rgba(255,207,118,.52)';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0, 0, r + 7, 0.25, Math.PI - 0.25); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // Rally del comandante: feedback barato y común a cualquier aliado buffeado.
+    if ((e.rallyTimer || 0) > 0) {
+      const rallyPulse = 0.5 + Math.sin((frame || 0) * 0.24) * 0.5;
+      ctx.save();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 0.42 + rallyPulse * 0.25;
+      ctx.strokeStyle = '#ffe24a';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(0, 0, r + 5 + rallyPulse * 2, 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
     }
 

@@ -45,5 +45,15 @@ t('railgun también usa rapidFireVolume', () => {
   if (!src.includes("rapidFireVolume('railgun'")) throw new Error('railgun sin anti-fatiga');
 });
 
+t('el drone del lobby no se repite por cada frame congelado', () => {
+  const { NV, sb } = load('menu'); NV.initAudio(); NV.getFrame = () => 0;
+  NV.updateMusic(0);
+  const count = sb._freqs.length;
+  for (let i = 0; i < 240; i++) NV.updateMusic(0);
+  if (sb._freqs.length !== count) throw new Error('nodos de audio nuevos sin avanzar el reloj');
+  sb._ctx.currentTime = 3.3; NV.updateMusic(0);
+  if (!(sb._freqs.length > count)) throw new Error('el drone no retoma con el reloj de audio');
+});
+
 console.log('RESULT audio_menu_fatigue: pass=' + pass + ' fail=' + fail);
 process.exit(fail ? 1 : 0);

@@ -433,7 +433,8 @@
   if (ANIM.lastCd !== null && ANIM.lastCd > 0 && player.specialCd <= 0) { ANIM.readyPulse = nowMs(); }
   ANIM.lastCd = player.specialCd;
   var rt = ANIM.readyPulse ? Math.max(0, 1 - (nowMs() - ANIM.readyPulse) / 500) : 0;
-  var sCnum = rgbaNum(char.color);
+  var skillColor = char.skillColor || char.color;
+  var sCnum = rgbaNum(skillColor);
   var skillGrad = slotGradient(ctx, bx, ssy, sl, sl, sCnum);
   ctx.fillStyle = skillGrad || 'rgba(' + sCnum + ',0.12)';
   roundedFill(ctx, bx, ssy, sl, sl, 5);
@@ -449,19 +450,19 @@
   ctx.beginPath(); ctx.arc(rcx, rcy, rrad, 0, Math.PI * 2); ctx.stroke();
   // glow atenuado mientras carga, pleno + pulso al listo
   var ren = rstart + (cd >= 1 ? Math.PI * 2 : Math.max(0.06, cd * Math.PI * 2));
-  ctx.strokeStyle = cd >= 1 ? char.color : 'rgba(' + sCnum + ',' + (0.4 + rt * 0.4).toFixed(2) + ')';
+  ctx.strokeStyle = cd >= 1 ? skillColor : 'rgba(' + sCnum + ',' + (0.4 + rt * 0.4).toFixed(2) + ')';
   ctx.lineWidth = cd >= 1 ? 3 : 2.5;
-  ctx.shadowColor = char.color; ctx.shadowBlur = cd >= 1 ? (8 + 14 * rt) : 2.5;
+  ctx.shadowColor = skillColor; ctx.shadowBlur = cd >= 1 ? (8 + 14 * rt) : 2.5;
   ctx.beginPath(); ctx.arc(rcx, rcy, rrad, rstart, ren); ctx.stroke();
   ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.lineCap = 'butt';
   // texto a la derecha (aprovecha el ancho sobrante): CD/LISTO + nombre truncado
   var tx = bx + sl + 8;
   var maxTxt = pw - (sl + 14);
   ctx.font = 'bold 8px system-ui';
-  ctx.fillStyle = cd >= 1 ? char.color : '#aaa';
+  ctx.fillStyle = cd >= 1 ? skillColor : '#aaa';
   ctx.fillText(cd >= 1 ? 'LISTO' : 'CD ' + Math.ceil(player.specialCd) + 's', tx, ssy + 8);
   ctx.font = 'bold 7px system-ui';
-  ctx.fillStyle = cd >= 1 ? char.color : '#ddd';
+  ctx.fillStyle = cd >= 1 ? skillColor : '#ddd';
   var fitted = truncateToWidth(ctx, char.skillName, 'bold 7px system-ui', maxTxt);
   ctx.fillText(fitted, tx, ssy + 16);
   ctx.shadowBlur = 0;
@@ -521,7 +522,7 @@ NV.drawCombo = function (ctx, W, H, combo, opts) {
       `Control: ${player.agility.toFixed(2)}x · permanente ${((player.moveControlPermanentMult || 1) * 100).toFixed(0)}%`,
       `Dash: ${Math.floor(((player.dashStamina || 0) + 0.0001) / (player.dashCost || 50))}/2 · stamina ${Math.round(player.dashStamina || 0)}`,
       `Arma: ${weapon.name} (${weapon.rarity}) | Nv ${currentWeaponLevel()}` + (weaponVisualTier() > 0 ? ` | Tier ${weaponVisualTier()} (${BULLET_TIER_COLORS[weaponVisualTier()]})` : ''),
-      `DaÃ±o: ${weapon.damage + permUpgrades.damage * 2 + (NV.weaponLevelDamageBonus ? NV.weaponLevelDamageBonus(currentWeaponLevel()) : currentWeaponLevel())}`,
+      `DaÃ±o: ${weapon.damage * NV.weaponLevelDamageMultiplier(currentWeaponLevel()) + permUpgrades.damage * 2}`,
       `Inventario: ${inventory.length}/${INVENTORY_SLOTS}  |  Consumibles: ${consumableItems.length}`,
     ];
     lines.forEach((line, i) => ctx.fillText(line, panelX + 10, panelY + 45 + i * 18));

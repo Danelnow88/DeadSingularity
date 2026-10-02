@@ -5,6 +5,11 @@
   'use strict';
   const NV = window.NV;
 
+  function weaponDamageSource(weaponId, mode) {
+    if (typeof weaponId !== 'string' || !weaponId) return null;
+    return { kind: 'weapon', weaponId, mode };
+  }
+
   // Crea una zona de llama. opts: { x, y, angle, range, halfAngle, damage, tickRate,
   // life, maxLife, burnDamage, burnDuration, color, crit }
   NV.createFlameZone = function (opts) {
@@ -31,14 +36,23 @@
   };
 
   // Aplica burn (DOT) a una entidad. No stacking: refresca duración, nunca acumula DPS.
-  NV.applyBurn = function (entity, burnDamage, burnDuration) {
+  NV.applyBurn = function (entity, burnDamage, burnDuration, weaponId) {
     if (NV.isEnemyDamageable && !NV.isEnemyDamageable(entity)) return;
     if (entity.burn) {
       // Ya tiene burn: refresca duración, mantiene el DPS más alto (no multiplicativo)
       entity.burn.remaining = Math.max(entity.burn.remaining, burnDuration);
-      if (burnDamage > entity.burn.dps) entity.burn.dps = burnDamage;
+      if (burnDamage > entity.burn.dps) {
+        entity.burn.dps = burnDamage;
+        entity.burn.weaponId = typeof weaponId === 'string' && weaponId ? weaponId : null;
+        if (NV.playtest && NV.playtest.enabled) NV.playtest.enemyBurnSource(entity, weaponId);
+      }
     } else {
-      entity.burn = { dps: burnDamage, remaining: burnDuration };
+      entity.burn = {
+        dps: burnDamage,
+        remaining: burnDuration,
+        weaponId: typeof weaponId === 'string' && weaponId ? weaponId : null,
+      };
+      if (NV.playtest && NV.playtest.enabled) NV.playtest.enemyBurnSource(entity, weaponId);
     }
   };
 
@@ -50,11 +64,16 @@
       if (!e || e.dead || !e.burn || (NV.isEnemyCombatActive && !NV.isEnemyCombatActive(e))) return;
       const rawDamage = e.burn.dps * dt;
       const dealt = !e.isBoss && NV.guardProtectedDamage ? NV.guardProtectedDamage(e, rawDamage) : rawDamage;
+      const hpBefore = NV.playtest && NV.playtest.enabled && e !== boss ? e.hp : 0;
       e.hp -= dealt;
+      if (NV.playtest && NV.playtest.enabled && e !== boss) {
+        NV.playtest.enemyBurnHit(e, dealt, hpBefore, e.hp);
+      }
+      if (e === boss && NV.playtest && NV.playtest.enabled) NV.playtest.bossBurnHit(e, dealt);
       e.burn.remaining -= dt;
       if (e.burn.remaining <= 0 || e.hp <= 0) {
         if (e.hp <= 0 && !e.isBoss) {
-          if (killEnemy) killEnemy(e);
+          if (killEnemy) killEnemy(e, weaponDamageSource(e.burn.weaponId, 'burn'));
         }
         e.burn = null;
       }
@@ -119,21 +138,25 @@
       z.hitTargets.push(e);
       const resisted = Math.max(1, z.damage - (e.resist || 0));
       const dealt = NV.guardProtectedDamage ? NV.guardProtectedDamage(e, resisted) : resisted;
+      const hpBefore = NV.playtest && NV.playtest.enabled ? e.hp : 0;
       e.hp -= dealt;
+      if (NV.playtest && NV.playtest.enabled) NV.playtest.weaponEnemyHit(z.wid, 'flame', dealt, hpBefore, e.hp);
       if (e.isElite) e.stun = 0.25;
       e.hitFlash = Math.max(e.hitFlash || 0, 0.10);
-      NV.applyBurn(e, z.burnDamage, z.burnDuration);
+      NV.applyBurn(e, z.burnDamage, z.burnDuration, z.wid);
       const damageText = NV.formatDamageText ? NV.formatDamageText(dealt) : String(Math.round(dealt * 100) / 100);
       if (addFloatText && damageText !== null) addFloatText(e.x, e.y - e.radius - 6, damageText, '#fb923c', 13, { damageValue: dealt });
-      if (e.hp <= 0 && killEnemy) killEnemy(e);
+      if (e.hp <= 0 && killEnemy) killEnemy(e, weaponDamageSource(z.wid, 'flame'));
       if (applyKnockback) applyKnockback(e, z.x, z.y, 30);
     }
 
     // Jefe
     if (boss && !boss.dead && inCone(boss.x, boss.y, boss.radius)) {
       boss.hp -= z.damage;
+      if (NV.playtest && NV.playtest.enabled) NV.playtest.bossHit(z.wid, z.damage, 'direct');
       boss.hitFlash = Math.max(boss.hitFlash || 0, 0.10);
       NV.applyBurn(boss, z.burnDamage, z.burnDuration);
+      if (boss.burn && NV.playtest && NV.playtest.enabled) NV.playtest.bossBurnSource(boss, z.wid);
       if (NV.bossHitReaction) NV.bossHitReaction(boss, z.damage, addFloatText);
     }
   };

@@ -72,7 +72,7 @@ t('HUD y widget evitan escrituras DOM idénticas', () => {
 });
 
 t('diagnóstico de grupos default full y solo controla llamadas de render', () => {
-  for (const mode of ['full', 'no-background-effects', 'no-starfield', 'no-grid', 'no-meta-overlays', 'core-gameplay-only']) {
+  for (const mode of ['full', 'no-background-effects', 'no-starfield', 'no-meta-overlays', 'core-gameplay-only']) {
     if (!game.includes("'" + mode + "'") && !game.includes(mode + ':')) throw new Error('falta modo ' + mode);
   }
   if (!game.includes("let renderDiagnosticMode = 'full'")) throw new Error('default no full');
@@ -81,14 +81,16 @@ t('diagnóstico de grupos default full y solo controla llamadas de render', () =
   for (const forbidden of ['enemies =', 'bullets =', 'player.hp =', 'waveTimer =', 'rhythmTick']) {
     if (block.includes(forbidden)) throw new Error('diagnóstico muta gameplay: ' + forbidden);
   }
-  for (const gate of ['drawBackgroundEffects', 'drawStarfield', 'drawGrid', 'drawMetaOverlays', 'drawDecorativeVfx']) if (!block.includes(gate)) throw new Error('gate ausente ' + gate);
+  for (const gate of ['drawBackgroundEffects', 'drawStarfield', 'drawMetaOverlays', 'drawDecorativeVfx']) if (!block.includes(gate)) throw new Error('gate ausente ' + gate);
 });
 
-t('aislamiento fino de fondo separa starfield y grid sin cambiar el modo full', () => {
-  if (!game.includes("'no-starfield': { backgroundEffects: true, starfield: false, grid: true")) throw new Error('no-starfield no aísla solo estrellas');
-  if (!game.includes("'no-grid': { backgroundEffects: true, starfield: true, grid: false")) throw new Error('no-grid no aísla solo grid');
+t('aislamiento fino mantiene starfield y elimina diagnóstico engañoso de grilla', () => {
+  if (!game.includes("'no-starfield': { backgroundEffects: true, starfield: false")) throw new Error('no-starfield no aísla solo estrellas');
   if (!game.includes('if (drawStarfield) NV.drawStarfield(')) throw new Error('starfield sin gate propio');
-  if (!game.includes('if (drawGrid) {')) throw new Error('grid sin gate propio');
+  for (const token of ['no-grid', 'drawGrid', 'gridAlpha', 'gridStartX', 'gridRgb']) {
+    if (game.includes(token)) throw new Error('grilla/código muerto: ' + token);
+  }
+  if (!game.includes("tier: vbp ? vbp.tier : 'full'")) throw new Error('fondo no consume tier real');
 });
 
 console.log('RESULT render_pipeline_diagnostics: pass=' + pass + ' fail=' + fail);

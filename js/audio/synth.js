@@ -9,10 +9,13 @@
   NV.audioCtx = null;
   NV.musicState = {
     step: 0,
+    bar: 0,
+    nextDroneAt: 0,
     lastBeat: 0,
     intensity: 0,
     combo: 0,        // kills sin morir → capas musicales de intensidad (Tarea 1 - audio adaptativo)
     phase: 'normal', // 'normal' | 'boss' | 'shop' | 'menu' (manejado por game.js)
+    sector: 'threshold',
   };
   NV.musicTime = 0;
 
@@ -47,13 +50,58 @@
     [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
     [0,0,1,0, 0,0,1,0, 0,0,1,0, 0,0,1,0],
   ];
+  // Cuatro identidades de expedición. Todas conservan 16 pasos para cambiar de
+  // sector sin cortar notas ni recrear el motor, pero difieren en armonía, ritmo,
+  // timbre y respiración del drone.
+  const FOUNDRY_CHORD_ROOTS = [55.00, 65.41, 82.41, 73.42];
+  const FOUNDRY_BASS_LINE = [55.00, 55.00, 82.41, 73.42];
+  const FOUNDRY_LEAD_SEQ = [220.00, 261.63, 329.63, 293.66, 392.00, 329.63, 261.63, 246.94];
+  const FOUNDRY_DRUM_PATTERN = [
+    [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,1,0,0],
+    [0,0,0,0, 1,0,0,1, 0,0,0,0, 1,0,0,1],
+    [1,1,0,1, 1,1,0,1, 1,1,0,1, 1,1,1,1],
+  ];
+  const FRACTURE_CHORD_ROOTS = [69.30, 92.50, 77.78, 116.54];
+  const FRACTURE_BASS_LINE = [69.30, 0, 77.78, 92.50];
+  const FRACTURE_LEAD_SEQ = [277.18, 369.99, 311.13, 466.16, 415.30, 311.13, 369.99, 233.08];
+  const FRACTURE_DRUM_PATTERN = [
+    [1,0,0,1, 0,0,1,0, 1,0,0,1, 0,1,0,0],
+    [0,0,0,0, 1,0,0,0, 0,0,1,0, 1,0,0,0],
+    [1,0,1,1, 1,1,0,1, 1,0,1,0, 1,1,0,1],
+  ];
+  const VOID_CHORD_ROOTS = [43.65, 51.91, 61.74, 46.25];
+  const VOID_BASS_LINE = [43.65, 51.91, 43.65, 61.74];
+  const VOID_LEAD_SEQ = [174.61, 207.65, 246.94, 311.13, 293.66, 246.94, 207.65, 155.56];
+  const VOID_DRUM_PATTERN = [
+    [1,0,0,0, 1,0,1,0, 1,0,0,0, 1,0,1,0],
+    [0,0,0,0, 1,0,0,0, 0,0,0,1, 1,0,0,0],
+    [1,0,1,0, 1,0,1,1, 1,0,1,0, 1,1,1,0],
+  ];
   const MUSIC_LAYERS = {
     normal: { chordRoots: CHORD_ROOTS, bass: BASS_LINE, lead: LEAD_SEQ, drums: DRUM_PATTERN },
     boss: { chordRoots: BOSS_CHORD_ROOTS, bass: BOSS_BASS_LINE, lead: BOSS_LEAD_SEQ, drums: BOSS_DRUM_PATTERN },
     menu: { chordRoots: MENU_CHORD_ROOTS, bass: MENU_BASS_LINE, lead: MENU_LEAD_SEQ, drums: MENU_DRUM_PATTERN },
     shop: { chordRoots: MENU_CHORD_ROOTS, bass: MENU_BASS_LINE, lead: MENU_LEAD_SEQ, drums: MENU_DRUM_PATTERN },
   };
-  function currentLayers() { return MUSIC_LAYERS[NV.musicState.phase] || MUSIC_LAYERS.normal; }
+  const SECTOR_MUSIC = Object.freeze([
+    Object.freeze({ id: 'threshold', stepDur: 0.12, droneInterval: 2.4, droneOctave: 4, leadType: 'sawtooth', bassType: 'sawtooth', accent: 0,
+      chordRoots: CHORD_ROOTS, bass: BASS_LINE, lead: LEAD_SEQ, drums: DRUM_PATTERN }),
+    Object.freeze({ id: 'foundry', stepDur: 0.112, droneInterval: 2.15, droneOctave: 3, leadType: 'square', bassType: 'sawtooth', accent: 1760,
+      chordRoots: FOUNDRY_CHORD_ROOTS, bass: FOUNDRY_BASS_LINE, lead: FOUNDRY_LEAD_SEQ, drums: FOUNDRY_DRUM_PATTERN }),
+    Object.freeze({ id: 'fracture', stepDur: 0.126, droneInterval: 2.65, droneOctave: 4, leadType: 'triangle', bassType: 'square', accent: 1244,
+      chordRoots: FRACTURE_CHORD_ROOTS, bass: FRACTURE_BASS_LINE, lead: FRACTURE_LEAD_SEQ, drums: FRACTURE_DRUM_PATTERN }),
+    Object.freeze({ id: 'void-heart', stepDur: 0.104, droneInterval: 1.95, droneOctave: 2, leadType: 'sawtooth', bassType: 'sine', accent: 932,
+      chordRoots: VOID_CHORD_ROOTS, bass: VOID_BASS_LINE, lead: VOID_LEAD_SEQ, drums: VOID_DRUM_PATTERN }),
+  ]);
+  function musicSectorIndex(wave) {
+    const safe = Number.isFinite(wave) ? Math.max(1, Math.floor(wave)) : 1;
+    return Math.min(3, Math.floor((safe - 1) / 5));
+  }
+  function sectorMusicForWave(wave) { return SECTOR_MUSIC[musicSectorIndex(wave)]; }
+  function currentLayers(wave) {
+    if (NV.musicState.phase === 'normal') return sectorMusicForWave(wave);
+    return MUSIC_LAYERS[NV.musicState.phase] || MUSIC_LAYERS.normal;
+  }
 
   function initMusic() {
     if (!NV.audioCtx) NV.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -233,6 +281,7 @@
       masterGain.gain.linearRampToValueAtTime(target, t + 0.025);
     }
     if (!NV.soundOn && NV.audio && typeof NV.audio.stopAllWeapons === 'function') NV.audio.stopAllWeapons();
+    if (!NV.soundOn && NV.stopSectorLaserSound) NV.stopSectorLaserSound();
     if (typeof NV.syncSoundUI === 'function') NV.syncSoundUI();
     return NV.soundOn;
   }
@@ -297,6 +346,7 @@
     gain.gain.setValueAtTime(vol || 0.03, NV.audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, NV.audioCtx.currentTime + dur);
     osc.connect(filter); filter.connect(gain); gain.connect(channelFor('music'));
+    osc.onended = () => { for (const node of [osc, filter, gain]) if (node.disconnect) node.disconnect(); };
     osc.start(); osc.stop(NV.audioCtx.currentTime + dur);
   }
   // opts?: { channel, freq } → banda y bus opcionales. Sin opts mantiene la banda
@@ -344,16 +394,22 @@
     // de nota, así que no hay glitch/corte audible al entrar o salir de fase boss.
     const wantPhase = gameState === 'menu' ? 'menu' : (gameState === 'shop' ? 'shop' : (NV.getBoss && NV.getBoss() ? 'boss' : 'normal'));
     if (wantPhase !== NV.musicState.phase) NV.musicState.phase = wantPhase;
-    const layers = currentLayers();
+    const wave = NV.getWave ? NV.getWave() : 1;
+    const sectorMusic = sectorMusicForWave(wave);
+    NV.musicState.sector = sectorMusic.id;
+    const layers = currentLayers(wave);
     const comboLayer = Math.min(1, (NV.musicState.combo || 0) / 20);
     const isMenuLike = NV.musicState.phase === 'menu' || NV.musicState.phase === 'shop';
     NV.musicTime += dt * (isMenuLike ? 0.55 : (1 + NV.musicState.intensity * 0.6 + comboLayer * 0.18));
-    const stepDur = isMenuLike ? 0.18 : 0.12;
+    const stepDur = isMenuLike ? 0.18 : (layers.stepDur || 0.12);
     NV.musicState.intensity = Math.max(0, Math.min(1, NV.musicState.intensity + ((NV.getBoss && NV.getBoss()) ? 0.02 : -0.015) * dt));
     if (NV.musicTime - NV.musicState.lastBeat >= stepDur) {
       NV.musicState.lastBeat = NV.musicTime;
       NV.musicState.step = (NV.musicState.step + 1) % 16;
       const step = NV.musicState.step;
+      if (step === 0) NV.musicState.bar = ((NV.musicState.bar || 0) + 1) % 8;
+      const phrase = NV.musicState.bar || 0;
+      const transpose = Math.pow(2, [0, 0, -2, -2, 3, 3, -5, -5][phrase] / 12);
       // Kick (808 punch)
       if (layers.drums[0][step]) scheduleDrum('kick', 0.1, 0.1 + NV.musicState.intensity * 0.05);
       // Snare (808 clap)
@@ -363,23 +419,30 @@
       // Capa extra por combo: arpegio fino en contratiempos, aparece progresivamente
       // sin cambiar la base de la oleada.
       if (comboLayer > 0.25 && step % 2 === 1) {
-        const note = layers.lead[(step + Math.floor(NV.musicState.combo || 0)) % layers.lead.length] * 2;
+        const note = layers.lead[(step + Math.floor(NV.musicState.combo || 0)) % layers.lead.length] * 2 * transpose;
         scheduleNote('triangle', note, 0.06, 0.012 + comboLayer * 0.018);
       }
       // Bajo cada 4 steps (subby sawtooth)
       if (step % 4 === 0) {
         const bassIdx = Math.floor(step / 4) % layers.bass.length;
-        if (layers.bass[bassIdx]) scheduleNote(isMenuLike ? 'sine' : 'sawtooth', layers.bass[bassIdx], isMenuLike ? 0.5 : 0.2, (isMenuLike ? 0.025 : 0.05) + NV.musicState.intensity * 0.02);
+        if (layers.bass[bassIdx]) scheduleNote(isMenuLike ? 'sine' : (layers.bassType || 'sawtooth'), layers.bass[bassIdx] * transpose, isMenuLike ? 0.5 : 0.2, (isMenuLike ? 0.025 : 0.05) + NV.musicState.intensity * 0.02);
       }
       // Lead melódico (guitarra synth) → solo cada 8 steps
       if (step % 8 === 0 || (NV.musicState.intensity > 0.7 && step % 4 === 0)) {
-        const note = layers.lead[Math.floor(step / 2) % layers.lead.length];
-        scheduleNote('sawtooth', note, 0.25, 0.04 + NV.musicState.intensity * 0.02 + comboLayer * 0.012);
+        const note = layers.lead[(Math.floor(step / 2) + phrase) % layers.lead.length] * transpose;
+        scheduleNote(layers.leadType || 'sawtooth', note, 0.25, 0.04 + NV.musicState.intensity * 0.02 + comboLayer * 0.012);
+      }
+      // Firma breve de material: metal en Fundición, cristal quebrado en Fractura
+      // y pulso agudo en Corazón. Sólo dos veces por compás y a volumen bajo.
+      if (!isMenuLike && NV.musicState.phase === 'normal' && layers.accent && (step === 6 || step === 14)) {
+        scheduleNote('triangle', layers.accent * (step === 14 ? 0.75 : 1), 0.045, 0.012);
       }
     }
         // Drone atmosférico continuo (loop)
-    if (NV.getFrame() % (isMenuLike ? 180 : 120) === 0) {
-      const droneFreq = layers.chordRoots[Math.floor(NV.getFrame() / 120) % layers.chordRoots.length] * (isMenuLike ? 2 : 4);
+    // Reloj de audio, no frame: con frame=0 en el lobby no crear un drone cada tick.
+    if (NV.audioCtx.currentTime >= (NV.musicState.nextDroneAt || 0)) {
+      NV.musicState.nextDroneAt = NV.audioCtx.currentTime + (isMenuLike ? 3.2 : (layers.droneInterval || 2.4));
+      const droneFreq = layers.chordRoots[(NV.musicState.bar || 0) % layers.chordRoots.length] * (isMenuLike ? 2 : (layers.droneOctave || 4));
       createDrone(droneFreq, NV.audioCtx.currentTime, isMenuLike ? 3.4 : 2.5);
     }
     // Nota: el ducking ya no se restaura acá. Su bajada y su vuelta viven en la
@@ -620,6 +683,50 @@
     }
   };
 
+  // Confirmación corta al activarse una amenaza ambiental. El aviso visual llega
+  // antes; este tono marca el instante exacto sin competir con armas o música.
+  sfx.sectorHazard = (kind) => {
+    const base = kind === 'vent' ? 150 : kind === 'rift' ? 220 : 105;
+    duck('music', 0.62, 0.10);
+    playTone(base, 0.16, kind === 'pulse' ? 'sine' : 'sawtooth', 0.045, 'sfxAmbient');
+    playTone(base * 1.5, 0.09, 'triangle', 0.032, 'sfxAmbient');
+  };
+
+  // Una voz agregada para todo el grupo: dos osciladores, no dos por cabezal.
+  // Gameplay informa la fase; audio jamás avanza el hazard ni aplica daño.
+  let sectorLaserVoice = null;
+  NV.stopSectorLaserSound = function () {
+    if(!sectorLaserVoice)return;
+    const v=sectorLaserVoice;sectorLaserVoice=null;
+    const t=NV.audioCtx.currentTime;
+    v.gain.gain.cancelScheduledValues(t);v.gain.gain.setValueAtTime(v.gain.gain.value,t);
+    v.gain.gain.linearRampToValueAtTime(0,t+.025);
+    let remaining=v.oscillators.length;
+    for(const osc of v.oscillators){osc.onended=()=>{if(osc.disconnect)osc.disconnect();if(--remaining===0&&v.gain.disconnect)v.gain.disconnect();};osc.stop(t+.03);}
+  };
+  NV.syncSectorLaserSound = function (hazards, env) {
+    env=env||{};
+    const group=(hazards||[]).filter(h=>h.laserHead&&h.state!=='dead');
+    const active=group.find(h=>h.state==='active');
+    const charging=group.find(h=>h.state==='telegraph'&&h.stateTime>=h.emergeTime);
+    const phase=active?'active':charging?'charge':null;
+    if(!phase||!NV.audioCtx||!NV.soundOn||env.paused||env.hidden||env.state!=='playing'){NV.stopSectorLaserSound();return;}
+    if(!sectorLaserVoice||sectorLaserVoice.phase!==phase){
+      NV.stopSectorLaserSound();
+      const ctx=NV.audioCtx,gain=ctx.createGain(),oscillators=[];
+      gain.gain.setValueAtTime(0,ctx.currentTime);gain.gain.linearRampToValueAtTime(phase==='active'?.035:.025,ctx.currentTime+.04);
+      connectOutput(gain,'sfxAmbient');
+      for(const detune of [1,1.012]){const osc=ctx.createOscillator();osc.type=phase==='active'?'sawtooth':'sine';osc.frequency.setValueAtTime((phase==='active'?145:330)*detune,ctx.currentTime);osc.connect(gain);osc.start();oscillators.push(osc);}
+      sectorLaserVoice={phase,gain,oscillators};
+    }
+    if(charging&&!active){const progress=Math.min(1,(charging.stateTime-charging.emergeTime)/(charging.telegraphTime-charging.emergeTime));
+      sectorLaserVoice.oscillators.forEach((osc,i)=>osc.frequency.setValueAtTime((330+progress*850)*(i?1.012:1),NV.audioCtx.currentTime));}
+  };
+  NV.sectorLaserSoundPhase = () => sectorLaserVoice ? sectorLaserVoice.phase : null;
+  if(typeof document!=='undefined'&&document.addEventListener)document.addEventListener('visibilitychange',()=>{
+    if(document.hidden)NV.stopSectorLaserSound();
+  });
+
   // SFX nuevos de la Tarea 1 (esqueleto: hooks de ducking para combo/victoria).
   sfx.combo = (count) => {
     NV.musicState.combo = Math.max(NV.musicState.combo || 0, count || 0);
@@ -788,6 +895,8 @@
   // Exportar API pública
   NV.initAudio = initAudio;
   NV.updateMusic = updateMusic;
+  NV.MUSIC_SECTOR_PROFILES = SECTOR_MUSIC;
+  NV.musicProfileForWave = sectorMusicForWave;
   NV.playWeaponSound = playWeaponSound;
   NV.playToneEx = playToneEx;
   NV.playToneSweep = playToneSweep;

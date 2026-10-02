@@ -250,10 +250,10 @@ t('sin roll duplicado: spawn no tira y las rutas de impacto no tiran inline', ()
   if (/Math\.random\(\)\s*<\s*e\.stunChance/.test(enemies)) throw new Error('roll duplicado en enemies');
 });
 
-t('cero-stun: contacto de drone no aturde y el daño aplica', () => {
+t('cero-stun: contacto de runner no aturde y el daño aplica', () => {
   const { NV } = sandbox();
   const player = mkPlayer({ x: 400, y: 300 });
-  const e = { x: 410, y: 300, hp: 50, maxHp: 50, damage: 10, speed: 0, radius: 12, color: '#f07bad', shape: 'circle', behavior: 'chase', dead: false, isElite: false, knockVelX: 0, knockVelY: 0, knockbackRes: 0, contactCd: 0, hostileClass: 'light', enemyTypeId: 'drone', angle: 0, erraticTimer: 0 };
+  const e = { x: 410, y: 300, hp: 50, maxHp: 50, damage: 10, speed: 0, radius: 12, color: '#ffcf76', shape: 'triangle', behavior: 'chase', dead: false, isElite: false, knockVelX: 0, knockVelY: 0, knockbackRes: 0, contactCd: 0, hostileClass: 'light', enemyTypeId: 'runner', angle: 0, erraticTimer: 0 };
   NV.updateEnemies(0.016, { enemies: [e], player, bullets: [], MAX_BULLETS: 10, MAX_ENEMY_BULLETS: 10, enemyBulletCount: () => 0, applyPlayerDamage: applyNoCrit(NV, player), addFloatText() {}, spawnExplosion() {}, MAX_HOSTILES: 30, MAX_HEAVY_HOSTILES: 7, boss: null, wave: 3, waveEvent: null, hookSystem: null, onKill() {} });
   if (player.stun !== 0 || player.stunReapplyLockout !== 0) throw new Error('aturdió sin stunChance');
   if (player.hp !== 110) throw new Error('hp=' + player.hp);

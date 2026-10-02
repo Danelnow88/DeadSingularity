@@ -1,4 +1,4 @@
-// Tests A3: starfield con parallax (puro, determinista) + polvo de slide conectado.
+// Tests A3: starfield con parallax (puro, determinista) + FX de dash conectado.
 const fs = require('fs'), vm = require('vm');
 let pass = 0, fail = 0;
 function t(desc, fn) { try { fn(); pass++; console.log('  ok  ' + desc); } catch (e) { fail++; console.log('  FAIL ' + desc + ' -> ' + e.message); } }
@@ -44,7 +44,9 @@ t('game.js dibuja el starfield conectado a la vista dinámica/cinematográfica',
   if (!starfieldCall) throw new Error('starfield no conectado');
   if (!/frame/.test(starfieldCall[0]) || !/frameVisualRhythm/.test(starfieldCall[0])) throw new Error('starfield sin tiempo/ritmo visual');
   if (!/(player\.[xy]|cinematic\.(centerX|centerY)|view[XY])/.test(starfieldCall[0])) throw new Error('starfield no conectado a vista dinámica');
-  if (!g.includes("spawnExplosion(player.x - (player.moveVx || 0)")) throw new Error('polvo de slide ausente');
+  // El polvo legacy fue sustituido expresamente por la estela de referencias.
+  if (!g.includes('NV.emitDashTrail(trails, dashing, trailStartX, trailStartY, player.x, player.y, player.color)')) throw new Error('estela de dash ausente');
+  if (!g.includes('NV.drawTrails(ctx, trails, vbp)')) throw new Error('estela sin render compartido');
 });
 
 t('starfield reacciona distinto a graves vs agudos sin crear partículas nuevas', () => {

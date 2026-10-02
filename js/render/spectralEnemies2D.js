@@ -19,6 +19,9 @@
     specter_archer: { body: '#ffb24a', core: '#ffe0a8', glow: '#ffc76a', spikes: 6, innerRatio: 0.58, spikeLen: 0.34, pulseRate: 1.3, pulseAmt: 0.06, particles: 4, particleSize: 0.45, eyeStyle: 'narrow', radiusMul: 1.0, cannonGlow: true },
     specter_guard: { body: '#67f8c8', core: '#d8fff2', glow: '#8dffe0', spikes: 6, innerRatio: 0.74, spikeLen: 0.22, pulseRate: 0.75, pulseAmt: 0.05, particles: 5, particleSize: 0.55, eyeStyle: 'deep', radiusMul: 1.1, shieldAura: true },
   };
+  // Variante interna de boss_minion: no forma parte del roster ni amplía el
+  // catálogo público de enemigos; solo comunica la división del MUTANTE.
+  const MUTANT_CLONE_PROFILE = Object.freeze({ body: '#47e53f', core: '#e5ffd8', glow: '#75ff67', spikes: 6, innerRatio: 0.52, spikeLen: 0.48, pulseRate: 2.2, pulseAmt: 0.10, particles: 5, particleSize: 0.42, eyeStyle: 'narrow', radiusMul: 1.15 });
   // Visual aprobado en previews/enemy-visual-lab.html: seis modelos líquidos
   // hand-drawn (RB1..RB6). Cambio 100% visual; no toca datos, IA, daño, vida,
   // velocidad, hitbox ni spawn. Los espectros legacy (shape 'specter') y las
@@ -30,6 +33,15 @@
     specter_archer: 3,      // RB4 - Halo Espectral
     specter_guard: 4,       // RB5 - Núcleo Sigilo
     specter_elite_void: 5,
+    // Esbirro de jefe: entidad pequena invocada, no espectro de oleada.
+    // Usa RB2 (Ameba Coronada) de forma PROVISIONAL: escala 0.75, la mas baja
+    // fuera de Hydra, y silueta redondeada coherente con un summoned chaff.
+    // enemyTypeId basta para resolver PROFILES.boss_minion (perfil cromatico
+    // propio ya existente) y este modelo liquido; no hace falta visualId.
+    // No altera MODEL_SCALE_FACTORS, los factores de hitbox globales ni
+    // ningun mapeo previo. La migracion de NV.spawnMinion (engine/boss.js) es
+    // la que hara visible este routing en juego; hasta entonces es inerte.
+    boss_minion: 1,
     // Cualquier variante élite (base o espectral) -> Modelo 5 (Hidra).
     elite_base: 5,
     elite_velocity: 5,
@@ -121,16 +133,16 @@
   // Perfiles boss espectrales. Cada jefe tiene identidad visual única: aura masiva,
   // spikes grandes, ojos imponentes y partículas orbitales abundantes.
   const BOSS_PROFILES = {
-    boss_jefe:      { body: '#ff5f9b', core: '#ffd0e0', glow: '#ff8ab8', spikes: 8, innerRatio: 0.8, spikeLen: 0.35, pulseRate: 0.8, pulseAmt: 0.06, particles: 8, particleSize: 0.7, eyeStyle: 'deep', radiusMul: 1.3, auraRadius: 2.2, auraAlpha: 0.25, ringCount: 2 },
-    boss_titan:     { body: '#ff8c00', core: '#ffd9a0', glow: '#ffb060', spikes: 10, innerRatio: 0.85, spikeLen: 0.4, pulseRate: 0.5, pulseAmt: 0.05, particles: 10, particleSize: 0.8, eyeStyle: 'deep', radiusMul: 1.35, auraRadius: 2.4, auraAlpha: 0.3, ringCount: 3 },
-    boss_vacio:     { body: '#dc143c', core: '#ff8090', glow: '#ff4060', spikes: 7, innerRatio: 0.75, spikeLen: 0.5, pulseRate: 1.2, pulseAmt: 0.1, particles: 12, particleSize: 0.5, eyeStyle: 'single', radiusMul: 1.25, auraRadius: 2.5, auraAlpha: 0.35, voidEffect: true },
-    boss_guardian:  { body: '#00bfff', core: '#a0e8ff', glow: '#60d0ff', spikes: 9, innerRatio: 0.82, spikeLen: 0.3, pulseRate: 1.0, pulseAmt: 0.05, particles: 9, particleSize: 0.65, eyeStyle: 'round', radiusMul: 1.3, auraRadius: 2.3, auraAlpha: 0.25, shieldRing: true },
-    boss_destructor:{ body: '#ff0000', core: '#ff8080', glow: '#ff4040', spikes: 11, innerRatio: 0.78, spikeLen: 0.45, pulseRate: 1.5, pulseAmt: 0.08, particles: 11, particleSize: 0.75, eyeStyle: 'narrow', radiusMul: 1.4, auraRadius: 2.6, auraAlpha: 0.3, aggressive: true },
-    boss_nemesis:   { body: '#8b00ff', core: '#d0a0ff', glow: '#b060ff', spikes: 6, innerRatio: 0.7, spikeLen: 0.55, pulseRate: 1.8, pulseAmt: 0.07, particles: 8, particleSize: 0.55, eyeStyle: 'asymmetric', radiusMul: 1.25, auraRadius: 2.2, auraAlpha: 0.28, phaseEffect: true },
-    boss_coloso:    { body: '#ff4500', core: '#ffb090', glow: '#ff7040', spikes: 12, innerRatio: 0.88, spikeLen: 0.35, pulseRate: 0.35, pulseAmt: 0.04, particles: 14, particleSize: 0.9, eyeStyle: 'deep', radiusMul: 1.5, auraRadius: 2.8, auraAlpha: 0.3, massive: true },
-    boss_fantasma:  { body: '#e0ffff', core: '#f0ffff', glow: '#c0f0ff', spikes: 6, innerRatio: 0.72, spikeLen: 0.5, pulseRate: 1.6, pulseAmt: 0.12, particles: 10, particleSize: 0.45, eyeStyle: 'single', radiusMul: 1.2, auraRadius: 2.3, auraAlpha: 0.2, ghostly: true },
-    boss_mutante:   { body: '#32cd32', core: '#a0ffa0', glow: '#60ff60', spikes: 9, innerRatio: 0.76, spikeLen: 0.4, pulseRate: 1.3, pulseAmt: 0.07, particles: 10, particleSize: 0.6, eyeStyle: 'asymmetric', radiusMul: 1.3, auraRadius: 2.4, auraAlpha: 0.25, mutateEffect: true },
-    boss_apocalipsis:{ body: '#ff1493', core: '#ffa0d0', glow: '#ff50a0', spikes: 14, innerRatio: 0.85, spikeLen: 0.5, pulseRate: 0.6, pulseAmt: 0.06, particles: 16, particleSize: 0.85, eyeStyle: 'deep', radiusMul: 1.5, auraRadius: 3.0, auraAlpha: 0.35, rageEffect: true },
+    boss_jefe:      { rig: 'repeater', body: '#ff5f9b', core: '#ffd0e0', glow: '#ff8ab8', spikes: 8, innerRatio: 0.8, spikeLen: 0.35, pulseRate: 0.8, pulseAmt: 0.06, particles: 8, particleSize: 0.7, eyeStyle: 'deep', radiusMul: 1.3, auraRadius: 2.2, auraAlpha: 0.25, ringCount: 2 },
+    boss_titan:     { rig: 'heavy', body: '#ff8c00', core: '#ffd9a0', glow: '#ffb060', spikes: 10, innerRatio: 0.85, spikeLen: 0.4, pulseRate: 0.5, pulseAmt: 0.05, particles: 10, particleSize: 0.8, eyeStyle: 'deep', radiusMul: 1.35, auraRadius: 2.4, auraAlpha: 0.3, ringCount: 3 },
+    boss_vacio:     { rig: 'summon', body: '#dc143c', core: '#ff8090', glow: '#ff4060', spikes: 7, innerRatio: 0.75, spikeLen: 0.5, pulseRate: 1.2, pulseAmt: 0.1, particles: 12, particleSize: 0.5, eyeStyle: 'single', radiusMul: 1.25, auraRadius: 2.5, auraAlpha: 0.35, voidEffect: true },
+    boss_guardian:  { rig: 'spread', body: '#00bfff', core: '#a0e8ff', glow: '#60d0ff', spikes: 9, innerRatio: 0.82, spikeLen: 0.3, pulseRate: 1.0, pulseAmt: 0.05, particles: 9, particleSize: 0.65, eyeStyle: 'round', radiusMul: 1.3, auraRadius: 2.3, auraAlpha: 0.25, shieldRing: true },
+    boss_destructor:{ rig: 'beam', body: '#ff0000', core: '#ff8080', glow: '#ff4040', spikes: 11, innerRatio: 0.78, spikeLen: 0.45, pulseRate: 1.5, pulseAmt: 0.08, particles: 11, particleSize: 0.75, eyeStyle: 'narrow', radiusMul: 1.4, auraRadius: 2.6, auraAlpha: 0.3, aggressive: true },
+    boss_nemesis:   { rig: 'volley', body: '#8b00ff', core: '#d0a0ff', glow: '#b060ff', spikes: 6, innerRatio: 0.7, spikeLen: 0.55, pulseRate: 1.8, pulseAmt: 0.07, particles: 8, particleSize: 0.55, eyeStyle: 'asymmetric', radiusMul: 1.25, auraRadius: 2.2, auraAlpha: 0.28, phaseEffect: true },
+    boss_coloso:    { rig: 'bomb', body: '#ff4500', core: '#ffb090', glow: '#ff7040', spikes: 12, innerRatio: 0.88, spikeLen: 0.35, pulseRate: 0.35, pulseAmt: 0.04, particles: 14, particleSize: 0.9, eyeStyle: 'deep', radiusMul: 1.5, auraRadius: 2.8, auraAlpha: 0.3, massive: true },
+    boss_fantasma:  { rig: 'orbs', body: '#e0ffff', core: '#f0ffff', glow: '#c0f0ff', spikes: 6, innerRatio: 0.72, spikeLen: 0.5, pulseRate: 1.6, pulseAmt: 0.12, particles: 10, particleSize: 0.45, eyeStyle: 'single', radiusMul: 1.2, auraRadius: 2.3, auraAlpha: 0.2, ghostly: true },
+    boss_mutante:   { rig: 'split', body: '#173a32', core: '#b7ff8a', glow: '#55f2a1', scar: '#ff4f82', spikes: 9, innerRatio: 0.76, spikeLen: 0.4, pulseRate: 1.3, pulseAmt: 0.07, particles: 12, particleSize: 0.7, eyeStyle: 'mutant', radiusMul: 1.16, auraRadius: 2.35, auraAlpha: 0.22, mutateEffect: true },
+    boss_apocalipsis:{ rig: 'rage', body: '#ff1493', core: '#ffa0d0', glow: '#ff50a0', spikes: 14, innerRatio: 0.85, spikeLen: 0.5, pulseRate: 0.6, pulseAmt: 0.06, particles: 16, particleSize: 0.85, eyeStyle: 'deep', radiusMul: 1.5, auraRadius: 3.0, auraAlpha: 0.35, rageEffect: true },
   };
   const RESOLVED_ELITE_PROFILES = Object.create(null);
   let hydraFullRender = new WeakSet();
@@ -241,6 +253,7 @@
       }
       return RESOLVED_ELITE_PROFILES[cacheKey];
     }
+    if (e.enemyTypeId === 'boss_minion' && e.summonVariant === 'mutant') return MUTANT_CLONE_PROFILE;
     return PROFILES[e.enemyTypeId] || PROFILES.drone;
   }
   function drawBody(ctx, e, frame, profile) {
@@ -1843,9 +1856,17 @@
         ctx.font = 'bold 12px monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('FUSION ' + lvl, 0, -e.radius - 22);
+        ctx.fillText(NV.fusionMilestoneLabel ? NV.fusionMilestoneLabel(lvl) : ('FUSION ' + lvl), 0, -e.radius - 22);
       }
       ctx.restore();
+    }
+    if ((e.fusionInterruptFlash || 0) > 0) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, e.fusionInterruptFlash / 0.7);
+      ctx.strokeStyle = '#7cf8ff'; ctx.lineWidth = 3; ctx.shadowBlur = 0;
+      ctx.setLineDash([3, 6]);
+      ctx.beginPath(); ctx.arc(0, 0, e.radius + 13, 0.35, Math.PI * 1.55); ctx.stroke();
+      ctx.setLineDash([]); ctx.restore();
     }
     if (e.atkFlash > 0 && player) {
       const r = e.radius;
@@ -1857,6 +1878,84 @@
       ctx.beginPath(); ctx.arc(0, 0, r + 8 + (1 - atk) * 18, fwd + 1.1 + (1 - atk) * 0.45, fwd - 1.1 - (1 - atk) * 0.45, true); ctx.stroke();
     }
   }
+  // C1 — lenguaje táctico de Comandante, Bulwark y Swift. Estas capas usan
+  // únicamente estado del motor y nunca alteran entidad, hitbox ni timers.
+  function drawEliteRoleTelegraphs(ctx, e, frame, rx, ry) {
+    if (!e || !e.isElite) return;
+    const cfg = NV.ENEMY_ROLE_REWORK;
+    if (!cfg) return;
+    ctx.save();
+    ctx.translate(e.x + rx, e.y + ry);
+    ctx.shadowBlur = 0;
+
+    if (e.visualId === 'elite_base') {
+      if (e.commanderState === 'rally_windup') {
+        const p = Math.max(0, Math.min(1, 1 - (e.commanderTimer || 0) / cfg.commander.windup));
+        ctx.globalAlpha = 0.18 + p * 0.22;
+        ctx.fillStyle = '#ffe24a';
+        ctx.beginPath(); ctx.arc(0, 0, cfg.commander.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 0.58 + p * 0.3;
+        ctx.strokeStyle = '#fff08a';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath(); ctx.arc(0, 0, cfg.commander.radius * (1 - p * 0.82), 0, Math.PI * 2); ctx.stroke();
+      }
+      if ((e.commanderPulseTimer || 0) > 0) {
+        const p = 1 - Math.max(0, Math.min(1, e.commanderPulseTimer / 0.42));
+        ctx.globalAlpha = 0.72 * (1 - p);
+        ctx.strokeStyle = '#ffe24a';
+        ctx.lineWidth = 4 - p * 2;
+        ctx.beginPath(); ctx.arc(0, 0, cfg.commander.radius * p, 0, Math.PI * 2); ctx.stroke();
+      }
+    } else if (e.visualId === 'elite_bulwark') {
+      const ally = e.bulwarkGuardTarget;
+      if (ally && !ally.dead) {
+        ctx.globalAlpha = 0.46;
+        ctx.strokeStyle = '#ffb866';
+        ctx.lineWidth = 2.2;
+        ctx.setLineDash([6, 5]);
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(ally.x - e.x, ally.y - e.y); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      if (e.bulwarkState === 'bash_windup') {
+        const p = Math.max(0, Math.min(1, 1 - (e.bulwarkTimer || 0) / cfg.bulwark.windup));
+        ctx.globalAlpha = 0.12 + p * 0.18;
+        ctx.fillStyle = '#ff5260';
+        ctx.beginPath(); ctx.arc(0, 0, cfg.bulwark.bashRange, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 0.62 + p * 0.25;
+        ctx.strokeStyle = '#ff786f';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(0, 0, cfg.bulwark.bashRange, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * p); ctx.stroke();
+      }
+    } else if (e.visualId === 'elite_swift') {
+      if (e.swiftState === 'windup') {
+        const p = Math.max(0, Math.min(1, 1 - (e.swiftTimer || 0) / cfg.swift.windup));
+        const tx = (Number.isFinite(e.swiftTargetX) ? e.swiftTargetX : e.x) - e.x;
+        const ty = (Number.isFinite(e.swiftTargetY) ? e.swiftTargetY : e.y) - e.y;
+        const td = Math.max(1, Math.hypot(tx, ty));
+        ctx.globalAlpha = 0.5 + p * 0.42;
+        ctx.strokeStyle = '#ff5260';
+        ctx.lineWidth = 2 + p * 1.5;
+        ctx.setLineDash([10, 7]);
+        ctx.beginPath(); ctx.moveTo(tx / td * (e.radius + 5), ty / td * (e.radius + 5)); ctx.lineTo(tx / td * 330, ty / td * 330); ctx.stroke();
+        ctx.setLineDash([]);
+      } else if (e.swiftState === 'dash') {
+        ctx.globalAlpha = 0.74;
+        ctx.strokeStyle = '#80ff50';
+        ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.moveTo(-e.swiftDirX * 52, -e.swiftDirY * 52); ctx.lineTo(-e.swiftDirX * 10, -e.swiftDirY * 10); ctx.stroke();
+      }
+    }
+
+    if ((e.rallyTimer || 0) > 0) {
+      const pulse = 0.5 + Math.sin((frame || 0) * 0.24) * 0.5;
+      ctx.globalAlpha = 0.42 + pulse * 0.22;
+      ctx.strokeStyle = '#ffe24a';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.arc(0, 0, e.radius + 7 + pulse * 3, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   NV.drawSpectralEnemy2D = function (ctx, e, frame, player, rhythm) {
     if (!e || e.dead) return false;
     if (e.visualId === 'elite_phantom' && (e.phantomState === 'possessed' || e.phantomState === 'cleanup')) return false;
@@ -1887,6 +1986,7 @@
       return true;
     }
     if (e.isElite && !isLabSpecter(e)) {
+      drawEliteRoleTelegraphs(ctx, e, frame, rx, ry);
       drawEliteBossEnemy(ctx, e, frame, player, profile, rx, ry);
       ctx.restore();
       return true;
@@ -1927,10 +2027,165 @@
       ctx.globalAlpha = 1;
     }
   }
+  // Armazón de identidad: silueta secundaria ligada al ataque característico.
+  // Es render puro; la fase 2 intensifica cantidad/escala sin cambiar hitboxes.
+  function drawBossIdentityRig(ctx, boss, frame, profile) {
+    const rig = profile.rig || 'repeater';
+    const r = boss.radius * (profile.radiusMul || 1.3);
+    const t = frame * 0.06;
+    const phase = boss.phase2 ? 1.22 : 1;
+    const pulse = 0.82 + Math.sin(t * 1.7) * 0.08;
+    ctx.save();
+    ctx.strokeStyle = profile.glow;
+    ctx.fillStyle = rgba(hexToRgb(profile.core), boss.phase2 ? 0.48 : 0.3);
+    ctx.lineWidth = boss.phase2 ? 2.6 : 1.8;
+    ctx.globalAlpha = boss.phase2 ? 0.9 : 0.7;
+
+    if (rig === 'repeater') {
+      // Corona de tres emisores: la fase 2 añade un segundo banco desplazado.
+      const count = boss.phase2 ? 6 : 3;
+      for (let i = 0; i < count; i++) {
+        const a = -Math.PI / 2 + (i - (count - 1) / 2) * 0.22;
+        const x = Math.cos(a) * r * 0.92, y = Math.sin(a) * r * 0.92;
+        ctx.beginPath(); ctx.arc(x, y, r * 0.10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(Math.cos(a) * r * 1.34, Math.sin(a) * r * 1.34); ctx.stroke();
+      }
+    } else if (rig === 'heavy') {
+      // Cuatro placas de artillería con masa inequívoca.
+      for (let i = 0; i < 4; i++) {
+        const a = i * Math.PI / 2 + t * 0.035;
+        ctx.save(); ctx.rotate(a); ctx.beginPath();
+        ctx.moveTo(r * 0.68, -r * 0.28); ctx.lineTo(r * 1.30 * phase, -r * 0.18);
+        ctx.lineTo(r * 1.43 * phase, r * 0.18); ctx.lineTo(r * 0.68, r * 0.28); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+      }
+    } else if (rig === 'summon') {
+      // Portales rotos orbitando el núcleo invocador.
+      const count = boss.phase2 ? 5 : 3;
+      for (let i = 0; i < count; i++) {
+        const a = t * 0.22 + i * Math.PI * 2 / count;
+        const x = Math.cos(a) * r * 1.35, y = Math.sin(a) * r * 1.05;
+        ctx.beginPath(); ctx.arc(x, y, r * 0.23, a + 0.3, a + Math.PI * 1.55); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y, r * 0.08, 0, Math.PI * 2); ctx.fill();
+      }
+    } else if (rig === 'spread') {
+      // Nodos radiales anuncian el anillo y hacen visible dónde buscar huecos.
+      const count = boss.phase2 ? 12 : 8;
+      for (let i = 0; i < count; i++) {
+        const a = i * Math.PI * 2 / count + t * 0.08;
+        const x = Math.cos(a) * r * 1.30, y = Math.sin(a) * r * 1.30;
+        ctx.beginPath(); ctx.arc(x, y, r * 0.065 * phase, 0, Math.PI * 2); ctx.fill();
+        if (i % 2 === 0) { ctx.beginPath(); ctx.moveTo(Math.cos(a) * r * .94, Math.sin(a) * r * .94); ctx.lineTo(x, y); ctx.stroke(); }
+      }
+    } else if (rig === 'beam') {
+      // Dos rieles y un prisma apuntan en la dirección capturada del ataque.
+      const aim = boss.encounter && Number.isFinite(boss.encounter.angle) ? boss.encounter.angle : Math.PI / 2;
+      ctx.save(); ctx.rotate(aim);
+      for (const side of [-1, 1]) { ctx.beginPath(); ctx.moveTo(r * .35, side * r * .34); ctx.lineTo(r * 1.48 * phase, side * r * .18); ctx.stroke(); }
+      ctx.beginPath(); ctx.moveTo(r * 1.10, 0); ctx.lineTo(r * 1.42 * phase, -r * .18); ctx.lineTo(r * 1.42 * phase, r * .18); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.restore();
+    } else if (rig === 'volley') {
+      // Alas dobles separan visualmente las ráfagas gemelas de Némesis.
+      for (const side of [-1, 1]) {
+        ctx.beginPath(); ctx.moveTo(side * r * .50, -r * .35); ctx.lineTo(side * r * 1.48 * phase, -r * .76);
+        ctx.lineTo(side * r * 1.18 * phase, 0); ctx.lineTo(side * r * 1.42 * phase, r * .62); ctx.lineTo(side * r * .48, r * .30); ctx.stroke();
+      }
+    } else if (rig === 'bomb') {
+      // Cápsulas pesadas suspendidas: leen como munición antes del disparo.
+      const count = boss.phase2 ? 5 : 3;
+      for (let i = 0; i < count; i++) {
+        const a = Math.PI * (.18 + .64 * (count === 1 ? .5 : i / (count - 1)));
+        const x = Math.cos(a) * r * 1.16, y = Math.sin(a) * r * 1.10;
+        ctx.beginPath(); ctx.moveTo(x * .72, y * .72); ctx.lineTo(x, y); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(x, y, r * .10, r * .17, a - Math.PI / 2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      }
+    } else if (rig === 'orbs') {
+      // Tríada espectral; en fase 2 aparecen dos ecos adicionales.
+      const count = boss.phase2 ? 5 : 3;
+      for (let i = 0; i < count; i++) {
+        const a = -t * .38 + i * Math.PI * 2 / count;
+        const x = Math.cos(a) * r * 1.38, y = Math.sin(a) * r * .96;
+        ctx.beginPath(); ctx.arc(x, y, r * (.11 + Math.sin(t * 2 + i) * .018), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y, r * .21, a, a + Math.PI); ctx.stroke();
+      }
+    } else if (rig === 'split') {
+      // Brotes latentes visibles antes de separarse; fase 2 los abre.
+      for (let i = 0; i < 3; i++) {
+        const a = -Math.PI / 2 + i * Math.PI * 2 / 3 + Math.sin(t * .35 + i) * .08;
+        const reach = boss.phase2 ? 1.42 : 1.12;
+        const x = Math.cos(a) * r * reach, y = Math.sin(a) * r * reach;
+        ctx.beginPath(); ctx.moveTo(Math.cos(a) * r * .64, Math.sin(a) * r * .64); ctx.quadraticCurveTo(x * .82, y * 1.08, x, y); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y, r * (boss.phase2 ? .14 : .09), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      }
+    } else if (rig === 'rage') {
+      // Corona dentada final; la segunda fase duplica las púas activas.
+      const count = boss.phase2 ? 16 : 8;
+      ctx.save(); ctx.rotate(t * .12);
+      for (let i = 0; i < count; i++) {
+        const a = i * Math.PI * 2 / count;
+        ctx.save(); ctx.rotate(a); ctx.beginPath();
+        ctx.moveTo(r * 1.02, -r * .07); ctx.lineTo(r * (boss.phase2 ? 1.62 : 1.38) * pulse, 0); ctx.lineTo(r * 1.02, r * .07); ctx.stroke(); ctx.restore();
+      }
+      ctx.restore();
+    }
+    ctx.restore();
+  }
   function drawBossBody(ctx, boss, frame, profile) {
     const r = boss.radius * (profile.radiusMul || 1.3);
     const time = frame * 0.06;
     const pulse = 1 + Math.sin(time * (profile.pulseRate || 0.8)) * (profile.pulseAmt || 0.06);
+    if (profile.mutateEffect) {
+      // El Mutante usa una membrana orgánica propia: evita la estrella plana
+      // compartida por los demás bosses y comunica núcleo + brotes de fase 2.
+      const points = 16;
+      const shell = ctx.createRadialGradient(-r * .18, -r * .22, r * .08, 0, 0, r * 1.2);
+      shell.addColorStop(0, 'rgba(183,255,138,.82)');
+      shell.addColorStop(.32, 'rgba(38,112,78,.94)');
+      shell.addColorStop(1, 'rgba(8,30,29,.98)');
+      ctx.save();
+      ctx.rotate(Math.sin(time * .22) * .045);
+      ctx.fillStyle = shell;
+      ctx.strokeStyle = profile.glow;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      for (let i = 0; i <= points; i++) {
+        const a = i / points * Math.PI * 2;
+        const warp = 1 + Math.sin(a * 3 + time * .55) * .12 + Math.sin(a * 5 - time * .38) * .07;
+        const rr = r * warp * pulse;
+        const x = Math.cos(a) * rr, y = Math.sin(a) * rr * .90;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+
+      // Tres cámaras biológicas anticipan los brotes que aparecen en fase 2.
+      for (let i = 0; i < 3; i++) {
+        const a = -Math.PI / 2 + i * Math.PI * 2 / 3 + Math.sin(time * .3 + i) * .08;
+        const lx = Math.cos(a) * r * .43, ly = Math.sin(a) * r * .36;
+        ctx.save(); ctx.translate(lx, ly); ctx.rotate(a + Math.PI / 2);
+        ctx.fillStyle = i === 1 ? 'rgba(255,79,130,.28)' : 'rgba(183,255,138,.20)';
+        ctx.strokeStyle = i === 1 ? profile.scar : 'rgba(85,242,161,.62)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.ellipse(0, 0, r * .26, r * .15, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
+
+      // Venas conectan la membrana al núcleo y ganan presencia en fase 2.
+      ctx.strokeStyle = boss.phase2 ? 'rgba(255,79,130,.72)' : 'rgba(85,242,161,.44)';
+      ctx.lineWidth = boss.phase2 ? 2.3 : 1.4;
+      for (let i = 0; i < 6; i++) {
+        const a = i * Math.PI / 3 + time * .025;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * r * .20, Math.sin(a) * r * .17);
+        ctx.quadraticCurveTo(Math.cos(a + .28) * r * .50, Math.sin(a - .18) * r * .42,
+          Math.cos(a) * r * .79, Math.sin(a) * r * .68);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      ctx.fillStyle = 'rgba(2,12,15,.94)';
+      ctx.strokeStyle = profile.core; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(0, 0, r * .26 * pulse, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      return;
+    }
     ctx.fillStyle = rgba(hexToRgb(profile.body), 0.9);
     ctx.strokeStyle = rgba(hexToRgb(profile.glow), 0.95);
     ctx.lineWidth = 2.5;
@@ -1967,6 +2222,19 @@
     const fwd = Math.atan2(player.y - boss.y, player.x - boss.x);
     const eyeR = Math.max(3, r * 0.12);
     const sep = r * 0.3;
+    if (profile.eyeStyle === 'mutant') {
+      // Tres sensores pequeños en lugar de ojos caricaturescos gigantes.
+      const core = r * .26;
+      for (let i = 0; i < 3; i++) {
+        const a = -Math.PI / 2 + i * Math.PI * 2 / 3;
+        const ex = Math.cos(a) * core * .62, ey = Math.sin(a) * core * .62;
+        ctx.fillStyle = '#eaffd9';
+        ctx.beginPath(); ctx.ellipse(ex, ey, eyeR * .48, eyeR * .30, fwd, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = profile.scar || '#ff4f82';
+        ctx.beginPath(); ctx.arc(ex + Math.cos(fwd) * eyeR * .18, ey + Math.sin(fwd) * eyeR * .18, eyeR * .17, 0, Math.PI * 2); ctx.fill();
+      }
+      return;
+    }
     ctx.fillStyle = '#fff';
     if (profile.eyeStyle === 'single') {
       ctx.beginPath(); ctx.arc(0, 0, eyeR * 1.5, 0, Math.PI * 2); ctx.fill();
@@ -2032,6 +2300,66 @@
       ctx.beginPath(); ctx.arc(0, 0, r * 1.1, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = 1;
     }
+    if (profile.aggressive) {
+      ctx.save();
+      ctx.rotate(time * 0.45);
+      ctx.strokeStyle = profile.glow;
+      ctx.globalAlpha = 0.42;
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 4; i++) {
+        ctx.rotate(Math.PI * 0.5);
+        ctx.beginPath();
+        ctx.moveTo(r * 1.05, -r * 0.18);
+        ctx.lineTo(r * 1.42, 0);
+        ctx.lineTo(r * 1.05, r * 0.18);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    if (profile.mutateEffect) {
+      ctx.save();
+      ctx.strokeStyle = profile.glow;
+      ctx.fillStyle = profile.core;
+      ctx.globalAlpha = 0.48;
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 3; i++) {
+        const a = time * (0.35 + i * 0.07) + i * Math.PI * 2 / 3;
+        const bx = Math.cos(a) * r * 1.18;
+        const by = Math.sin(a) * r * 0.82;
+        ctx.beginPath(); ctx.moveTo(Math.cos(a) * r * 0.55, Math.sin(a) * r * 0.55); ctx.quadraticCurveTo(bx * 0.72, by * 1.15, bx, by); ctx.stroke();
+        ctx.beginPath(); ctx.arc(bx, by, r * 0.10, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  function drawBossAttackTelegraph(ctx, boss, frame, player, profile) {
+    if (!player) return;
+    const timer = Number(boss.atkTimer) || 0;
+    const r = boss.radius * (profile.radiusMul || 1.3);
+    let start = Infinity, color = profile.glow;
+    if (boss.attack === 'beam') { start = 3.05; color = '#ff5f9b'; }
+    else if (boss.attack === 'bomb') { start = 1.22; color = '#ff9a3d'; }
+    else if (boss.attack === 'heavy') { start = 1.02; color = '#ffd166'; }
+    if (timer < start) return;
+    const duration = boss.attack === 'beam' ? 0.55 : (boss.attack === 'bomb' ? 0.38 : 0.33);
+    const progress = Math.max(0, Math.min(1, (timer - start) / duration));
+    const aim = Math.atan2(player.y - boss.y, player.x - boss.x);
+    const distance = Math.hypot(player.x - boss.x, player.y - boss.y);
+    ctx.save();
+    ctx.rotate(aim);
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = 0.28 + progress * 0.58;
+    ctx.lineWidth = 1.5 + progress * 2.5;
+    ctx.setLineDash && ctx.setLineDash([10, 8]);
+    ctx.beginPath(); ctx.moveTo(r * 0.65, 0); ctx.lineTo(Math.max(r, distance), 0); ctx.stroke();
+    ctx.setLineDash && ctx.setLineDash([]);
+    ctx.restore();
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = 0.35 + progress * 0.5;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, r + 8 + (1 - progress) * 18, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
   }
   NV.drawSpectralBoss2D = function (ctx, boss, frame, player, rhythm) {
     if (!boss || boss.dead) return false;
@@ -2040,8 +2368,10 @@
     ctx.translate(boss.x, boss.y);
     drawBossAura(ctx, boss, frame, profile);
     drawBossEffects(ctx, boss, frame, profile);
+    drawBossIdentityRig(ctx, boss, frame, profile);
+    drawBossAttackTelegraph(ctx, boss, frame, player, profile);
     if (boss.phase2) {
-      ctx.strokeStyle = 'rgba(255, 95, 155, 0.85)';
+      ctx.strokeStyle = profile.mutateEffect ? 'rgba(85,242,161,.9)' : 'rgba(255, 95, 155, 0.85)';
       ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.arc(0, 0, boss.radius * (profile.radiusMul || 1.3) + 12 + Math.sin(frame * 0.1) * 3, 0, Math.PI * 2);

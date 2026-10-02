@@ -1,6 +1,40 @@
 # NEON VOID — empezar con una IA
 
+**Última continuidad local 02-10:** `PILOT_PRODUCTION_2026-10-02.md` prevalece
+sobre los informes históricos de pilotos de abajo. El usuario aprobó los cuatro
+contornos: BOTI woven, NOVA radial, ROOK peaks, ENJAMBRE asymmetric. Ya integrados
+y verificados en Web/Windows; lanzador mh6vEs y web38UTJD. 160 suites sin fallos.
+36 builds antiguas quitadas; conservar activa + respaldo. No repetir rediseño.
+El usuario autorizó después publicar el estado actual en GitHub Pages; comprobar
+remoto, excluir generados y validar el sitio tras el push.
+
 Proyecto: **NEON VOID**. Repositorio: **Danelnow88/JuegoDemo**; rama de producción: **`master`**. GitHub es la fuente de verdad del código publicado; para una tarea, comprueba también el checkout y sus cambios locales. Nunca des por actualizada una copia de un archivo pegada en una conversación anterior.
+
+**Estado local 30-09-2026:** alpha 0.10 todavía NO publicada; ver `ALPHA_RELEASE.md`.
+Continuidad posterior al playtest: `PENDIENTES_REALES_2026-10-01.md` y
+`DIFFICULTY_BOSSES_VISUAL_2026-10-01.md` prevalecen sobre diagnósticos históricos.
+Hay una entrega Windows autocontenida y una web offline en `releases/`, además del
+código fuente habitual. `JUGAR NEON VOID.cmd` abre la entrega Windows verificada.
+Última pasada local: `ARENA_ADAPTATION_2026-10-02.md`: bosses en mundo, soporte,
+láser integrado, densidad y X/puff. Continuación `DASH_TRAIL_2026-10-02.md`:
+referencias recibidas, estela de cuatro pilotos completada; 157 suites sin fallos.
+Continuación visual: SPECIAL_REMASTER_2026-10-02.md; Web vhwktw / Windows7a9PJk.
+El usuario rechazó los cuerpos de pilotEnergy; se retiraron todos sus hooks.
+Los cuerpos anteriores están restaurados y JUGAR NEON VOID.cmd apunta a7a9PJk;
+158 suites sin fallos. Ver PILOT_ENERGY_REDESIGN_2026-10-02.md antes de continuar.
+dev/pilot-concepts ahora compara el arte actual con MOVIMIENTO ESTABILIZADO,
+reemplazando la propuesta anterior. Ver PILOT_STABILITY_LAB_2026-10-02.md:
+renderer real reutilizado, controles por piloto, capturas A/B;75 archivos de
+producción intactos. NO está aprobado para integrar. No reiniciar trabajo anterior.
+Continuación: PILOT_CANONICAL_GEOMETRY_LAB_2026-10-02.md. El runtime recibido
+fija BOTI en 1/.25/.5/.2/.75; NO restaurar sus antiguos defaults. Base canónica
+inmutable y geometrías temporales independientes, exclusivamente en el MISMO lab.
+No integrar estos contornos en gameplay sin una aprobación nueva del usuario.
+Último cierre visual anterior: `PERIMETER_POLISH_2026-10-01.md` (margen28, nuevo borde,
+full-bleed, web/Electron alineados). No confundir la entrega cósmica previa con ésta.
+Editar fuentes NO actualiza un EXE ya empaquetado: tras una modificación futura,
+volver a ejecutar las pruebas, generar una nueva entrega y actualizar el lanzador.
+No sobrescribir builds verificadas ni confundir checkpoints de QA con partidas reales.
 
 ## Orden inicial recomendado
 

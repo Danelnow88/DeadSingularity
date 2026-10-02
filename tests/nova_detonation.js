@@ -21,7 +21,7 @@ t('detona el 50% del DoT acumulado y limpia phaseAcc', () => {
   const hits = NV.detonatePhase(player, [e1, e2], null, shockwaves, cbs);
   if (e1.hp !== 10) throw new Error('hp=' + e1.hp);
   if (e1.phaseAcc !== 0) throw new Error('acc no limpio');
-  if (!cbs.texts.includes('ESPECTRAL')) throw new Error('sin texto');
+  if (!cbs.texts.includes('IGNICIÓN')) throw new Error('sin texto');
   if (hits !== 1) throw new Error('hits=' + hits);
 });
 
@@ -67,13 +67,14 @@ t('jefe: acc*0.5*0.3 (DoT de aura sin mult ya se aplicó en vivo)', () => {
   if (boss.phaseAcc !== 0) throw new Error('acc jefe no limpio');
 });
 
-t('VFX diferenciado: doble shockwave espectral + estallido + flash', () => {
+t('VFX diferenciado: ruptura de plasma + estallido + flash', () => {
   const player = { x: 0, y: 0 };
   const sw = []; cbs.explosions = 0; cbs.flashes = [];
   NV.detonatePhase(player, [], null, sw, cbs);
   if (sw.length !== 2) throw new Error('anillos=' + sw.length);
-  if (!(sw[0].color === '#caa7ff' && sw[1].color === '#fff')) throw new Error('colores mal');
-  if (cbs.explosions !== 1 || !cbs.flashes.includes('#caa7ff')) throw new Error('falta estallido/flash');
+  if (!(sw[0].color === '#ff9d36' && sw[1].color === '#fff')) throw new Error('colores mal');
+  if (!sw.every(s => s.style === 'novaCollapse')) throw new Error('sin ruptura de plasma');
+  if (cbs.explosions !== 1 || !cbs.flashes.includes('#ff9d36')) throw new Error('falta estallido/flash');
 });
 
 t('balance define PHASE_DETONATION_MULT=0.5', () => {

@@ -66,7 +66,7 @@ t('mobile landscape sin query activa dynamic view por defecto', () => {
   const m = sbx.NV.worldMetrics;
   if (!sbx.NV.viewport.dynamicViewActive) throw new Error('dynamicViewActive=false');
   near(m.viewW, 520 * (915 / 412), 'viewW'); near(m.viewH, 520, 'viewH');
-  near(m.arenaW, m.viewW, 'arenaW'); near(m.arenaH, 520, 'arenaH');
+  near(m.arenaW, m.viewW * 1.5, 'arenaW'); near(m.arenaH, 780, 'arenaH');
   if (!root.classList.contains('nv-dynamic-view')) throw new Error('clase dinámica no activa por defecto');
 });
 
@@ -86,7 +86,7 @@ t('view empieza en 0 porque la arena dinámica ya ocupa todo el visible', () => 
 
 t('arena/view center dinámico mapea al centro físico', () => {
   const { sbx } = loadViewport({ nv: { capabilities: { isMobile: true, orientation: 'landscape' } }, cssW: 915, cssH: 412 });
-  const p = sbx.NV.gameToScreen(sbx.NV.worldMetrics.arenaW / 2, 260);
+  const p = sbx.NV.gameToScreen(sbx.NV.worldMetrics.viewW / 2, 260);
   near(p.x, 915 / 2, 'screenX');
   near(p.y, 412 / 2, 'screenY');
 });
@@ -121,8 +121,8 @@ t('scaleX≈scaleY por fórmula uniforme', () => {
 
 t('gameplay arena matches dynamic view', () => {
   const { sbx } = loadViewport({ nv: { capabilities: { isMobile: true, orientation: 'landscape' } }, cssW: 915, cssH: 412 });
-  near(sbx.NV.worldMetrics.arenaW, 520 * (915 / 412), 'arenaW');
-  near(sbx.NV.worldMetrics.arenaH, 520, 'arenaH');
+  near(sbx.NV.worldMetrics.arenaW, 780 * (915 / 412), 'arenaW');
+  near(sbx.NV.worldMetrics.arenaH, 780, 'arenaH');
 });
 
 t('boss center uses runtime arena center', () => {
@@ -134,7 +134,7 @@ t('boss center uses runtime arena center', () => {
 t('enemy spawn dimensions use runtime arena W/H', () => {
   const g = fs.readFileSync('js/game.js', 'utf8');
   if (!g.includes('function arenaW()')) throw new Error('arenaW accessor ausente');
-  if (!g.includes('NV.spawnEnemy({ enemies, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES, wave, ENEMY_TYPES, W: arenaW(), H: arenaH()')) throw new Error('spawnEnemy no recibe arena runtime W/H');
+  if (!g.includes('NV.spawnEnemy({ enemies, player, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES, wave, ENEMY_TYPES, W: arenaW(), H: arenaH()')) throw new Error('spawnEnemy no recibe arena runtime W/H');
 });
 
 t('projectile bounds use runtime arena W/H', () => {
@@ -166,8 +166,8 @@ t('portrait mobile no activa dynamic landscape gameplay', () => {
   const { sbx, root } = loadViewport({ nv: { capabilities: { isMobile: true, orientation: 'portrait' } }, cssW: 412, cssH: 915 });
   if (sbx.NV.viewport.dynamicViewActive) throw new Error('dynamic activo en portrait');
   if (root.classList.contains('nv-dynamic-view')) throw new Error('clase activa en portrait');
-  near(sbx.NV.worldMetrics.arenaW, 900, 'arenaW');
-  near(sbx.NV.worldMetrics.arenaH, 520, 'arenaH');
+  near(sbx.NV.worldMetrics.arenaW, 1350, 'arenaW');
+  near(sbx.NV.worldMetrics.arenaH, 780, 'arenaH');
 });
 
 t('WebGL center uses view rectangle metrics', () => {

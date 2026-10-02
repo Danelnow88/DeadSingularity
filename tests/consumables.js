@@ -28,6 +28,22 @@ t('CONSUMABLES centraliza los 7 consumibles reales en orden/precio actual', () =
   }
 });
 
+t('uso sin efecto conserva la carga; buffs permiten renovación y curación informa HP real', () => {
+  const NV=load(),ctx={player:{hp:100,maxHp:100,x:0,y:0},enemies:[],boss:null,pickups:[],weaponPickups:[]};
+  for (const type of ['potion','bomb','freeze','magnet']) if(NV.canUseConsumable(type,ctx).ok) throw new Error(type+' se gastaría sin efecto');
+  for (const type of ['shield','overdrive','bounty']) if(!NV.canUseConsumable(type,ctx).ok) throw new Error(type+' perdió su renovación');
+  ctx.player.hp=95; if(!NV.canUseConsumable('potion',ctx).ok)throw new Error('curación bloqueada');
+  let message;NV.applyConsumable({type:'potion'},{...ctx,addFloatText(x,y,text){message=text;}});
+  if(ctx.player.hp!==100||message!=='+5 HP')throw new Error('curación no informa cantidad real');
+  ctx.boss={hp:100,dead:false};if(!NV.canUseConsumable('bomb',ctx).ok||NV.canUseConsumable('freeze',ctx).ok)throw new Error('roles contra jefe incorrectos');
+  ctx.enemies=[{dead:false,arrival:{}}];if(NV.canUseConsumable('freeze',ctx).ok)throw new Error('consume por aviso de spawn');
+  ctx.enemies=[{dead:false}];if(!NV.canUseConsumable('freeze',ctx).ok)throw new Error('blanco válido');
+  ctx.pickups=[{dead:false}];if(!NV.canUseConsumable('magnet',ctx).ok)throw new Error('botín válido');
+  const game=fs.readFileSync('js/game.js','utf8'),start=game.indexOf('function useConsumable()');
+  const use=game.slice(start,game.indexOf('// === TIENDA',start));
+  if(use.indexOf('NV.canUseConsumable')>use.indexOf('NV.consumeByType'))throw new Error('valida después de gastar');
+});
+
 t('voidBomb: normal vivo muere vía onKill exactamente una vez (sin dead manual)', () => {
   const NV = load();
   const enemies = [{ dead: false, hp: 40, maxHp: 80 }];
@@ -148,7 +164,7 @@ t('applyConsumable preserva efectos y feedback de los 7 consumibles', () => {
   if (!NV.applyConsumable({ type: 'magnet' }, ctx) || !pickups[0].magnetPull || !weaponPickups[0].magnetPull) throw new Error('magnet');
   if (!NV.applyConsumable({ type: 'bounty' }, ctx) || player.bounty !== 10) throw new Error('bounty');
   if (NV.applyConsumable({ type: 'unknown' }, ctx) !== false) throw new Error('unknown no devuelve false');
-  for (const text of ['+40 HP', 'OVERDRIVE', 'ESCUDO', '¡BOMBA DE VACÍO!', '¡CONGELADO!', 'IMÁN (2)', 'RECOMPENSA 10s']) {
+  for (const text of ['+30 HP', 'OVERDRIVE', 'ESCUDO', '¡BOMBA DE VACÍO!', '¡CONGELADO!', 'IMÁN (2)', 'RECOMPENSA 10s']) {
     if (!floatTexts.some((f) => f.text === text)) throw new Error('falta float ' + text);
   }
   for (const color of ['#ff5f9b', '#caa7ff', '#ffd700']) {

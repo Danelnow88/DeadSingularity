@@ -284,7 +284,9 @@
     if (specialBtn.classList.contains('is-charging') !== charging) specialBtn.classList.toggle('is-charging', charging);
     const status = ready ? 'LISTO' : (info.active ? Math.ceil(Math.max(0, info.remaining || 0)) + 's' : '—');
     if (specialStatus && specialStatus.textContent !== status) specialStatus.textContent = status;
-    const ariaLabel = ready ? 'Especial listo' : 'Especial cargando, ' + status + ' restantes';
+    const name = info.name || 'Especial';
+    const ariaLabel = ready ? name + ' listo' : name + ' cargando, ' + status + ' restantes';
+    if (specialBtn.title !== name) specialBtn.title = name;
     if (specialBtn.getAttribute('aria-label') !== ariaLabel) specialBtn.setAttribute('aria-label', ariaLabel);
   }
   if (input._onWeaponChange === undefined || input._onWeaponChange === null) input._onWeaponChange = [];

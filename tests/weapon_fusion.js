@@ -13,21 +13,21 @@ t('weaponFusionDamage: fus 0 = base, fus 3 = base*1.6', () => {
   if (NV.weaponFusionDamage(20, 3, 0.2) !== 32) throw new Error('fus3=' + NV.weaponFusionDamage(20, 3, 0.2)); // 20*1.6=32
 });
 
-t('shoot aplica el multiplicador de fusión sobre base+nivel', () => {
+t('shoot aplica fusión después de base escalada y permanente plano', () => {
   const fired = [];
   NV.shoot({
     player: { x: 0, y: 0 }, enemies: [{ x: 100, y: 0 }], boss: null, bullets: fired,
     currentWeapon: { id: 'rifle', damage: 20, range: 480, speed: 700, color: '#4ade80', count: 1 },
-    currentWeaponLevel: () => 1, weaponVisualTier: () => 0, BULLET_TIER_COLORS: ['#fff'],
-    MAX_BULLETS: 50, permDamageBonus: 0, playWeaponSound: () => {},
+    currentWeaponLevel: () => 16, weaponVisualTier: () => 0, BULLET_TIER_COLORS: ['#fff'],
+    MAX_BULLETS: 50, permDamageBonus: 1, playWeaponSound: () => {},
     currentWeaponFusion: 2, fusionStep: 0.2,
   });
-  // base=20 + lv1 + 0 =21 ; * (1+2*0.2)=1.4 => 29
+  // base=20*1.30=26; permanente=2; fusión x1.4 => round(39.2)=39.
   if (fired.length !== 1) throw new Error('no disparó');
-  if (fired[0].damage !== Math.round(21 * 1.4)) throw new Error('damage=' + fired[0].damage);
+  if (fired[0].damage !== Math.round((20 * 1.3 + 2) * 1.4)) throw new Error('damage=' + fired[0].damage);
 });
 
-t('sin fusión no cambia el daño (regresión)', () => {
+t('sin fusión conserva el redondeo final existente', () => {
   const fired = [];
   NV.shoot({
     player: { x: 0, y: 0 }, enemies: [{ x: 100, y: 0 }], boss: {}, bullets: fired,
@@ -36,7 +36,7 @@ t('sin fusión no cambia el daño (regresión)', () => {
     BULLET_TIER_COLORS: ['#fff'], MAX_BULLETS: 50, weaponVisualTier: () => 0,
     currentWeaponFusion: 0, fusionStep: 0.2,
   });
-  if (fired[0].damage !== 22) throw new Error('sin fusión daño=' + fired[0].damage + ' (base20+lv2)');
+  if (fired[0].damage !== Math.round(20 * 1.02)) throw new Error('sin fusión daño=' + fired[0].damage + ' esperado=20');
 });
 
 t('drops de arma poseída se fusiona y no ocupa slot', () => {

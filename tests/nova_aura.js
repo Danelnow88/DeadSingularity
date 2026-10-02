@@ -28,7 +28,8 @@ t('simulación del bloque de aura: 40dps radio 70, jefe recibe 12dps', () => {
 });
 
 t('render de la zona usa el radio de balance (no hardcodeado)', () => {
-  const src = fs.readFileSync('js/render/player.js', 'utf8');
+  const src = fs.readFileSync('js/render/specialEffects.js', 'utf8');
+  if (!fs.readFileSync('js/render/player.js', 'utf8').includes('NV.drawSpecialPlayerLayer')) throw new Error('player no delega al renderer');
   if (!src.includes('PHASE_AURA_RADIUS')) throw new Error('zona no lee de BALANCE');
 });
 

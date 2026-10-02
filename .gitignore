@@ -18,3 +18,11 @@ probe_out.txt
 test_summary.txt
 # Archivos internos/locales de Cline
 .cline/
+
+# Entregas generadas y evidencia local de navegador (no son fuente).
+releases/
+previews/alpha-verification/
+previews/alpha-verification-offline/
+# Capturas y reportes locales generados. Las páginas fuente ya versionadas
+# siguen versionadas; los fixtures estables viven en tests/fixtures/.
+previews/

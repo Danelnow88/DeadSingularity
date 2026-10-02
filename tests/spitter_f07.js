@@ -86,6 +86,19 @@ t('en banda: strafe lateral persistente sin jitter', function () {
   if (Math.abs(e.y - y0) < 1e-6 && Math.abs(e.x - 400) < 1e-6) throw new Error('sin movimiento strafe');
   if (e.intent.state !== 'positioning') throw new Error('state=' + e.intent.state);
 });
+t('movimiento suavizado: acelera y frena sin saltos de velocidad', function () {
+  const NV = setup(), e = mkSpitter(400, 300), st = mkState([e], { x: 650, y: 300, moveVx: 0, moveVy: 0, invuln: 0, stun: 0 });
+  NV.updateEnemies(0.05, st); NV.updateEnemies(0.05, st);
+  const first = Math.hypot(e.spitMoveVx || 0, e.spitMoveVy || 0);
+  NV.updateEnemies(0.05, st);
+  const second = Math.hypot(e.spitMoveVx || 0, e.spitMoveVy || 0);
+  if (!(first > 0 && second > first && second < e.speed * 0.4)) throw new Error('aceleración brusca: ' + first + ' -> ' + second);
+  e.intent.state = 'windup'; e.intent.stateTimer = 0.3;
+  const beforeBrake = Math.hypot(e.spitMoveVx, e.spitMoveVy);
+  NV.updateEnemies(0.05, st);
+  const afterBrake = Math.hypot(e.spitMoveVx, e.spitMoveVy);
+  if (!(afterBrake > 0 && afterBrake < beforeBrake)) throw new Error('frenado brusco: ' + beforeBrake + ' -> ' + afterBrake);
+});
 t('no dispara fuera de la banda ni muy lejos ni muy cerca', function () {
   const NV = setup();
   const far = mkSpitter(100, 300), stF = mkState([far], { x: 700, y: 300, moveVx: 0, moveVy: 0, invuln: 0, stun: 0 });

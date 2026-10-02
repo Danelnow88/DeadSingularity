@@ -65,9 +65,14 @@ t('Lluvia Estelar: daño a jefe reducido por METEOR_BOSS_DMG_MULT', () => {
   const boss = { x: 400, y: 300, hp: 10000, maxHp: 10000, radius: 50, dead: false, hitFlash: 0 };
   const meteors = [{ x: 400, y: 300, vx: 0, vy: 400, radius: 10, color: '#fff', dead: false }];
   const r = NV.updateMeteors(0.05, meteors, { H: 600, enemies: [], boss }, { killEnemy() {}, applyKnockback() {}, spawnExplosion() {} });
-  const dmg = 10000 - boss.hp; // ~30*mult*frames... verificar que sea < 15 en el tick
-  if (!(dmg > 0 && dmg <= 15 * (mult / 0.3) + 1)) throw new Error('dano tick=' + dmg);
-  if (!(10000 - 12 <= boss.hp)) throw new Error('dano excesivo por impacto');
+  const dmg = 10000 - boss.hp;
+  if (Math.abs(dmg - 30 * mult) > 0.001) throw new Error('dano por impacto=' + dmg);
+  if (r.meteors.length !== 0) throw new Error('el meteoro debe desaparecer al impactar');
+  for (let i = 0; i < 60; i++) NV.updateMeteors(0.016, r.meteors, { H: 600, enemies: [], boss }, { killEnemy() {}, applyKnockback() {}, spawnExplosion() {} });
+  if (Math.abs(10000 - boss.hp - dmg) > 0.001) throw new Error('dano repetido durante el mismo impacto');
+  const lluvia = Array.from({ length: 12 }, () => ({ x: 400, y: 300, vx: 0, vy: 0, radius: 10, color: '#fff' }));
+  NV.updateMeteors(0, lluvia, { H: 600, enemies: [], boss }, { killEnemy() {}, applyKnockback() {}, spawnExplosion() {} });
+  if (10000 - boss.hp > 13 * 30 * mult + 0.001) throw new Error('lluvia completa causa dano excesivo');
 });
 
 t('Lluvia Estelar: dano contra enemigos comunes intacto (40)', () => {

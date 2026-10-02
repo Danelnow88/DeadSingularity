@@ -17,10 +17,19 @@
   const NV = (w && w.NV) ? w.NV : {};
   if (w) w.NV = NV;
 
-  // Métricas autoritativas del mundo. Stage 3 expande la arena gameplay
-  // móvil landscape por defecto para igualar la vista. Desktop conserva legacy.
+  // Una sola autoridad: la arena es mayor que la ventana visible en todas las
+  // plataformas. Dynamic World View conserva su escala, no sus antiguos bounds.
   const REFERENCE_W = 900;
   const REFERENCE_H = 520;
+  const ARENA_VIEW_RATIO = 1.5;
+  // Margen exclusivamente VISUAL. Nunca se suma a arenaW/H ni a bounds físicos.
+  const CAMERA_EXTERIOR_PADDING = 28;
+  function clampCameraOrigin(origin, arenaSize, visibleSize) {
+    const lo = -CAMERA_EXTERIOR_PADDING;
+    const hi = arenaSize - visibleSize + CAMERA_EXTERIOR_PADDING;
+    return hi < lo ? (arenaSize - visibleSize) / 2 : Math.max(lo, Math.min(hi, origin));
+  }
+  let cameraFocus = null;
   const worldMetrics = NV.worldMetrics || {
     refW: REFERENCE_W,
     refH: REFERENCE_H,
@@ -86,8 +95,8 @@
       viewH,
       viewX: 0,
       viewY: 0,
-      arenaW: viewW,
-      arenaH: REFERENCE_H,
+      arenaW: viewW * ARENA_VIEW_RATIO,
+      arenaH: REFERENCE_H * ARENA_VIEW_RATIO,
       scale: stageH > 0 ? stageH / viewH : 1,
     };
   }
@@ -96,10 +105,10 @@
     worldMetrics.refH = REFERENCE_H;
     worldMetrics.viewW = next.viewW;
     worldMetrics.viewH = next.viewH;
-    worldMetrics.viewX = next.viewX;
-    worldMetrics.viewY = next.viewY;
-    worldMetrics.arenaW = next.arenaW || REFERENCE_W;
-    worldMetrics.arenaH = next.arenaH || REFERENCE_H;
+    worldMetrics.arenaW = next.arenaW || next.viewW * ARENA_VIEW_RATIO;
+    worldMetrics.arenaH = next.arenaH || next.viewH * ARENA_VIEW_RATIO;
+    worldMetrics.viewX = clampCameraOrigin(worldMetrics.viewX, worldMetrics.arenaW, next.viewW);
+    worldMetrics.viewY = clampCameraOrigin(worldMetrics.viewY, worldMetrics.arenaH, next.viewH);
     worldMetrics.scale = next.scale;
   }
 
@@ -134,6 +143,25 @@
       return Math.min(cssW / lw, cssH / lh);
     },
     computeDynamicMetrics,
+    arenaViewRatio: ARENA_VIEW_RATIO,
+    get cameraExteriorPadding() { return CAMERA_EXTERIOR_PADDING; },
+    clampCameraOrigin,
+
+    // La cámara sólo modifica viewX/Y; nunca mueve entidades ni sus bounds.
+    // Sin smoothing/dead-zone: centrado exacto y clamp predecible, incluso resize.
+    followPlayer(x, y) {
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return worldMetrics;
+      if (!cameraFocus) cameraFocus = { x, y };
+      else { cameraFocus.x = x; cameraFocus.y = y; }
+      worldMetrics.viewX = clampCameraOrigin(x - worldMetrics.viewW / 2, worldMetrics.arenaW, worldMetrics.viewW);
+      worldMetrics.viewY = clampCameraOrigin(y - worldMetrics.viewH / 2, worldMetrics.arenaH, worldMetrics.viewH);
+      return worldMetrics;
+    },
+    // Rect visible compartido; no es un segundo gestor ni altera simulación.
+    intersectsWorldRect(x, y, width, height) {
+      return x + width >= worldMetrics.viewX && x <= worldMetrics.viewX + worldMetrics.viewW
+        && y + height >= worldMetrics.viewY && y <= worldMetrics.viewY + worldMetrics.viewH;
+    },
 
     readFullscreen() {
       viewport.isFullscreen = !!(
@@ -211,6 +239,7 @@
         viewport.dpr = 1;// escritorio idéntico al comportamiento original
       }
       viewport.orientation = orientation;
+      if (cameraFocus) viewport.followPlayer(cameraFocus.x, cameraFocus.y);
       viewport.readSafeAreas();
       viewport.readFullscreen();
       for (let i = 0; i < listeners.length; i++) {
@@ -250,12 +279,12 @@
         // aplicada sobre la caja CSS (aquí DPR=1 ⇒ canvas.width ≈ rect.width).
         const sx = rect.width > 0 ? rect.width / worldMetrics.viewW : 1;
         const sy = rect.height > 0 ? rect.height / worldMetrics.viewH : 1;
-        return { x: x / sx, y: y / sy };
+        return { x: worldMetrics.viewX + x / sx, y: worldMetrics.viewY + y / sy };
       }
       // Móvil: escala uniforme + offsets de letterbox/pillarbox.
       return {
-        x: (x - viewport.offsetX) / viewport.displayScale,
-        y: (y - viewport.offsetY) / viewport.displayScale,
+        x: worldMetrics.viewX + (x - viewport.offsetX) / viewport.displayScale,
+        y: worldMetrics.viewY + (y - viewport.offsetY) / viewport.displayScale,
       };
     },
 
@@ -268,6 +297,10 @@
           const r = canvas.getBoundingClientRect();
           if (r) rect = r;
         } catch (_) { /* defensivo */ }
+      }
+      if (!viewport.isMobile && rect.width > 0 && rect.height > 0) {
+        return { x: rect.left + (gx - worldMetrics.viewX) * rect.width / worldMetrics.viewW,
+          y: rect.top + (gy - worldMetrics.viewY) * rect.height / worldMetrics.viewH };
       }
       return {
         x: rect.left + viewport.offsetX + (gx - worldMetrics.viewX) * viewport.displayScale,

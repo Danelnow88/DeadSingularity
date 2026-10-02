@@ -29,26 +29,28 @@ Estas métricas representan constantes de diseño y compatibilidad legacy. No so
 
 ```text
 view = 900x520
-arena = 900x520
-viewX = 0
-viewY = 0
+arena = 1350x780
+viewX = clamp(player.x - viewW/2, -28, 478)
+viewY = clamp(player.y - viewH/2, -28, 288)
 ```
 
 La presentación usa escala uniforme contain, sin stretch ni crop. Letterbox o pillarbox puede aparecer según el contenedor.
 
 ## Mobile landscape
 
-La fórmula Stage 3 no debe alterarse:
+La fórmula visible Stage 3 se conserva; foundation de cámara separa los bounds:
 
 ```js
 viewH = 520;
 viewW = Math.max(900, 520 * stageAspect);
 
-arenaW = viewW;
-arenaH = 520;
+arenaW = viewW * 1.5;
+arenaH = viewH * 1.5;
 
-viewX = 0;
-viewY = 0;
+// Padding exclusivamente visual, definido una sola vez en viewport.js.
+P = viewport.cameraExteriorPadding; // 28
+viewX = clamp(player.x - viewW/2, -P, arenaW - viewW + P);
+viewY = clamp(player.y - viewH/2, -P, arenaH - viewH + P);
 ```
 
 Consecuencias:
@@ -57,13 +59,26 @@ Consecuencias:
 - no hay stretching;
 - no hay cover cropping;
 - no quedan gutters laterales del contain antiguo;
-- la arena se expande horizontalmente junto con la vista;
+- la arena es 1.5× la vista en ambos ejes; sus bordes no son los de cámara;
 - las proporciones en unidades de mundo permanecen consistentes;
 - `screenToGame()` y `gameToScreen()` proyectan contra la vista dinámica.
 
+Pulido del perímetro: el margen visual baja a28 y el nuevo material es común.
+La caja CSS móvil, HUD y safe areas permanecen EXACTAMENTE como estaban;
+eliminar aquí el inset de2px y borde1px variaba el aspecto y por tanto los bounds
+de la arena dinámica. Se detectó y descartó esa modificación antes del cierre.
+La corrección de margen muerto de ventana se aplica a escritorio/Electron.
+Móvil conserva ese inset3px; eliminarlo sin alterar arena requiere otra decisión
+de presentación, no introducir otra autoridad de métricas en este pulido.
+El fallback contain y el overlay portrait también conservan su política.
+Ver [informe de perímetro](PERIMETER_POLISH_2026-10-01.md).
+
 ## Mobile portrait
 
-Portrait no activa Dynamic World View. Se mantienen `view = arena = 900x520` y el overlay `#rotateOverlay` solicita orientación horizontal. No sustituir esta política por un segundo layout de gameplay portrait sin una decisión arquitectónica explícita.
+Portrait no activa Dynamic World View. Se mantienen `view=900x520` y
+`arena=1350x780`; el overlay `#rotateOverlay` solicita orientación horizontal.
+No sustituir esta política por otro gameplay portrait. Resize de Dynamic Arena
+reconcilia entidades una vez, con reaviso si desplazó un peligro.
 
 ## Semántica de métricas
 

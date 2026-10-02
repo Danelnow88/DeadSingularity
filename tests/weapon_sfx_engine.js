@@ -357,7 +357,7 @@ t('fallo de audio no aborta el proyectil ya creado', () => {
       weaponImpactProfile: () => ({ type: 'direct', pierce: 1 }),
       bulletSizeGrowth: () => 0,
       waveWeaponMult: () => 1,
-      weaponLevelDamageBonus: () => 0,
+      weaponLevelDamageMultiplier: () => 1,
     },
   };
   sandbox.window.NV = sandbox.NV;

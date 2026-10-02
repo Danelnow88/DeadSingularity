@@ -120,7 +120,7 @@ function runFor(charId) {
   let t = 1000;
   // calentar ~60 frames
   for (let i = 0; i < 60; i++) h.step((t += 16));
-  if (!h.canvasText.some((text) => /^ENEMIGOS: \d+ \(\d+\)$/.test(text))) return 'FAIL contador HUD no renderizado';
+  if (!h.canvasText.some((text) => /^ENEMIGOS: \d+ \(\d+\)( · JEFES \d+\/\d+)?$/.test(text))) return 'FAIL contador HUD no renderizado';
   let snapshot = h.sandbox.NV.getRuntimeSnapshot();
   if (snapshot.state !== 'playing' || snapshot.paused || snapshot.wave !== 1 || snapshot.frame <= 0) return 'FAIL runtime inactivo';
   if (snapshot.player.character !== charId) return 'FAIL piloto de gameplay incorrecto';
