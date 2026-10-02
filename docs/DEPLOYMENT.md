@@ -61,6 +61,19 @@ El HTML público conservaba dos bloques opcionales de 3D experimental que la
 build quitaba. Se retiraron de la entrada principal; ahora el HTML fuente también
 coincide con el empaquetado. Esto no modifica el Canvas2D ni el balance.
 
+Ante el reporte posterior de formas antiguas, un navegador limpio confirmó las
+cuatro geometrías correctas. La caché del navegador del usuario no se inspeccionó:
+no tratarla como causa demostrada. La entrada pública ahora usa identificadores
+de entrega en las URLs de JS/CSS/recursos para impedir reutilizar respuestas de
+URLs antiguas. Sólo cambian URLs, no contenidos de gameplay ni formas.
+Identificador actual: `nv=pilots-20261002a` en 70 referencias. Cambiar ese
+identificador al publicar una entrega que modifique JS/CSS; no quitarlo ni
+reutilizarlo para recursos distintos. El test de móvil compara pathnames y
+conserva la comprobación del orden de carga; el test web_release_cache exige
+identificadores y archivos existentes. 161 suites sin fallos.
+El HTML puede diferir de la build previa por esos identificadores; los 73 recursos
+siguen siendo los mismos. No borrar progreso ni preferencias del usuario.
+
 GitHub Pages debe servir los 74 archivos del juego de esa entrega, no el EXE
 ni las DLL de Electron. Verificar también el HTML y todos los recursos, no sólo
 un archivo de pilotos. `previews/pages-electron-parity/` contiene la auditoría

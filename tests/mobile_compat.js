@@ -171,12 +171,14 @@ t('game.js resizeCanvas usa el DPR efectivo del viewport', () => {
 
 t('index.html carga capabilities, viewport y mobileControls en el orden correcto', () => {
   const html = fs.readFileSync('index.html', 'utf8');
-  const scripts = html.match(/<script src="([^"]+)"/g).map((s) => s.match(/"([^"]+)"/)[1]);
+  // La identidad del archivo no incluye el identificador de entrega en query.
+  const scripts = html.match(/<script src="([^"]+)"/g).map((s) =>
+    new URL(s.match(/"([^"]+)"/)[1].replaceAll('&amp;', '&'), 'https://game.test/').pathname.slice(1));
   const iC = scripts.indexOf('js/core/capabilities.js');
   const iV = scripts.indexOf('js/core/viewport.js');
   const iM = scripts.indexOf('js/ui/mobileControls.js');
   const iG = scripts.indexOf('js/game.js');
-  if (iC < 0 || iV < 0 || iM < 0) throw new Error('faltan scripts de la capa móvil');
+  if (iC < 0 || iV < 0 || iM < 0 || iG < 0) throw new Error('faltan scripts de la capa móvil');
   if (iC >= iV) throw new Error('capabilities debe cargar antes que viewport');
   if (iM <= iG) throw new Error('mobileControls debe cargar después de game.js');
 });
