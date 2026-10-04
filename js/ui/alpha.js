@@ -93,17 +93,19 @@
   }
   const launch = el('section', 'alpha-launch');
   launch.setAttribute('aria-label', 'Objetivo de partida');
-  launch.append(el('span', 'alpha-kicker', 'OPERACIÓN / 0.10 ALPHA'));
   const modeRow = el('div', 'alpha-mode-row');
   const modes = ['expedition', 'endless'].map((mode, i) => {
-    const b = button(i ? 'INFINITO · SIN FINAL' : 'HISTORIA · 20 OLEADAS', () => { NV.alpha.setMode(mode); refresh(true); });
-    b.dataset.mode = mode; modeRow.append(b); return b;
+    const existing = $(i ? 'lobbyModeEndless' : 'lobbyModeHistory');
+    const select = () => { NV.alpha.setMode(mode); refresh(true); };
+    const b = existing || button(i ? 'INFINITO · SIN FINAL' : 'HISTORIA · 20 OLEADAS', select);
+    if (existing) b.addEventListener('click', select);
+    b.dataset.mode = mode; if (!existing) modeRow.append(b); return b;
   });
   const resume = button('CONTINUAR', () => { if (NV.alpha.resume()) refresh(true); }); resume.id = 'alphaResume';
   const links = el('div', 'alpha-links'); links.append(button('CÓMO JUGAR', () => open('help')), button('RÉCORDS / INFORME', () => open('career')));
   const caption = el('small', 'alpha-note', 'HISTORIA: 20 oleadas · 10 jefes distintos · una misión completa.');
-  launch.append(modeRow, caption, resume, links);
-  const hero = document.querySelector('.lobby-hero'); if (hero) hero.append(launch);
+  launch.append(resume, links);
+  const hero = $('lobbyLaunch') || document.querySelector('.lobby-hero'); if (hero) hero.append(launch);
   $('lobbyPlayBtn').addEventListener('click', e => {
     if (!NV.alpha.snapshot().saveDisabled && NV.expedition.load() && !window.confirm('Iniciar una partida nueva reemplaza el checkpoint. ¿Empezar de nuevo?')) {
       e.preventDefault(); e.stopImmediatePropagation();
@@ -136,6 +138,36 @@
   const strip = el('div', 'alpha-run-strip'); strip.setAttribute('aria-label', 'Objetivo de expedición');
   document.querySelector('main').append(strip);
   let lastState = '', lastDock = '';
+  let lastLobbyRoute = '';
+  function refreshLobbyRoute(checkpoint) {
+    const host=$('lobbyStoryDots'); if (!host) return;
+    const saved=checkpoint && checkpoint.run.mode==='expedition' ? checkpoint : null;
+    const run=saved?saved.run:NV.expedition.create('expedition',0);
+    const legacy=run.bossProgression!=='full-roster',count=legacy?4:10;
+    const cleared=saved?Math.min(count,Math.floor(saved.wave/(legacy?5:2))):0;
+    const sig=JSON.stringify([legacy,cleared,run.seed,NV.expedition.profile().bestWave]);
+    if (sig===lastLobbyRoute) return;lastLobbyRoute=sig;
+    $('lobbyInfiniteRecord').textContent='Oleada '+NV.expedition.profile().bestWave;
+    $('lobbyStoryProgress').textContent=String(Math.min(count,cleared+1)).padStart(2,'0')+' / '+count;
+    $('lobbyRouteLabel').textContent=legacy?'RUTA ANTERIOR':'RUTA DE JEFES';
+    host.replaceChildren();host.setAttribute('aria-label',cleared+' de '+count+' jefes completados');
+    function showBoss(i) {
+      const wave=(i+1)*(legacy?5:2),boss=NV.BOSS_TYPES[NV.expedition.bossIndex(run,wave)];
+      $('lobbyBossName').textContent='Jefe '+(i+1)+': '+boss.name;
+      $('lobbyBossSector').textContent=NV.expedition.sector(wave);
+      $('lobbyBossWave').textContent='OLEADA '+wave;
+      const style=$('lobbyStoryTooltip').style;
+      if(style && typeof style.setProperty==='function') style.setProperty('--boss-color',boss.color);
+    }
+    for(let i=0;i<count;i++) {
+      const wave=(i+1)*(legacy?5:2),boss=NV.BOSS_TYPES[NV.expedition.bossIndex(run,wave)];
+      const dot=button('',()=>showBoss(i),'dot'+(i<cleared?' completed':i===cleared?' active':''));
+      dot.setAttribute('aria-label','Jefe '+(i+1)+': '+boss.name+' · '+NV.expedition.sector(wave));
+      dot.setAttribute('aria-describedby','lobbyStoryTooltip');
+      dot.addEventListener('pointerenter',()=>showBoss(i));dot.addEventListener('focus',()=>showBoss(i));host.append(dot);
+    }
+    showBoss(Math.min(count-1,cleared));
+  }
   function refresh(force) {
     const s = NV.alpha.snapshot();
     for (const b of modes) b.setAttribute('aria-pressed', String(b.dataset.mode === s.mode));
@@ -143,6 +175,7 @@
       ? 'INFINITO: sobreviví sin final; las oleadas y los jefes continúan.'
       : 'HISTORIA: 20 oleadas · 10 jefes distintos. Alternás asalto y jefe. Al vencer al décimo termina la misión; otra Historia empieza de cero.';
     const checkpoint = s.state === 'menu' && !s.saveDisabled ? NV.expedition.load() : null;
+    if(s.state==='menu') refreshLobbyRoute(checkpoint);
     resume.hidden = !checkpoint;
     if (checkpoint) resume.textContent = 'CONTINUAR · OLEADA ' + (checkpoint.wave + 1) + (checkpoint.run.mode === 'expedition' && checkpoint.run.bossProgression !== 'full-roster' ? ' · RUTA ANTERIOR' : '');
     strip.hidden = s.state !== 'playing' || s.paused || s.showHUD === false || !s.run || !s.run.contract;

@@ -43,6 +43,7 @@
     const dealt = snapProtected ? resisted * 0.10 : (NV.guardProtectedDamage ? NV.guardProtectedDamage(e, resisted) : resisted);
     const hpBefore = NV.playtest && NV.playtest.enabled ? e.hp : 0;
     e.hp -= dealt;
+    if (e.hp > 0 && NV.sfx && NV.sfx.impact) NV.sfx.impact('enemy', { x: e.x, worldWidth: st.W });
     if (NV.playtest && NV.playtest.enabled && !b.reflected && b.wid) {
       // El ordinal de rebote viaja en el propio proyectil; solo diagnóstico.
       NV.playtest.weaponEnemyHit(b.wid, source || 'direct', dealt, hpBefore, e.hp,

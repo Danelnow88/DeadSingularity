@@ -10,7 +10,6 @@
   NV.musicState = {
     step: 0,
     bar: 0,
-    nextDroneAt: 0,
     lastBeat: 0,
     intensity: 0,
     combo: 0,        // kills sin morir → capas musicales de intensidad (Tarea 1 - audio adaptativo)
@@ -18,30 +17,32 @@
     sector: 'threshold',
   };
   NV.musicTime = 0;
+  let soundSeed=0x4e56;
+  function randomAudio(){if(NV.audioRandom)return NV.audioRandom();soundSeed=(Math.imul(soundSeed,1664525)+1013904223)>>>0;return soundSeed/4294967296;}
+  function gate(key,secs){return !NV.allowAudioEvent||NV.allowAudioEvent(key,secs);}
 
-  // Progresión de acordes y bajo (estilo Karl Casey dark synthwave)
-  const CHORD_ROOTS = [65.41, 87.31, 110.00, 146.83]; // C2 - F2 - G2 - C3
+  // Una sola batería trap a medio tiempo. Los valores son velocidades, no
+  // pistas adicionales: el 808 sigue al kick y la caja cae en el tercer pulso.
+  const COMBAT_STEP = 60 / 144 / 4;
+  const CHORD_ROOTS = [65.41, 51.91, 77.78, 58.27]; // Cm - Ab - Eb - Bb
   const BASS_LINE = [65.41, 87.31, 65.41, 146.83];    // C - F - C - G (bajo)
   const LEAD_SEQ = [329.63, 440.00, 493.88, 587.33, 659.26, 587.33, 493.88, 440.00];
   const DRUM_PATTERN = [
-    [1,0,1,0, 1,0,0,0, 1,0,1,0, 1,0,0,0], // Kick (16 steps)
-    [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], // Snare
-    [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1], // Hi-hat
+    [1,0,0,.72, 0,0,.85,0, 0,0,1,0, 0,0,.78,0],
+    [0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    [.9,0,.54,0, .72,0,.48,0, .9,0,.55,0, .7,0,.48,0],
   ];
 
-  // === Identidad sonora de jefe (Tarea 3) ===
-  // Capa musical distinta y más oscura/tensa: raíces una octava abajo, progresión
-  // más disonante y percusión más densa (más presión rítmica en pelea de jefe).
-  const BOSS_CHORD_ROOTS = [49.00, 55.00, 61.74, 73.42]; // G1 - A1 - B1 - D2 (grave y tenso)
+  // Jefes: misma gramática musical, síncopas y mayor tensión, no otra batería.
+  const BOSS_CHORD_ROOTS = [49.00, 38.89, 58.27, 43.65]; // Gm - Eb - Bb - F
   const BOSS_BASS_LINE = [49.00, 61.74, 55.00, 73.42];
   const BOSS_LEAD_SEQ = [220.00, 246.94, 261.63, 293.66, 329.63, 293.66, 261.63, 246.94];
   const BOSS_DRUM_PATTERN = [
-    [1,0,1,0, 1,1,0,0, 1,0,1,0, 1,1,0,0], // Kick más denso (doble golpe en el 2do compás)
-    [0,0,0,0, 1,0,0,1, 0,0,0,0, 1,0,0,1], // Snare con contratiempo extra
-    [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1], // Hi-hat (mismo pulso)
+    [1,0,.55,0, 0,0,.9,0, 0,0,1,0, 0,.62,0,.8],
+    [0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    [1,.3,.62,0, .8,0,.55,.3, 1,0,.62,0, .8,.3,.55,0],
   ];
-  // Lookup de capas por fase. 'shop'/'menu' caen a 'normal' hasta que se les
-  // asigne identidad propia (Tarea 5 - ambiente de menú).
+  // Menú y tienda tienen arreglos más relajados dentro del mismo secuenciador.
   const MENU_CHORD_ROOTS = [82.41, 98.00, 123.47, 164.81]; // E2 - G2 - B2 - E3
   const MENU_BASS_LINE = [82.41, 0, 98.00, 0];
   const MENU_LEAD_SEQ = [329.63, 392.00, 493.88, 587.33, 493.88, 392.00, 329.63, 246.94];
@@ -52,45 +53,48 @@
   ];
   // Cuatro identidades de expedición. Todas conservan 16 pasos para cambiar de
   // sector sin cortar notas ni recrear el motor, pero difieren en armonía, ritmo,
-  // timbre y respiración del drone.
-  const FOUNDRY_CHORD_ROOTS = [55.00, 65.41, 82.41, 73.42];
+  // timbre. El tempo común evita cambios arbitrarios al pasar de sector.
+  const FOUNDRY_CHORD_ROOTS = [55.00, 43.65, 65.41, 49.00];
   const FOUNDRY_BASS_LINE = [55.00, 55.00, 82.41, 73.42];
   const FOUNDRY_LEAD_SEQ = [220.00, 261.63, 329.63, 293.66, 392.00, 329.63, 261.63, 246.94];
   const FOUNDRY_DRUM_PATTERN = [
-    [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,1,0,0],
-    [0,0,0,0, 1,0,0,1, 0,0,0,0, 1,0,0,1],
-    [1,1,0,1, 1,1,0,1, 1,1,0,1, 1,1,1,1],
+    [1,0,0,0, 0,.7,0,.5, 0,0,.9,0, .6,0,0,.85],
+    [0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    [1,0,.55,.25, .8,0,.5,0, 1,0,.55,0, .8,.25,.5,0],
   ];
-  const FRACTURE_CHORD_ROOTS = [69.30, 92.50, 77.78, 116.54];
+  const FRACTURE_CHORD_ROOTS = [69.30, 55.00, 82.41, 61.74];
   const FRACTURE_BASS_LINE = [69.30, 0, 77.78, 92.50];
   const FRACTURE_LEAD_SEQ = [277.18, 369.99, 311.13, 466.16, 415.30, 311.13, 369.99, 233.08];
   const FRACTURE_DRUM_PATTERN = [
-    [1,0,0,1, 0,0,1,0, 1,0,0,1, 0,1,0,0],
-    [0,0,0,0, 1,0,0,0, 0,0,1,0, 1,0,0,0],
-    [1,0,1,1, 1,1,0,1, 1,0,1,0, 1,1,0,1],
+    [1,0,0,.65, 0,0,0,.85, 0,0,1,0, 0,0,.65,0],
+    [0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    [.85,0,.45,.2, .7,0,.5,0, .9,0,.5,.2, .7,0,.5,0],
   ];
-  const VOID_CHORD_ROOTS = [43.65, 51.91, 61.74, 46.25];
+  const VOID_CHORD_ROOTS = [43.65, 34.65, 51.91, 38.89];
   const VOID_BASS_LINE = [43.65, 51.91, 43.65, 61.74];
   const VOID_LEAD_SEQ = [174.61, 207.65, 246.94, 311.13, 293.66, 246.94, 207.65, 155.56];
   const VOID_DRUM_PATTERN = [
-    [1,0,0,0, 1,0,1,0, 1,0,0,0, 1,0,1,0],
-    [0,0,0,0, 1,0,0,0, 0,0,0,1, 1,0,0,0],
-    [1,0,1,0, 1,0,1,1, 1,0,1,0, 1,1,1,0],
+    [1,0,.55,0, 0,0,.8,0, 0,0,0,1, 0,.6,0,0],
+    [0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    [1,0,.5,0, .75,.25,.5,0, 1,0,.5,.25, .75,0,.5,0],
   ];
   const MUSIC_LAYERS = {
     normal: { chordRoots: CHORD_ROOTS, bass: BASS_LINE, lead: LEAD_SEQ, drums: DRUM_PATTERN },
     boss: { chordRoots: BOSS_CHORD_ROOTS, bass: BOSS_BASS_LINE, lead: BOSS_LEAD_SEQ, drums: BOSS_DRUM_PATTERN },
     menu: { chordRoots: MENU_CHORD_ROOTS, bass: MENU_BASS_LINE, lead: MENU_LEAD_SEQ, drums: MENU_DRUM_PATTERN },
-    shop: { chordRoots: MENU_CHORD_ROOTS, bass: MENU_BASS_LINE, lead: MENU_LEAD_SEQ, drums: MENU_DRUM_PATTERN },
+    // Tienda: resolución más cálida y groove ligero, distinto del menú suspendido.
+    shop: { chordRoots: [65.41, 87.31, 110, 98], bass: [65.41, 0, 87.31, 98],
+      lead: [261.63, 329.63, 392, 493.88], drums: [[1,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0]] },
   };
   const SECTOR_MUSIC = Object.freeze([
-    Object.freeze({ id: 'threshold', stepDur: 0.12, droneInterval: 2.4, droneOctave: 4, leadType: 'sawtooth', bassType: 'sawtooth', accent: 0,
+    Object.freeze({ id: 'threshold', stepDur: COMBAT_STEP, leadType: 'triangle', bassType: 'triangle', accent: 0,
       chordRoots: CHORD_ROOTS, bass: BASS_LINE, lead: LEAD_SEQ, drums: DRUM_PATTERN }),
-    Object.freeze({ id: 'foundry', stepDur: 0.112, droneInterval: 2.15, droneOctave: 3, leadType: 'square', bassType: 'sawtooth', accent: 1760,
+    Object.freeze({ id: 'foundry', stepDur: COMBAT_STEP, leadType: 'sawtooth', bassType: 'triangle', accent: 1760,
       chordRoots: FOUNDRY_CHORD_ROOTS, bass: FOUNDRY_BASS_LINE, lead: FOUNDRY_LEAD_SEQ, drums: FOUNDRY_DRUM_PATTERN }),
-    Object.freeze({ id: 'fracture', stepDur: 0.126, droneInterval: 2.65, droneOctave: 4, leadType: 'triangle', bassType: 'square', accent: 1244,
+    Object.freeze({ id: 'fracture', stepDur: COMBAT_STEP, leadType: 'triangle', bassType: 'triangle', accent: 1244,
       chordRoots: FRACTURE_CHORD_ROOTS, bass: FRACTURE_BASS_LINE, lead: FRACTURE_LEAD_SEQ, drums: FRACTURE_DRUM_PATTERN }),
-    Object.freeze({ id: 'void-heart', stepDur: 0.104, droneInterval: 1.95, droneOctave: 2, leadType: 'sawtooth', bassType: 'sine', accent: 932,
+    Object.freeze({ id: 'void-heart', stepDur: COMBAT_STEP, leadType: 'triangle', bassType: 'triangle', accent: 932,
       chordRoots: VOID_CHORD_ROOTS, bass: VOID_BASS_LINE, lead: VOID_LEAD_SEQ, drums: VOID_DRUM_PATTERN }),
   ]);
   function musicSectorIndex(wave) {
@@ -98,9 +102,8 @@
     return Math.min(3, Math.floor((safe - 1) / 5));
   }
   function sectorMusicForWave(wave) { return SECTOR_MUSIC[musicSectorIndex(wave)]; }
-  function currentLayers(wave) {
-    if (NV.musicState.phase === 'normal') return sectorMusicForWave(wave);
-    return MUSIC_LAYERS[NV.musicState.phase] || MUSIC_LAYERS.normal;
+  function currentLayers(wave, phase=NV.musicState.playingPhase||NV.musicState.phase) {
+    return phase==='normal'?sectorMusicForWave(wave):MUSIC_LAYERS[phase]||MUSIC_LAYERS.normal;
   }
 
   function initMusic() {
@@ -178,7 +181,19 @@
     const mixer = {};
     masterGain = ctx.createGain();
     masterGain.gain.value = NV.soundOn ? masterOutputVolume : 0;
-    masterGain.connect(ctx.destination);
+    const headroom=ctx.createGain();headroom.gain.value=.8;masterGain.connect(headroom);
+    let output=headroom;
+    if(ctx.createDynamicsCompressor){
+      const c=ctx.createDynamicsCompressor();
+      for(const [key,value] of Object.entries({threshold:-14,knee:9,ratio:4,attack:.003,release:.16}))c[key].value=value;
+      output.connect(c);output=c;NV.audioCompressor=c;
+    }
+    if(ctx.createWaveShaper){
+      const limiter=ctx.createWaveShaper(),curve=new Float32Array(4097);
+      for(let i=0;i<curve.length;i++){const x=i*2/(curve.length-1)-1;curve[i]=.89*Math.tanh(x/.89);}
+      limiter.curve=curve;output.connect(limiter);output=limiter;NV.audioCeiling=limiter;
+    }
+    output.connect(ctx.destination);
     for (const ch in CHANNELS) {
       const g = ctx.createGain();
       g.gain.value = channelBaseGain(ch);
@@ -282,6 +297,7 @@
     }
     if (!NV.soundOn && NV.audio && typeof NV.audio.stopAllWeapons === 'function') NV.audio.stopAllWeapons();
     if (!NV.soundOn && NV.stopSectorLaserSound) NV.stopSectorLaserSound();
+    if (!NV.soundOn && NV.stopAudioVoices) NV.stopAudioVoices();
     if (typeof NV.syncSoundUI === 'function') NV.syncSoundUI();
     return NV.soundOn;
   }
@@ -300,162 +316,167 @@
     const gain = g.gain;
     const now = NV.audioCtx.currentTime;
     const base = channelBaseGain(byChannel);
-    const level = readVolume(to, base);
+    const level = Math.min(base, readVolume(to, base));
     const hold = Math.max(0, Number(secs) || 0.15);
-    const until = now + hold;
-    if (typeof gain.cancelScheduledValues === 'function') gain.cancelScheduledValues(now);
-    gain.setValueAtTime(base, now);
-    gain.linearRampToValueAtTime(level, now + DUCK_RAMP_IN);
+    const musical = byChannel === 'music';
+    const attack = musical ? 0.10 : DUCK_RAMP_IN;
+    const release = musical ? 0.45 : DUCK_RAMP_OUT;
+    const until = now + Math.max(hold, attack);
+    // Retomar la automatización desde el valor audible, incluso con golpes seguidos.
+    if (typeof gain.cancelAndHoldAtTime === 'function') gain.cancelAndHoldAtTime(now);
+    else {
+      if (typeof gain.cancelScheduledValues === 'function') gain.cancelScheduledValues(now);
+      gain.setValueAtTime(Math.min(base,gain.value), now);
+    }
+    gain.linearRampToValueAtTime(level, now + attack);
     gain.setValueAtTime(level, until);
-    gain.linearRampToValueAtTime(base, until + DUCK_RAMP_OUT);
+    gain.linearRampToValueAtTime(base, until + release);
   }
 
   function initAudio() {
     initMusic();
     createMixer(); // perezoso: solo cuando realmente hay contexto
-    if (NV.audioCtx.state === 'suspended') NV.audioCtx.resume();
-  }
-  function createDrone(freq, time, dur) {
-    if (!NV.audioCtx || !NV.soundOn) return;
-    const osc = NV.audioCtx.createOscillator();
-    const lfo = NV.audioCtx.createOscillator();
-    const filter = NV.audioCtx.createBiquadFilter();
-    const gain = NV.audioCtx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(freq, time);
-    lfo.type = 'sine';
-    lfo.frequency.setValueAtTime(5, time);
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(freq * 2, time);
-    gain.gain.setValueAtTime(0.01, time);
-    gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
-    lfo.connect(filter.frequency);
-    osc.connect(filter); filter.connect(gain); gain.connect(channelFor('music'));
-    lfo.start(time); osc.start(time);
-    osc.stop(time + dur); lfo.stop(time + dur);
-  }
-  function scheduleNote(type, freq, dur, vol) {
-    if (!NV.audioCtx || !NV.soundOn) return;
-    const osc = NV.audioCtx.createOscillator();
-    const filter = NV.audioCtx.createBiquadFilter();
-    const gain = NV.audioCtx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, NV.audioCtx.currentTime);
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(3000, NV.audioCtx.currentTime);
-    gain.gain.setValueAtTime(vol || 0.03, NV.audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, NV.audioCtx.currentTime + dur);
-    osc.connect(filter); filter.connect(gain); gain.connect(channelFor('music'));
-    osc.onended = () => { for (const node of [osc, filter, gain]) if (node.disconnect) node.disconnect(); };
-    osc.start(); osc.stop(NV.audioCtx.currentTime + dur);
+    if (NV.audioCtx.state === 'suspended' && !NV.audioCtx.startRendering) NV.audioCtx.resume().catch(() => {});
   }
   // opts?: { channel, freq } → banda y bus opcionales. Sin opts mantiene la banda
   // ambiental 200-400 Hz en `sfxAmbient` que usan todos los callers históricos
   // (armas, ataques de jefe, explosiones, combo). El rediseño del daño del piloto
   // necesita además un crack AGUDO entrando por `sfxPlayer`.
   function scheduleNoise(dur, vol, opts) {
+    if(NV.soundVoice) return NV.soundVoice({noise:true,duration:dur,volume:vol,filter:opts&&opts.freq||550,channel:opts&&opts.channel||'sfxAmbient'});
     if (!NV.audioCtx || !NV.soundOn) return;
     opts = opts || {};
     const buffer = NV.audioCtx.createBuffer(1, NV.audioCtx.sampleRate * dur, NV.audioCtx.sampleRate);
     const data = buffer.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+    for (let i = 0; i < data.length; i++) data[i] = (randomAudio() * 2 - 1) * 0.5;
     const src = NV.audioCtx.createBufferSource();
     const filter = NV.audioCtx.createBiquadFilter();
     const gain = NV.audioCtx.createGain();
     src.buffer = buffer;
     filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(opts.freq || 200 + Math.random() * 200, NV.audioCtx.currentTime);
+    filter.frequency.setValueAtTime(opts.freq || 200 + randomAudio() * 200, NV.audioCtx.currentTime);
     gain.gain.setValueAtTime(vol || 0.04, NV.audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, NV.audioCtx.currentTime + dur);
     src.connect(filter); filter.connect(gain); gain.connect(channelFor(opts.channel || 'sfxAmbient'));
     src.start(); src.stop(NV.audioCtx.currentTime + dur);
   }
-  function scheduleDrum(type, dur, vol) {
-    if (!NV.audioCtx || !NV.soundOn) return;
-    if (type === 'noise') { scheduleNoise(dur, vol); return; }
-    const osc = NV.audioCtx.createOscillator();
-    const filter = NV.audioCtx.createBiquadFilter();
-    const gain = NV.audioCtx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(type === 'kick' ? 60 : 120, NV.audioCtx.currentTime);
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(type === 'kick' ? 150 : 4000, NV.audioCtx.currentTime);
-    gain.gain.setValueAtTime(vol || 0.04, NV.audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, NV.audioCtx.currentTime + dur);
-    osc.connect(filter); filter.connect(gain); gain.connect(channelFor('music'));
-    osc.start(); osc.stop(NV.audioCtx.currentTime + dur);
+  function musicVoice(spec, at) {
+    if(NV.soundVoice)return NV.soundVoice({...spec,at,channel:'music'});
+    // Compatibilidad de tests/headless que cargan synth sin voices.js.
+    const delay=Math.max(0,at-NV.audioCtx.currentTime);
+    if(spec.noise)return scheduleNoise(spec.duration,spec.volume,{channel:'music',freq:spec.filter});
+    return toneAt(spec.freq,spec.duration,spec.type,spec.volume,'music',delay,{pan:spec.pan});
   }
+
+  function scoreMusicStep(m, layers, stepDur, at) {
+    const step=m.step,bar=m.bar,section=Math.floor(bar/4);
+    const isMenuLike=m.playingPhase==='menu'||m.playingPhase==='shop';
+    const chorus=section===1||section===3,breath=!isMenuLike&&bar===8;
+    const root=layers.chordRoots[bar%4],third=bar%4===0?3:4;
+    const energy=isMenuLike?.48:breath?.68:chorus?1:.88;
+    m.section=['viaje','impulso','respiro','resolución'][section];
+    // role sólo describe el arreglo para QA; no abre buses ni motores nuevos.
+    const note=(role,spec,offset=0)=>musicVoice({...spec,role},at+offset);
+    const kick=layers.drums[0][step];
+    if(kick&&(!breath||step===0||step===10)){
+      note('kick',{freq:155,endFreq:45,glideTime:.052,type:'sine',duration:.15,
+        attack:.002,filter:750,volume:.20*kick*energy});
+      let gap=1;while(gap<16&&!layers.drums[0][(step+gap)%16])gap++;
+      // Bajo melódico sostenido, no un segundo bombo en otra cuadrícula.
+      const duration=Math.min(isMenuLike?.65:.52,gap*stepDur-.018);
+      note('808',{freq:root*1.035,endFreq:root,glideTime:.065,type:'triangle',
+        duration,attack:.012,hold:duration*.36,filter:420,volume:.095*kick*energy});
+    }
+    if(!isMenuLike&&layers.drums[1][step]){
+      note('snare',{noise:true,duration:.15,filter:2350,endFilter:1050,q:.8,volume:.12*energy});
+      note('snare-body',{freq:185,endFreq:135,glideTime:.065,type:'triangle',duration:.10,
+        filter:1000,volume:.045*energy});
+    }
+    // Roll sólo al cierre de frase: reemplaza el hat, nunca duplica caja/kick.
+    const roll=!isMenuLike&&!breath&&bar%4===3&&step===15;
+    if(roll){
+      for(let i=0;i<3;i++)note('hat-roll',{noise:true,duration:.024,filter:6200,q:.9,
+        pan:(i-1)*.12,volume:(.027-i*.006)*energy},stepDur*i/3);
+    }else if(layers.drums[2][step]&&(!breath||step%4===2)){
+      note('hat',{noise:true,duration:.037,filter:5800,q:.8,pan:step%4===0?.16:-.12,
+        volume:.039*layers.drums[2][step]*energy},step%2?stepDur*.10:0);
+    }
+    if(!isMenuLike&&!breath&&step===7&&bar%2===1)
+      note('rim',{freq:440,endFreq:310,type:'triangle',duration:.055,filter:1250,volume:.023*energy},stepDur*.07);
+
+    if(step===0){
+      // Pads en el mismo acorde y compás: sin drone independiente superpuesto.
+      for(const [i,semitone] of [0,third,7].entries())note('pad',{
+        freq:root*2*Math.pow(2,semitone/12),type:'triangle',duration:stepDur*16-.10,
+        attack:.22,hold:stepDur*6,filter:1200,pan:(i-1)*.28,volume:isMenuLike?.018:.025,
+        priority:-1});
+    }
+    const leadSteps=isMenuLike?[2,10]:section===2?[0,10]:[0,3,6,10,14];
+    const n=leadSteps.indexOf(step);
+    if(n>=0){
+      const motif=bar%2?[7,third,12,7,5]:[0,7,10,12,7];
+      const semitone=motif[n%motif.length],freq=Math.min(1100,root*4*Math.pow(2,semitone/12));
+      note('lead',{freq,type:isMenuLike?'triangle':layers.leadType||'triangle',
+        duration:n===leadSteps.length-1?.32:.22,attack:.012,hold:.035,
+        filter:2100,pan:bar%2?.16:-.16,volume:isMenuLike?.033:chorus?.068:.055});
+    }
+    if(!isMenuLike&&chorus&&[2,5,11].includes(step)){
+      const interval=[0,third,7][[2,5,11].indexOf(step)];
+      note('arp',{freq:root*8*Math.pow(2,interval/12),type:'sine',duration:.19,
+        attack:.012,filter:2300,pan:step===5?.3:-.3,volume:.023});
+    }
+    if(!isMenuLike&&m.combo>12&&chorus&&step===6)
+      note('combo',{freq:root*6,type:'sine',duration:.16,filter:1600,volume:.016});
+  }
+
   function updateMusic(dt) {
-    if (!NV.audioCtx || !NV.soundOn) return;
-    const gameState = NV.getState ? NV.getState() : 'playing';
-    if (gameState !== 'playing' && gameState !== 'menu' && gameState !== 'shop') return;
-    // Sincroniza la fase de música con la presencia de jefe (Tarea 3: identidad
-    // sonora de jefe). El cambio de capa ocurre en el próximo step, nunca a mitad
-    // de nota, así que no hay glitch/corte audible al entrar o salir de fase boss.
-    const wantPhase = gameState === 'menu' ? 'menu' : (gameState === 'shop' ? 'shop' : (NV.getBoss && NV.getBoss() ? 'boss' : 'normal'));
-    if (wantPhase !== NV.musicState.phase) NV.musicState.phase = wantPhase;
-    const wave = NV.getWave ? NV.getWave() : 1;
-    const sectorMusic = sectorMusicForWave(wave);
-    NV.musicState.sector = sectorMusic.id;
-    const layers = currentLayers(wave);
-    const comboLayer = Math.min(1, (NV.musicState.combo || 0) / 20);
-    const isMenuLike = NV.musicState.phase === 'menu' || NV.musicState.phase === 'shop';
-    NV.musicTime += dt * (isMenuLike ? 0.55 : (1 + NV.musicState.intensity * 0.6 + comboLayer * 0.18));
-    const stepDur = isMenuLike ? 0.18 : (layers.stepDur || 0.12);
-    NV.musicState.intensity = Math.max(0, Math.min(1, NV.musicState.intensity + ((NV.getBoss && NV.getBoss()) ? 0.02 : -0.015) * dt));
-    if (NV.musicTime - NV.musicState.lastBeat >= stepDur) {
-      NV.musicState.lastBeat = NV.musicTime;
-      NV.musicState.step = (NV.musicState.step + 1) % 16;
-      const step = NV.musicState.step;
-      if (step === 0) NV.musicState.bar = ((NV.musicState.bar || 0) + 1) % 8;
-      const phrase = NV.musicState.bar || 0;
-      const transpose = Math.pow(2, [0, 0, -2, -2, 3, 3, -5, -5][phrase] / 12);
-      // Kick (808 punch)
-      if (layers.drums[0][step]) scheduleDrum('kick', 0.1, 0.1 + NV.musicState.intensity * 0.05);
-      // Snare (808 clap)
-      if (layers.drums[1][step]) scheduleDrum('noise', 0.15, 0.06 + NV.musicState.intensity * 0.03);
-      // Hi-hats
-      if (layers.drums[2][step]) scheduleNote('square', 8000 + (step % 3) * 3000, 0.03, 0.02 + NV.musicState.intensity * 0.015 + comboLayer * 0.012);
-      // Capa extra por combo: arpegio fino en contratiempos, aparece progresivamente
-      // sin cambiar la base de la oleada.
-      if (comboLayer > 0.25 && step % 2 === 1) {
-        const note = layers.lead[(step + Math.floor(NV.musicState.combo || 0)) % layers.lead.length] * 2 * transpose;
-        scheduleNote('triangle', note, 0.06, 0.012 + comboLayer * 0.018);
-      }
-      // Bajo cada 4 steps (subby sawtooth)
-      if (step % 4 === 0) {
-        const bassIdx = Math.floor(step / 4) % layers.bass.length;
-        if (layers.bass[bassIdx]) scheduleNote(isMenuLike ? 'sine' : (layers.bassType || 'sawtooth'), layers.bass[bassIdx] * transpose, isMenuLike ? 0.5 : 0.2, (isMenuLike ? 0.025 : 0.05) + NV.musicState.intensity * 0.02);
-      }
-      // Lead melódico (guitarra synth) → solo cada 8 steps
-      if (step % 8 === 0 || (NV.musicState.intensity > 0.7 && step % 4 === 0)) {
-        const note = layers.lead[(Math.floor(step / 2) + phrase) % layers.lead.length] * transpose;
-        scheduleNote(layers.leadType || 'sawtooth', note, 0.25, 0.04 + NV.musicState.intensity * 0.02 + comboLayer * 0.012);
-      }
-      // Firma breve de material: metal en Fundición, cristal quebrado en Fractura
-      // y pulso agudo en Corazón. Sólo dos veces por compás y a volumen bajo.
-      if (!isMenuLike && NV.musicState.phase === 'normal' && layers.accent && (step === 6 || step === 14)) {
-        scheduleNote('triangle', layers.accent * (step === 14 ? 0.75 : 1), 0.045, 0.012);
-      }
+    if(NV.soundtrack&&NV.soundtrack.claimsMusic&&NV.soundtrack.claimsMusic())return;
+    if(!NV.audioCtx||!NV.soundOn||(NV.isAudioHidden&&NV.isAudioHidden()))return;
+    const gameState=NV.getState?NV.getState():'playing';
+    if(gameState!=='playing'&&gameState!=='menu'&&gameState!=='shop'){
+      NV.musicState.wasInactive=true;return;
     }
-        // Drone atmosférico continuo (loop)
-    // Reloj de audio, no frame: con frame=0 en el lobby no crear un drone cada tick.
-    if (NV.audioCtx.currentTime >= (NV.musicState.nextDroneAt || 0)) {
-      NV.musicState.nextDroneAt = NV.audioCtx.currentTime + (isMenuLike ? 3.2 : (layers.droneInterval || 2.4));
-      const droneFreq = layers.chordRoots[(NV.musicState.bar || 0) % layers.chordRoots.length] * (isMenuLike ? 2 : (layers.droneOctave || 4));
-      createDrone(droneFreq, NV.audioCtx.currentTime, isMenuLike ? 3.4 : 2.5);
+    const m=NV.musicState,wave=NV.getWave?NV.getWave():1;
+    const wantPhase=gameState === 'menu'?'menu':gameState === 'shop'?'shop':NV.getBoss&&NV.getBoss()?'boss':'normal';
+    m.pendingPhase=wantPhase;m.sector=sectorMusicForWave(wave).id;
+    // El estado visible se actualiza ya; instrumentación y armonía sólo al compás.
+    m.phase=wantPhase;
+    const elapsed=Number.isFinite(dt)?Math.min(.25,Math.max(0,dt)):0;
+    NV.musicTime+=elapsed;m.combo=Math.max(0,(m.combo||0)-elapsed*1.5);
+    m.intensity+=((wantPhase==='boss'?1:.35)-m.intensity)*Math.min(1,elapsed*.6);
+    const now=NV.audioCtx.currentTime;
+    if(!Number.isFinite(m.nextNoteAt)||m.nextNoteAt<now-.04||m.wasInactive){
+      // No emitir golpes atrasados todos juntos al volver de una pausa/tab.
+      if(Number.isFinite(m.nextNoteAt)){
+        if(NV.stopAudioVoices)NV.stopAudioVoices('music');
+        m.resyncs=(m.resyncs||0)+1;
+      }
+      m.nextNoteAt=now+.035;m.nextStep=0;m.wasInactive=false;
     }
-    // Nota: el ducking ya no se restaura acá. Su bajada y su vuelta viven en la
-    // automatización del AudioParam (ver duck()), así que no dependen de que este
-    // update corra (no corre durante wave_end / player_dying / gameover).
+    let processed=0;
+    while(m.nextNoteAt<now+.12&&processed++<3){
+      m.step=m.nextStep;
+      if(m.step===0){
+        if(m.scheduledSteps)m.bar=(m.bar+1)%16;
+        m.playingPhase=wantPhase;m.playingWave=wave;
+      }
+      const isMenuLike=m.playingPhase==='menu'||m.playingPhase==='shop';
+      const layers=currentLayers(m.playingWave,m.playingPhase);
+      const stepDur=isMenuLike?(m.playingPhase==='shop'?.158:.185):m.playingPhase==='boss'?60/148/4:layers.stepDur;
+      m.tempo=60/(stepDur*4);
+      scoreMusicStep(m,layers,stepDur,m.nextNoteAt);
+      m.scheduledSteps=(m.scheduledSteps||0)+1;m.lastBeat+=stepDur;
+      m.nextStep=(m.step+1)%16;m.nextNoteAt+=stepDur;
+    }
   }
   function playTone(freq, dur, type, vol, channel, opts) {
+    if(NV.soundVoice) return NV.soundVoice({...opts,freq,duration:dur,type,volume:vol,channel:channel||'sfxPlayer'});
     if (!NV.audioCtx || !NV.soundOn) return;
     const ctx = NV.audioCtx;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     // Detune aleatorio leve (±0.8%) evita fatiga auditiva en disparos rápidos (Tarea 1).
-    const detune = (Math.random() * 2 - 1) * 0.008;
+    const detune = (randomAudio() * 2 - 1) * 0.008;
     osc.type = type || 'square';
     osc.frequency.setValueAtTime(freq * (1 + detune), ctx.currentTime);
     gain.gain.setValueAtTime(vol || 0.03, ctx.currentTime);
@@ -471,7 +492,7 @@
   // Se usa para la Tarea 4 (anti-fatiga en SMG/railgun) y combo de kills.
   function playToneEx(freq, dur, type, vol, opts) {
     opts = opts || {};
-    const det = typeof opts.detune === 'number' ? opts.detune : ((Math.random() * 2 - 1) * 0.008);
+    const det = typeof opts.detune === 'number' ? opts.detune : ((randomAudio() * 2 - 1) * 0.008);
     const f = freq * (1 + det);
     return playTone(f, dur, type, vol, opts.channel, opts);
   }
@@ -481,11 +502,12 @@
   // viaja de f1 a f2 durante `dur`. Es el gesto de "impacto" (descendente), opuesto
   // a los SFX positivos del juego, que suben (pickup/tienda/level-up/victoria).
   function playToneSweep(f1, f2, dur, type, vol, channel, opts) {
+    if(NV.soundVoice) return NV.soundVoice({...opts,freq:f1,endFreq:f2,duration:dur,type,volume:vol,channel:channel||'sfxPlayer'});
     if (!NV.audioCtx || !NV.soundOn) return;
     const ctx = NV.audioCtx;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    const detune = (Math.random() * 2 - 1) * 0.008;
+    const detune = (randomAudio() * 2 - 1) * 0.008;
     osc.type = type || 'sawtooth';
     osc.frequency.setValueAtTime(f1 * (1 + detune), ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(Math.max(20, f2 * (1 + detune)), ctx.currentTime + dur);
@@ -502,12 +524,13 @@
   // del proyecto. Los nodos opcionales (WaveShaper) usan guards defensivos como
   // en weaponSfx.js, así que en headless/tests simplemente se omiten.
   function toneAt(freq, dur, type, vol, channel, delay, opts) {
+    if(NV.soundVoice) return NV.soundVoice({...opts,freq,duration:dur,type,volume:vol,channel,delay});
     if (!NV.audioCtx || !NV.soundOn) return;
     const ctx = NV.audioCtx;
     const t0 = ctx.currentTime + (delay || 0);
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    const detune = (Math.random() * 2 - 1) * 0.008;
+    const detune = (randomAudio() * 2 - 1) * 0.008;
     osc.type = type || 'square';
     osc.frequency.setValueAtTime(freq * (1 + detune), t0);
     gain.gain.setValueAtTime(vol || 0.03, t0);
@@ -527,12 +550,13 @@
     osc.stop(t0 + dur);
   }
   function sweepAt(f1, f2, dur, type, vol, channel, delay, opts) {
+    if(NV.soundVoice) return NV.soundVoice({...opts,freq:f1,endFreq:f2,duration:dur,type,volume:vol,channel,delay});
     if (!NV.audioCtx || !NV.soundOn) return;
     const ctx = NV.audioCtx;
     const t0 = ctx.currentTime + (delay || 0);
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    const detune = (Math.random() * 2 - 1) * 0.008;
+    const detune = (randomAudio() * 2 - 1) * 0.008;
     osc.type = type || 'sawtooth';
     osc.frequency.setValueAtTime(f1 * (1 + detune), t0);
     osc.frequency.exponentialRampToValueAtTime(Math.max(20, f2 * (1 + detune)), t0 + dur);
@@ -544,12 +568,13 @@
     osc.stop(t0 + dur);
   }
   function noiseSweepAt(dur, vol, f1, f2, channel, delay) {
+    if(NV.soundVoice) return NV.soundVoice({noise:true,duration:dur,volume:vol,filter:f1,endFilter:f2,channel,delay});
     if (!NV.audioCtx || !NV.soundOn) return;
     const ctx = NV.audioCtx;
     const t0 = ctx.currentTime + (delay || 0);
     const buffer = ctx.createBuffer(1, Math.max(16, Math.floor(ctx.sampleRate * dur)), ctx.sampleRate);
     const data = buffer.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+    for (let i = 0; i < data.length; i++) data[i] = (randomAudio() * 2 - 1) * 0.5;
     const src = ctx.createBufferSource();
     const filter = ctx.createBiquadFilter();
     const gain = ctx.createGain();
@@ -579,37 +604,36 @@
     // SFX existentes: redirigidos a canales con ducking automático.
     explosion: (enemyType, opts) => { sfx.enemyDeath(enemyType || 'normal', opts); },
     enemyDeath: (enemyType, opts) => {
-      opts = opts || {};
-      const kind = enemyType || 'normal';
-      if (kind === 'boss') {
-        duck('music', 0.12, 0.35);
-        scheduleNoise(0.38, 0.08);
-        playTone(70, 0.42, 'sawtooth', 0.13, 'sfxEnemies', opts);
-        playTone(110, 0.25, 'triangle', 0.08, 'sfxEnemies', opts);
-      } else if (kind === 'elite') {
-        scheduleNoise(0.14, 0.055);
-        playTone(165, 0.22, 'sawtooth', 0.085, 'sfxEnemies', opts);
-        playTone(95, 0.18, 'square', 0.055, 'sfxEnemies', opts);
-      } else {
-        playTone(220, 0.12, 'square', 0.045, 'sfxEnemies', opts);
-        playTone(140, 0.14, 'sawtooth', 0.035, 'sfxEnemies', opts);
-      }
+      const kind=enemyType||'normal';opts=opts||{};
+      if(!gate('death-'+kind,kind==='boss'?.5:kind==='elite'?.09:.055))return;
+      const base=kind==='boss'?58:kind==='elite'?105:170;
+      if(kind==='boss')duck('music',.12,.45);
+      playToneSweep(base*1.8,base,kind==='boss'?.65:.17,'triangle',kind==='boss'?.12:.06,'sfxEnemies',opts);
+      scheduleNoise(kind==='boss'?.38:.075,kind==='boss'?.07:.035,{channel:'sfxEnemies',freq:kind==='normal'?950:420});
+      if(kind!=='normal')toneAt(base*1.5,.28,'sine',.035,'sfxEnemies',.07,opts);
     },
-    pickup: () => playTone(1320, 0.12, 'square', 0.04, 'sfxUI'),
+    pickup: () => {
+      if(!gate('pickup',.085))return;
+      const freq=[392,440,523.25][Math.floor(randomAudio()*3)];
+      playTone(freq,.12,'sine',.037,'sfxUI');toneAt(freq*1.5,.07,'triangle',.012,'sfxUI',.025);
+    },
     consume: (type) => {
-      const f = type === 'bomb' ? 180 : type === 'freeze' ? 520 : type === 'overdrive' ? 900 : type === 'bounty' ? 740 : 620;
-      duck('music', 0.42, 0.08);
-      playTone(f, 0.1, 'triangle', 0.045, 'sfxPlayer');
-      playTone(f * 1.5, 0.12, 'sine', 0.035, 'sfxUI');
+      if(!gate('consume',.08))return;
+      const f={potion:330,bomb:65,freeze:587,overdrive:220,bounty:440,shield:165,magnet:294}[type]||330;
+      duck('music',.42,.12);
+      playToneSweep(f*.8,f,.22,type==='bomb'?'triangle':'sine',.065,'sfxPlayer');
+      toneAt(f*1.5,.21,'triangle',.035,'sfxPlayer',.09);
+      if(type==='bomb'||type==='freeze')noiseSweepAt(.22,.05,type==='bomb'?650:1800,350,'sfxPlayer',0);
     },
     fuse: (level) => {
-      duck('music', 0.28, 0.16);
-      playTone(440 + (level || 1) * 70, 0.12, 'triangle', 0.055, 'sfxUI');
-      playTone(880 + (level || 1) * 90, 0.18, 'square', 0.04, 'sfxAmbient');
+      if(!gate('fuse',.2))return;
+      duck('music',.28,.25);
+      const f=[261.63,293.66,329.63,392][Math.min(3,Math.max(0,(level||1)-1))];
+      [1,1.5,2].forEach((r,i)=>toneAt(f*r,.26,'triangle',.045,'sfxUI',i*.065,{pan:(i-1)*.2}));
     },
-    shopBuy: () => { playTone(1040, 0.07, 'square', 0.04, 'sfxUI'); playTone(1560, 0.08, 'triangle', 0.025, 'sfxUI'); },
-    shopSell: () => { playTone(780, 0.08, 'triangle', 0.04, 'sfxUI'); playTone(520, 0.09, 'square', 0.03, 'sfxUI'); },
-    wheelSelect: () => playTone(1180, 0.045, 'square', 0.03, 'sfxUI'),
+    shopBuy: () => { if(!gate('transaction',.07))return;playTone(330,.12,'triangle',.065,'sfxUI');toneAt(495,.17,'triangle',.04,'sfxUI',.035); },
+    shopSell: () => { if(!gate('transaction',.07))return;playTone(294,.13,'triangle',.055,'sfxUI');noiseSweepAt(.06,.022,1300,650,'sfxUI',.035); },
+    wheelSelect: () => {if(gate('select',.06))playTone(392,.085,'triangle',.055,'sfxUI');},
     damage: () => { duck('music', 0.2, 0.18); playTone(80, 0.15, 'square', 0.07, 'sfxPlayer'); },
     // Daño recibido por el piloto — SEGUNDO REDISEÑO: "ALARMA DE CASCO ROTO".
     // Ruptura total con el gesto anterior (crack agudo simultáneo + sweep grave
@@ -626,6 +650,7 @@
     // estéreo cambian a la vez: comparación A/B obvia. El golpe letal sigue por
     // sfx.damage/deathTone; esto es solo daño no fatal (ver combat.js).
     playerHit: () => {
+      if(!gate('player-hit',.22))return;
       duck('music', 0.14, 0.55);
       // E1 — crunch de rotura.
       noiseSweepAt(0.10, 0.11, 900, 240, 'sfxPlayer', 0);
@@ -633,24 +658,34 @@
       // E2 — caída corporal grave y larga.
       sweepAt(150, 38, 0.30, 'sine', 0.12, 'sfxPlayer', 0.02);
       // E3 — triple pulso de alarma con contraste estéreo.
-      toneAt(620, 0.07, 'square', 0.05, 'sfxPlayer', 0.14, { pan: -0.55 });
-      toneAt(545, 0.07, 'square', 0.05, 'sfxPlayer', 0.26, { pan: 0.55 });
-      toneAt(470, 0.10, 'square', 0.055, 'sfxPlayer', 0.38, { pan: 0 });
-      sweepAt(620, 470, 0.10, 'square', 0.04, 'sfxPlayer', 0.38);
+      toneAt(420, 0.07, 'triangle', 0.03, 'sfxPlayer', 0.14, { pan: -0.55 });
+      toneAt(365, 0.07, 'sine', 0.025, 'sfxPlayer', 0.26, { pan: 0.55 });
+      toneAt(310, 0.10, 'triangle', 0.025, 'sfxPlayer', 0.38, { pan: 0 });
+      sweepAt(420, 310, 0.10, 'sine', 0.018, 'sfxPlayer', 0.38);
       // E4 — cola de chisporroteo descendente.
       noiseSweepAt(0.38, 0.05, 2400, 500, 'sfxPlayer', 0.16);
     },
-    special: () => playTone(660, 0.4, 'triangle', 0.05, 'sfxPlayer'),
-    playerLevelUp: () => { duck('music', 0.3, 0.14); playTone(523, 0.1, 'square', 0.05, 'sfxUI'); playTone(784, 0.13, 'triangle', 0.04, 'sfxUI'); },
-    wave: () => playTone(440, 0.3, 'triangle', 0.06, 'sfxUI'),
+    special: (pilot) => {
+      if(!gate('special',.15))return;
+      duck('music',.24,.45);
+      const id=pilot||'boti';
+      if(id==='boti'){[392,587,784,587].forEach((f,i)=>toneAt(f,.30,'sine',.045,'sfxPlayer',i*.07,{pan:(i%2?.3:-.3)}));noiseSweepAt(.45,.04,1800,600,'sfxPlayer',0);}
+      else if(id==='nova'){sweepAt(90,180,.38,'triangle',.10,'sfxPlayer',0);noiseSweepAt(.5,.08,500,1500,'sfxPlayer',0);toneAt(330,.35,'sine',.03,'sfxPlayer',.16);}
+      else if(id==='rook'){sweepAt(150,55,.42,'sine',.13,'sfxPlayer',0);[146,220,293].forEach((f,i)=>toneAt(f,.40,'triangle',.035,'sfxPlayer',i*.06));}
+      else {[330,440,495,660].forEach((f,i)=>toneAt(f,.23,'triangle',.043,'sfxPlayer',i*.08,{pan:(i-1.5)*.22}));}
+    },
+    playerLevelUp: () => { if(!gate('level-up',.28))return;duck('music', .3, .24);[261.63,392,523.25].forEach((f,i)=>toneAt(f,.24,'triangle',.04,'sfxUI',i*.065)); },
+    wave: () => {if(gate('wave',.4)){playTone(220,.19,'triangle',.045,'sfxUI');toneAt(330,.22,'sine',.035,'sfxUI',.10);}},
     // Speaker mines: eventos discretos sobre el mixer existente. El baile no
     // genera voz continua; armado y explosión respetan mute/volumen/paneo.
     speakerMineArm: (opts) => {
+      if(!gate('mine-arm',.2))return;
       opts = opts || {};
       playTone(210, 0.08, 'square', 0.025, 'sfxAmbient', opts);
       playTone(315, 0.11, 'triangle', 0.018, 'sfxAmbient', opts);
     },
     speakerMineExplosion: (opts) => {
+      if(!gate('mine-explode',.09))return;
       opts = opts || {};
       duck('music', 0.18, 0.2);
       scheduleNoise(0.22, 0.07);        // punch bajo + ataque
@@ -698,6 +733,7 @@
   NV.stopSectorLaserSound = function () {
     if(!sectorLaserVoice)return;
     const v=sectorLaserVoice;sectorLaserVoice=null;
+    if(v.voices){for(const voice of v.voices)if(voice)voice.stop();return;}
     const t=NV.audioCtx.currentTime;
     v.gain.gain.cancelScheduledValues(t);v.gain.gain.setValueAtTime(v.gain.gain.value,t);
     v.gain.gain.linearRampToValueAtTime(0,t+.025);
@@ -710,17 +746,24 @@
     const active=group.find(h=>h.state==='active');
     const charging=group.find(h=>h.state==='telegraph'&&h.stateTime>=h.emergeTime);
     const phase=active?'active':charging?'charge':null;
-    if(!phase||!NV.audioCtx||!NV.soundOn||env.paused||env.hidden||env.state!=='playing'){NV.stopSectorLaserSound();return;}
+    if(!phase||!NV.audioCtx||!NV.soundOn||env.paused||env.hidden||(NV.isAudioHidden&&NV.isAudioHidden())||env.state!=='playing'){NV.stopSectorLaserSound();return;}
     if(!sectorLaserVoice||sectorLaserVoice.phase!==phase){
       NV.stopSectorLaserSound();
+      if(NV.soundVoice){
+        const voices=[1,1.012].map(detune=>NV.soundVoice({loop:true,channel:'sfxAmbient',priority:4,
+          freq:(phase==='active'?145:260)*detune,type:phase==='active'?'triangle':'sine',
+          volume:phase==='active'?.028:.018,filter:1500,attack:.06}));
+        if(voices.some(Boolean))sectorLaserVoice={phase,voices,oscillators:voices.filter(Boolean).map(v=>v.source)};
+      }else{
       const ctx=NV.audioCtx,gain=ctx.createGain(),oscillators=[];
       gain.gain.setValueAtTime(0,ctx.currentTime);gain.gain.linearRampToValueAtTime(phase==='active'?.035:.025,ctx.currentTime+.04);
       connectOutput(gain,'sfxAmbient');
-      for(const detune of [1,1.012]){const osc=ctx.createOscillator();osc.type=phase==='active'?'sawtooth':'sine';osc.frequency.setValueAtTime((phase==='active'?145:330)*detune,ctx.currentTime);osc.connect(gain);osc.start();oscillators.push(osc);}
+      for(const detune of [1,1.012]){const osc=ctx.createOscillator();osc.type=phase==='active'?'triangle':'sine';osc.frequency.setValueAtTime((phase==='active'?145:330)*detune,ctx.currentTime);osc.connect(gain);osc.start();oscillators.push(osc);}
       sectorLaserVoice={phase,gain,oscillators};
+      }
     }
-    if(charging&&!active){const progress=Math.min(1,(charging.stateTime-charging.emergeTime)/(charging.telegraphTime-charging.emergeTime));
-      sectorLaserVoice.oscillators.forEach((osc,i)=>osc.frequency.setValueAtTime((330+progress*850)*(i?1.012:1),NV.audioCtx.currentTime));}
+    if(sectorLaserVoice&&charging&&!active){const progress=Math.min(1,(charging.stateTime-charging.emergeTime)/(charging.telegraphTime-charging.emergeTime));
+      sectorLaserVoice.oscillators.forEach((osc,i)=>osc.frequency.setValueAtTime((260+progress*380)*(i?1.012:1),NV.audioCtx.currentTime));}
   };
   NV.sectorLaserSoundPhase = () => sectorLaserVoice ? sectorLaserVoice.phase : null;
   if(typeof document!=='undefined'&&document.addEventListener)document.addEventListener('visibilitychange',()=>{
@@ -728,14 +771,19 @@
   });
 
   // SFX nuevos de la Tarea 1 (esqueleto: hooks de ducking para combo/victoria).
-  sfx.combo = (count) => {
-    NV.musicState.combo = Math.max(NV.musicState.combo || 0, count || 0);
-    duck('music', 0.35, 0.12);
-    playTone(880 + (count * 40), 0.08, 'square', 0.05 + count * 0.008, 'sfxAmbient');
+  sfx.combo = count => {
+    NV.musicState.combo=Math.min(30,Math.max(NV.musicState.combo||0,count||0));
+    // Hitos: mismo registro, gana armonía y cuerpo, nunca altura/volumen infinito.
+    if(count<5||count%5!==0||!gate('combo',.7))return;
+    const tier=Math.min(3,Math.floor(count/15));
+    toneAt(294,.17,'triangle',.032,'sfxAmbient',0);
+    if(tier>0)toneAt(440,.16,'sine',.023,'sfxAmbient',.055,{pan:.25});
+    if(tier>1)toneAt(587,.13,'sine',.018,'sfxAmbient',.11,{pan:-.25});
+    if(tier>2)toneAt(147,.22,'sine',.034,'sfxAmbient',0);
   };
-  sfx.heartbeat = (intensity) => { playTone(120, 0.3, 'sine', 0.03 + intensity * 0.12, 'sfxPlayer'); };
-  sfx.countdown = (sec) => { playTone(660 - sec * 60, 0.12, 'square', 0.04, 'sfxAmbient'); };
-  sfx.bossEnter = () => { duck('music', 0.1, 0.4); playTone(90, 0.6, 'sawtooth', 0.12, 'sfxEnemies'); };
+  sfx.heartbeat = intensity => {if(!gate('heartbeat',.55))return;const v=.035+Math.min(1,Math.max(0,intensity||0))*.025;toneAt(65,.13,'sine',v,'sfxPlayer',0);toneAt(58,.16,'sine',v*.7,'sfxPlayer',.18);};
+  sfx.countdown = sec => {if(gate('countdown',.5))playTone(sec===1?330:220,.11,'triangle',.036,'sfxAmbient');};
+  sfx.bossEnter = () => {if(!gate('boss-enter',.8))return;duck('music',.1,.6);sweepAt(110,43,.6,'triangle',.12,'sfxEnemies',0);noiseSweepAt(.6,.06,850,180,'sfxEnemies',0);toneAt(146,.5,'sine',.045,'sfxEnemies',.15);};
   sfx.victory = (wave, opts) => {
     // SFX ÚNICO DE OLEADA SUPERADA — "RESPIRO LUMINOSO" (v2 con presencia).
     // Una sola identidad para TODA victoria de oleada (normal, hito o boss):
@@ -758,6 +806,7 @@
     //  y vuelve sola para el respiro/tienda. Volumen por voz comedido: golpe
     //  único, sin fanfarra larga ni estridencia que canse en la oleada 50.
     void wave; void opts;
+    if(!gate('victory',.8))return;
     duck('music', 0.10, 0.8);
     // E0 — golpe de corte: peso grave + crack que anuncia el fin del combate.
     sweepAt(180, 55, 0.22, 'sine', 0.14, 'sfxPlayer', 0);
@@ -778,6 +827,7 @@
   // Firma sonora de transición de fase de jefe (Tarea 3, idea 6): golpe grave + swell
   // ascendente distinto del bossEnter, para que "entró en fase 2" se sienta único.
   sfx.bossPhaseShift = () => {
+    if(!gate('boss-phase',.6))return;
     duck('music', 0.15, 0.35);
     playTone(70, 0.35, 'sawtooth', 0.13, 'sfxEnemies');
     playToneEx(220, 0.4, 'sawtooth', 0.07, { channel: 'sfxEnemies', detune: 0 });
@@ -792,6 +842,7 @@
   };
 
   sfx.playerDeath = () => {
+    if(!gate('player-death',.8))return;
     // SFX MUERTE DEL PERSONAJE — "COLAPSO + CORTE + HUNDIMIENTO".
     // Evento único de ~0.80s que cabe justo en la transición player_dying→FIN
     // (0.82s): arranca ANTES del overlay FIN y resuelve hacia él.
@@ -830,6 +881,7 @@
   };
 
   sfx.stabilizeTone = (pilotId, isBoss) => {
+    if(!gate('stabilize',.5))return;
     const tone = PILOT_TRANSITION_TONES[pilotId] || PILOT_TRANSITION_TONES.boti;
     const gain = isBoss ? 0.045 : 0.032;
     playTone(tone.stable[0], 0.18, tone.stableType, gain, 'sfxUI');
@@ -875,17 +927,50 @@
   NV.WEAPON_SOUND_HANDLERS = WEAPON_SOUND_HANDLERS;
 
   // Sonidos de ataque distintos para cada jefe
-  sfx.bossAttack = {
-    repeater: () => { scheduleNoise(0.04, 0.045); playTone(220, 0.05, 'square', 0.055); },
-    heavy: () => { scheduleNoise(0.09, 0.07); playTone(100, 0.3, 'sawtooth', 0.11); },
-    summon: () => { scheduleNoise(0.14, 0.06); playTone(75, 0.5, 'sawtooth', 0.11); },
-    spread: () => playTone(330, 0.09, 'triangle', 0.07),
-    beam: () => { scheduleNoise(0.55, 0.11); playTone(150, 0.7, 'sawtooth', 0.14); },
-    volley: () => { playTone(440, 0.05, 'square', 0.05); playTone(880, 0.05, 'square', 0.045); },
-    bomb: () => { scheduleNoise(0.22, 0.08); playTone(120, 0.45, 'sawtooth', 0.11); },
-    orbs: () => playTone(660, 0.07, 'sine', 0.05),
-    split: () => playTone(520, 0.1, 'triangle', 0.07),
-    rage: () => { scheduleNoise(0.05, 0.06); playTone(190, 0.06, 'square', 0.07); },
+  sfx.bossAttack = {};
+  const bossVoices={repeater:[185,95,.12],heavy:[100,42,.34],summon:[73,146,.45],spread:[294,196,.18],beam:[180,130,.6],volley:[330,220,.15],bomb:[85,38,.45],orbs:[440,330,.24],split:[261,392,.25],rage:[146,73,.15]};
+  for(const [id,[a,b,dur]] of Object.entries(bossVoices))sfx.bossAttack[id]=opts=>{
+    if(!gate('boss-attack',.09))return;
+    playToneSweep(a,b,dur,id==='orbs'?'sine':'triangle',.085,'sfxEnemies',opts);
+    noiseSweepAt(Math.min(.22,dur),.042,id==='beam'?1200:700,300,'sfxEnemies',0);
+  };
+  sfx.dash=opts=>{if(!gate('dash',.12))return;noiseSweepAt(.18,.045,1500,380,'sfxPlayer',0);playToneSweep(220,85,.18,'sine',.045,'sfxPlayer',opts);};
+  sfx.shield=()=>{if(gate('shield',.35)){playTone(196,.17,'sine',.035,'sfxPlayer');toneAt(294,.12,'triangle',.02,'sfxPlayer',.035);}};
+  sfx.spawn=opts=>{if(gate('spawn',.3))playToneSweep(120,185,.16,'sine',.027,'sfxEnemies',opts);};
+  sfx.enemyAttack=(kind,opts)=>{if(!gate('enemy-attack',.10))return;const f=kind==='tank'?85:kind==='ranged'?220:165;playToneSweep(f*1.5,f,.14,'triangle',.045,'sfxEnemies',opts);};
+  sfx.impact=(kind,opts)=>{if(!gate('impact-'+(kind==='boss'?'boss':'enemy'),kind==='boss'?.14:.10))return;playToneSweep(kind==='boss'?95:180,kind==='boss'?52:110,.08,'triangle',kind==='boss'?.032:.018,'sfxEnemies',opts);};
+  sfx.telegraph=opts=>{if(gate('telegraph',.18)){toneAt(174,.1,'triangle',.035,'sfxEnemies',0,opts);toneAt(233,.12,'sine',.035,'sfxEnemies',.12,opts);}};
+  // Observación de transiciones reales, sin escribir estado de IA ni consumir su RNG.
+  // Tanque y escupidor ya emiten desde el momento exacto de disparo: no duplicarlos.
+  const observedEnemies=new WeakMap();
+  const audibleStates=['swiftState','specterChargeState','goliathState','predatorState',
+    'phantomState','wispPhaseState','coreZoneState','commanderState','bulwarkState',
+    'swarmState','droneState','flankState'];
+  NV.observeEnemyAudio=(enemies,worldWidth)=>{
+    for(const e of enemies||[]){
+      if(!e||e.dead)continue;
+      const previous=observedEnemies.get(e)||{};
+      const opts={x:e.x,worldWidth};
+      for(const key of audibleStates){
+        const value=e[key];
+        if(value&&value!==previous[key]){
+          if(/windup$/.test(value)||value==='signal'||value==='mark')sfx.telegraph(opts);
+          else if(['dash','charge','execution','entry_commit','commit','pulse','press','attack'].includes(value))sfx.enemyAttack('melee',opts);
+        }
+        previous[key]=value;
+      }
+      observedEnemies.set(e,previous);
+    }
+  };
+  sfx.chest=()=>{if(gate('chest',.4)){[294,440,587].forEach((f,i)=>toneAt(f,.24,'triangle',.04,'sfxUI',i*.075));}};
+  sfx.weaponPickup=()=>{if(gate('weapon-pickup',.17)){toneAt(196,.16,'triangle',.042,'sfxUI',0);toneAt(392,.18,'sine',.035,'sfxUI',.065);}};
+  sfx.ui=kind=>{
+    if(!gate('ui-'+(kind==='hover'?'hover':'action'),kind==='hover'?.12:.065))return;
+    const f={hover:240,select:392,confirm:330,back:220,open:294,close:196,error:130,setting:350}[kind]||330;
+    const hover=kind==='hover';
+    playTone(f,hover?.05:.13,hover?'sine':'triangle',hover?.014:.065,'sfxUI');
+    if(!hover)noiseSweepAt(.025,.019,1800,900,'sfxUI',0);
+    if(kind==='confirm'||kind==='open')toneAt(f*1.5,.15,'triangle',.038,'sfxUI',.025);
   };
 
   // Siembra del estado del mixer desde las preferencias persistidas. Si settings.js

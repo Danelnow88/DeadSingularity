@@ -8,7 +8,9 @@ const { spawn } = require('node:child_process');
 const BASE = process.argv[2] || 'http://localhost:8123';
 const OUT = path.resolve(process.argv[3] || 'previews/alpha-verification');
 const EDGE = process.env.EDGE_PATH || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
-const port = 9435;
+// Permite pruebas simultáneas de otras tareas sin compartir navegador/perfil CDP.
+const port = Number((process.argv.find(arg=>arg.startsWith('--port='))||'--port=9435').slice(7));
+if(!Number.isInteger(port)||port<1024||port>65535)throw new Error('Puerto CDP inválido');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'neon-void-qa-'));
 fs.mkdirSync(OUT, { recursive: true });
@@ -109,6 +111,268 @@ async function fixture(wave, hp = 5000, progression = 'legacy', traversal = fals
   await send('Runtime.enable'); await send('Page.enable'); await send('Network.enable');
   await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
   await navigate();
+  if(process.argv.includes('--soundtrack-fix')) {
+    await evaluate(`(() => {window.musicProbe=[];const original=NV.soundVoice;NV.soundVoice=s=>{if(s.channel==='music')musicProbe.push({buffer:!!s.buffer,role:s.role});return original(s)};NV.initAudio();})()`);
+    await until('NV.soundtrack.getDiagnostics().status==="ready"',20000);
+    await until('NV.soundtrack.getDiagnostics().voices===1');
+    const initial=await evaluate('({music:musicProbe,diagnostics:NV.soundtrack.getDiagnostics()})');
+    assert(initial.music.length>0&&initial.music.every(v=>v.buffer),'no música legacy');
+    const ramps=await evaluate(`(() => {const p=NV.mixer.music.gain,original=p.linearRampToValueAtTime.bind(p),list=[];p.linearRampToValueAtTime=(v,t)=>{list.push({v,delta:t-NV.audioCtx.currentTime});return original(v,t)};NV.sfx.damage();p.linearRampToValueAtTime=original;return list})()`);
+    assert(ramps[0].delta>=.099&&ramps.at(-1).delta>=.62,'duck suave');
+    await evaluate('NV.setSoundEnabled(false)');await sleep(100);
+    assert.equal(await evaluate('NV.soundtrack.getDiagnostics().voices'),0);
+    await evaluate('NV.setSoundEnabled(true);NV.initAudio()');
+    await until('NV.soundtrack.getDiagnostics().voices===1');
+    await shot('lobby-soundtrack');assert.equal(errors.length,0,JSON.stringify(errors));
+    fs.writeFileSync(path.join(OUT,'report.json'),JSON.stringify({pass:true,source:BASE,initial,ramps,errors},null,2));
+    ok('soundtrack: exclusividad, lobby, duck suave y mute');return;
+  }
+  if(process.argv.includes('--hud-auto-reveal')) {
+    await fixture(1); await evaluate('NV.alpha.resume()');
+    await until('NV.alpha.snapshot().hudReveal===1');
+    await shot('hud-visible');
+    await evaluate(`window.__hudDraws={boss:0,dash:0,wave:0};
+      for(const [key,name] of [['boss','drawBossHUD'],['dash','drawDashStamina']]) {
+        const original=NV[name];NV[name]=function(...args){__hudDraws[key]++;return original.apply(this,args);};
+      }
+      const ctx=document.getElementById('game').getContext('2d'),text=ctx.fillText;
+      ctx.fillText=function(value,...args){if(String(value).includes('FALTAN'))__hudDraws.wave++;return text.call(this,value,...args);};`);
+    await until('NV.alpha.snapshot().hudReveal===0');
+    assert.equal(await evaluate('NV.consumSlotRects.length'),0);
+    await shot('hud-hidden');
+    const drawn=await evaluate('__hudDraws');assert(drawn.boss>0&&drawn.dash>0&&drawn.wave>0,JSON.stringify(drawn));
+    const weaponBefore=await evaluate('NV.alpha.snapshot().weapon');
+    await evaluate(`window.dispatchEvent(new WheelEvent('wheel',{deltaY:100,cancelable:true}));`);
+    await until('NV.alpha.snapshot().hudReveal===1');
+    assert.notEqual(await evaluate('NV.alpha.snapshot().weapon'),weaponBefore);
+    await evaluate(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'p',code:'KeyP',bubbles:true}));`);
+    await until('NV.alpha.snapshot().paused');
+    const before=await evaluate('NV.alpha.snapshot().hudHold');await sleep(3400);
+    assert.equal(await evaluate('NV.alpha.snapshot().hudHold'),before);
+    await evaluate(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'p',code:'KeyP',bubbles:true}));`);
+    await until('!NV.alpha.snapshot().paused');
+    await until('NV.alpha.snapshot().hudReveal===0');
+    await evaluate('NV.input.notifyConsumableChange()');await until('NV.alpha.snapshot().hudReveal===1');
+    await until('NV.alpha.snapshot().hudReveal===0');
+    await evaluate('NV.input.setSpecial(true)');await until('NV.alpha.snapshot().hudHold>2.5');
+    await evaluate('NV.input.setSpecial(false)');await until('NV.alpha.snapshot().hudReveal===1');
+    await evaluate('document.getElementById("hudToggle").click()');
+    assert.equal(await evaluate('NV.alpha.snapshot().showHUD'),false);
+    assert.equal(await evaluate('NV.consumSlotRects.length'),0);
+    await evaluate('document.getElementById("hudToggle").click()');
+    assert.equal(await evaluate('NV.alpha.snapshot().showHUD'),true);
+    ok('HUD: reveal, auto-hide, essentials, pause, consumables, toggle',drawn);
+    for(const [width,height] of [[915,412],[844,390]]) {
+      await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:true});
+      await navigate('?mobile=1');await fixture(1);await evaluate('NV.alpha.resume()');
+      await until('NV.alpha.snapshot().hudReveal===0');
+      assert.equal(await evaluate('NV.consumSlotRects.length'),0);
+      await shot('hud-mobile-'+width);ok('HUD mobile '+width+'x'+height);
+    }
+    assert.equal(errors.length,0,errors.join('\n'));
+    fs.writeFileSync(path.join(OUT,'report.json'),JSON.stringify({source:BASE,results:report,errors},null,2));return;
+  }
+  if(process.argv.includes('--lobby-integrated')) {
+    const data=await require('../desktop/lobby-qa.cjs')(evaluate,shot,async(width,height,mobile)=>{
+      await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile});
+      await send('Emulation.setTouchEmulationEnabled',{enabled:mobile,maxTouchPoints:1});
+      await navigate(mobile?'?mobile=1':'');
+    });
+    ok('lobby integrado: pilotos, modos, mejoras, ajustes y checkpoint',data);
+    await navigate('?fresh=1');
+    await evaluate('document.getElementById("lobbyModeEndless").click();document.getElementById("lobbyPlayBtn").click()');
+    await until('NV.getState()==="playing"');
+    assert.equal(await evaluate('NV.alpha.snapshot().run.mode'),'endless');
+    await shot('endless-game');ok('JUGAR inicia el modo Infinito seleccionado');
+    assert.equal(errors.length,0,errors.join('\n'));
+    fs.writeFileSync(path.join(OUT,'report.json'),JSON.stringify({source:BASE,results:report,errors},null,2));return;
+  }
+  if(process.argv.includes('--lobby-layout-only')) {
+    const source=BASE+'/dev/lobby-layout/index.html';
+    await send('Page.navigate',{url:source});
+    await until('document.querySelector(".lobby-container") && document.querySelector(".panel-piloto")');
+    for(const [width,height,mobile] of [[1440,900,false],[1280,800,false],[915,412,true],[844,390,true],[390,844,true]]) {
+      await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile});
+      await send('Emulation.setTouchEmulationEnabled',{enabled:mobile,maxTouchPoints:1});await sleep(120);
+      const layout=await evaluate(`(() => {
+        const panel=document.querySelector('.panel-piloto').getBoundingClientRect(),button=document.querySelector('.btn-mejoras').getBoundingClientRect();
+        return {width:innerWidth,scrollWidth:document.documentElement.scrollWidth,panelWidth:panel.width,buttonWidth:button.width,
+          panelLeft:panel.left,buttonLeft:button.left,dots:document.querySelectorAll('.progress-bar .dot').length,
+          activeIndex:Array.from(document.querySelectorAll('.progress-bar .dot')).findIndex(e=>e.classList.contains('active')),
+          scripts:document.scripts.length,columns:getComputedStyle(document.querySelector('.lobby-container')).gridTemplateColumns,
+          buttons:Array.from(document.querySelectorAll('button')).map(e=>e.textContent.trim())};
+      })()`);
+      assert.equal(layout.panelWidth,layout.buttonWidth);assert.equal(layout.panelLeft,layout.buttonLeft);
+      assert.equal(layout.dots,10);assert.equal(layout.activeIndex,3);assert.equal(layout.scripts,0);
+      assert(!layout.buttons.includes('PILOTOS'));assert(layout.scrollWidth<=width,'overflow horizontal');
+      assert.equal(layout.columns.split(' ').length,width<=980?1:3);
+      await shot('lobby-layout-'+width);ok('HTML/CSS responsive '+width,layout);
+    }
+    await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
+    await evaluate('document.querySelector(".dot.active").focus()');await sleep(240);
+    const tooltip=await evaluate(`(() => {const e=document.querySelector('.tooltip-historia'),r=e.getBoundingClientRect(),s=getComputedStyle(e);return {visibility:s.visibility,opacity:s.opacity,left:r.left,right:r.right,top:r.top};})()`);
+    assert.equal(tooltip.visibility,'visible');assert.equal(Number(tooltip.opacity),1);assert(tooltip.left>=0&&tooltip.right<=1440);
+    await shot('lobby-tooltip');ok('tooltip par clavier',tooltip);
+    await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+    await evaluate('document.querySelector(".dot.active").focus();document.querySelector(".card-historia").scrollIntoView({block:"center"})');await sleep(240);
+    const mobileTip=await evaluate('({visible:getComputedStyle(document.querySelector(".tooltip-historia")).visibility,left:document.querySelector(".tooltip-historia").getBoundingClientRect().left,right:document.querySelector(".tooltip-historia").getBoundingClientRect().right})');
+    assert.equal(mobileTip.visible,'visible');assert(mobileTip.left>=0&&mobileTip.right<=390);await shot('mobile-tooltip');
+    await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+    assert.equal(await evaluate('getComputedStyle(document.querySelector(".avatar-shape")).animationName'),'none');
+    assert.equal(errors.length,0,errors.join('\n'));fs.writeFileSync(path.join(OUT,'report.json'),JSON.stringify({source,results:report,errors},null,2));return;
+  }
+  if(process.argv.includes('--soundtrack-analyze')) {
+    const data=await evaluate(`(async()=>{
+      const ac=new AudioContext();
+      const b=await ac.decodeAudioData(await (await fetch('/previews/soundtrack-2026-10-03/source.mp3')).arrayBuffer());
+      const channels=Array.from({length:b.numberOfChannels},(_,i)=>b.getChannelData(i));
+      const hop=Math.round(b.sampleRate*.01),env=[],low=[],blocks=[];
+      let smooth=0,peak=0,total=0;
+      const k=1-Math.exp(-2*Math.PI*140/b.sampleRate);
+      for(let i=0;i<b.length;i+=hop){let sum=0,lo=0;for(let j=i;j<Math.min(b.length,i+hop);j++){
+        let x=0;for(const c of channels){x+=c[j]/channels.length;peak=Math.max(peak,Math.abs(c[j]));}
+        sum+=x*x;smooth+=k*(x-smooth);lo+=smooth*smooth;
+      }env.push(Math.sqrt(sum/hop));low.push(Math.sqrt(lo/hop));total+=sum;}
+      for(let i=0;i<env.length;i+=200){const a=env.slice(i,i+200);blocks.push({at:i*.01,rms:Math.sqrt(a.reduce((s,v)=>s+v*v,0)/a.length),low:low.slice(i,i+200).reduce((s,v)=>s+v,0)/a.length});}
+      const flux=low.map((v,i)=>Math.max(0,v-(low[i-1]||v))),tempo=[];
+      for(let bpm=70;bpm<=180;bpm+=.1){const lag=6000/bpm;let correlation=0;for(let i=1000;i<Math.min(flux.length,14000)-Math.ceil(lag);i++){
+        const p=i+lag,j=Math.floor(p);correlation+=flux[i]*(flux[j]*(1-(p-j))+flux[j+1]*(p-j));}
+        tempo.push({bpm:Math.round(bpm*10)/10,score:correlation});}
+      tempo.sort((a,b)=>b.score-a.score);
+      await ac.close();return {duration:b.duration,sampleRate:b.sampleRate,channels:b.numberOfChannels,peak,rms:Math.sqrt(total/b.length),blocks,tempo:tempo.slice(0,30),flux};
+    })()`);
+    fs.writeFileSync(path.join(OUT,'analysis.json'),JSON.stringify(data,null,2));
+    console.log(JSON.stringify({...data,flux:undefined}));return;
+  }
+  if(process.argv.includes('--audio-experiments')) {
+    assert.equal(await evaluate('typeof NV.audioExperiments'),'undefined','experimentos cargados en juego');
+    await send('Page.navigate',{url:BASE+'/dev/audio-experiments/index.html'});
+    await until('window.audioExperimentLab && document.querySelectorAll(".card").length===8');
+    const qa=require('../dev/audio-experiments/qa.cjs'),wav=require('../desktop/audio-qa.cjs').saveWav;
+    const data=await qa(evaluate,shot,async(name,result)=>wav(path.join(OUT,name+'.wav'),result),
+      (width,height)=>send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false}),
+      {levelProbe:process.argv.includes('--audio-level-probe')});
+    assert.equal(errors.length,0,JSON.stringify(errors));
+    fs.writeFileSync(path.join(OUT,'report.json'),JSON.stringify({pass:true,data,errors,source:BASE},null,2));
+    ok('laboratorio: cuatro músicas, cuatro bajas, mezcla densa, responsive, mute y selección',data.results);return;
+  }
+  if(process.argv.includes('--spawn-icon-only')) {
+    assert(await evaluate('document.getElementById("lobbyPlayBtn") && document.body.innerText.trim().length>0'));
+    await shot('lobby');
+    const gallery=await evaluate(`(() => {
+      const c=document.createElement('canvas');c.width=800;c.height=320;const ctx=c.getContext('2d');
+      for(let y=0;y<c.height;y+=16)for(let x=0;x<c.width;x+=16){ctx.fillStyle=(x/16+y/16)%2?'#172438':'#0a1322';ctx.fillRect(x,y,16,16);}
+      for(let i=0;i<4;i++) {
+        ctx.save();ctx.translate(100+i*200,100);ctx.scale(3,3);
+        NV.drawEnemyArrival(ctx,{x:0,y:0,radius:22,arrival:{stage:'warning',duration:.9,remaining:.9*(1-i/4)}});ctx.restore();
+        NV.drawEnemyArrival(ctx,{x:100+i*200,y:240,radius:12+i*4,arrival:{stage:'warning',duration:.9,remaining:.9*(1-i/4)}});
+      }
+      const t=document.createElement('canvas');t.width=t.height=100;const tc=t.getContext('2d');
+      NV.drawEnemyArrival(tc,{x:50,y:50,radius:22,arrival:{stage:'warning',duration:.9,remaining:.9}});
+      const pixel=(x,y)=>Array.from(tc.getImageData(x,y,1,1).data);
+      const frames=[];
+      for(const remaining of [.9,.675,.45,.225]){tc.clearRect(0,0,100,100);NV.drawEnemyArrival(tc,{x:50,y:50,radius:22,arrival:{stage:'warning',duration:.9,remaining}});frames.push(t.toDataURL());}
+      tc.clearRect(0,0,100,100);NV.drawEnemyArrival(tc,{x:50,y:50,radius:22,arrival:{stage:'warning',duration:.9,remaining:.9}});
+      return {atlas:c.toDataURL(),transparent:[pixel(0,0),pixel(43,50),pixel(50,38)],violet:pixel(50,50),animated:new Set(frames).size};
+    })()`);
+    for(const pixel of gallery.transparent)assert.equal(pixel[3],0,'fondo/interior deben ser transparentes');
+    assert(gallery.violet[0]>0&&gallery.violet[2]>0&&gallery.violet[1]===0&&gallery.violet[3]>0,'exclamación violeta');
+    assert(gallery.animated>1,'pulso visible en distintos tiempos');
+    fs.writeFileSync(path.join(OUT,'spawn-icon-atlas.png'),Buffer.from(gallery.atlas.split(',')[1],'base64'));
+    delete gallery.atlas;ok('triángulo transparente violeta animado',gallery);
+    for(const [width,height,mobile] of [[1280,800,false],[915,412,true],[844,390,true]]) {
+      await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile});
+      await send('Emulation.setTouchEmulationEnabled',{enabled:mobile,maxTouchPoints:1});
+      await navigate(mobile?'?mobile=1&fresh=1':'?fresh=1');
+      await evaluate('document.getElementById("lobbyPlayBtn").click()');
+      await until('NV.getState()==="playing" && NV.getRuntimeSnapshot().arrivals>0');
+      await evaluate('NV.input.togglePause()');await shot('spawn-'+width);
+      const frozen=await evaluate('NV.getRuntimeSnapshot()');await sleep(180);
+      assert.equal(await evaluate('NV.getRuntimeSnapshot().frame'),frozen.frame,'pausa no avanza animación');
+      await evaluate('NV.input.togglePause()');
+      await until('NV.getRuntimeSnapshot().arrivalPuffs>0',10000);
+      ok('spawn y puff reales '+width,{snapshot:frozen,layout:await layoutSnapshot()});
+    }
+    assert.equal(errors.length,0,errors.join('\n'));
+    fs.writeFileSync(path.join(OUT,'report.json'),JSON.stringify({source:BASE,results:report,errors},null,2));return;
+  }
+  if(process.argv.includes('--idle-pressure-probe')){
+    await navigate('?combatLab=1&fresh=1');
+    await evaluate(`(() => {
+      window.__nvPressureHits=[];const apply=NV.applyPlayerDamage;
+      NV.applyPlayerDamage=(damage,options)=>{const r=apply(damage,options);window.__nvPressureHits.push({cause:options&&options.cause,applied:r.applied});return r;};
+      const result=NV.combatLabRuntime.start({encounterMode:'boss',bossIndex:0,characterId:'boti',difficultyId:'normal',weaponId:'pistol',weaponLevel:1,weaponFusion:0,firePolicy:'manual',durationMode:'infinite'});
+      if(!result.ok)throw Error('fixture presión');
+    })()`);
+    const samples=[];
+    for(let i=0;i<48;i++){await sleep(250);samples.push(await evaluate('({state:NV.getState(),player:NV.getRuntimeSnapshot().player,idleTime:NV.getBoss()?.encounter?.idleTime,warning:!!NV.getBoss()?.encounter?.idlePressure})'));}
+    const hits=await evaluate('window.__nvPressureHits');
+    const idlePressureApplied=hits.some(h=>h.cause==='boss-idle-pressure'&&h.applied);
+    assert.equal(errors.length,0,JSON.stringify(errors));
+    fs.writeFileSync(path.join(OUT,'report.json'),JSON.stringify({diagnostic:true,source:BASE,idlePressureApplied,hits,samples,errors},null,2));
+    console.log('DIAGNOSTIC idle-pressure applied='+idlePressureApplied);return;
+  }
+  if(process.argv.includes('--audio-remaster')) {
+    await shot('lobby');
+    const qa=require('../desktop/audio-qa.cjs');
+    const data=await qa(evaluate,async(name,result)=>qa.saveWav(path.join(OUT,name+'.wav'),result));
+    const ui=await evaluate(`(() => {
+      const events=[],original=NV.sfx.ui;
+      NV.sfx.ui=kind=>{events.push(kind);return original(kind);};
+      const button=document.createElement('button');button.id='audio-qa-probe';
+      const child=document.createElement('span');button.append(child);document.body.append(button);
+      try{
+        button.dispatchEvent(new PointerEvent('pointerover',{bubbles:true}));
+        child.dispatchEvent(new PointerEvent('pointerover',{bubbles:true,relatedTarget:button}));
+        button.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));
+        button.dispatchEvent(new FocusEvent('focusin',{bubbles:true}));button.click();
+        return events;
+      }finally{button.remove();NV.sfx.ui=original;}
+    })()`);
+    assert.deepEqual(ui,['hover','select'],'hover/foco/clic duplican eventos');
+    if(process.argv.includes('--audio-lab')){
+      await send('Page.navigate',{url:BASE+'/dev/audio-remaster/index.html'});
+      await until('window.NV && NV.getAudioVoiceStats && document.querySelector("#weapons button")');
+      await evaluate('document.querySelector("#weapons button").click()');await sleep(80);
+      assert(await evaluate('NV.getAudioVoiceStats().created>0'),'lab no reproduce');
+      await evaluate('for(const button of document.querySelectorAll("#weapons button,#events button"))button.click()');
+      assert(await evaluate('NV.getAudioVoiceStats().active<=48'),'lab supera presupuesto');
+      await evaluate('document.getElementById("music").click()');await sleep(1200);
+      assert(await evaluate('NV.musicState.scheduledSteps>8'),'lab no secuencia música con reloj real');
+      await shot('audio-lab');await evaluate('document.getElementById("stop").click()');await sleep(100);
+      assert.equal(await evaluate('NV.getAudioVoiceStats().active'),0,'lab no detiene voces');
+    }
+    assert.equal(errors.length,0,JSON.stringify(errors));
+    fs.writeFileSync(path.join(OUT,'report.json'),JSON.stringify({pass:true,data,ui,errors,source:BASE},null,2));
+    ok('audio real: mezcla, once escenarios, mute y voces',data.results);return;
+  }
+  if(process.argv.includes('--pilot-live-view')) {
+    const cases=[];
+    for(const character of ['boti','nova','rook','swarm']) {
+      await navigate();
+      await evaluate(`(() => {
+        const original=NV.pilotAppearance,counts={};window.__pilotLiveCounts=counts;
+        NV.pilotAppearance={...original,trace(...args){const c=args[1],key=c.id+':'+c.shape;counts[key]=(counts[key]||0)+1;return original.trace(...args);}};
+        document.getElementById('pilotsBtn').click();
+        document.querySelector('[data-char="${character}"]').click();
+      })()`);
+      await sleep(150);await shot('selector-'+character);
+      await evaluate('document.getElementById("startBtn").click()');await sleep(700);
+      const lobby=await evaluate('({state:NV.getState(),character:NV.getRuntimeSnapshot().player.character,counts:{...__pilotLiveCounts},url:location.href,rendererURL:[...document.scripts].find(s=>s.src.includes("js/render/player.js")).src})');
+      assert.equal(lobby.state,'menu');assert.equal(lobby.character,character);
+      assert(Object.keys(lobby.counts).some(k=>k.startsWith(character+':')),'renderer nuevo no usado en lobby');
+      await shot('lobby-'+character);
+      await evaluate('for(const key of Object.keys(__pilotLiveCounts))delete __pilotLiveCounts[key];document.getElementById("lobbyPlayBtn").click()');await sleep(1000);
+      const playing=await evaluate('({snapshot:NV.getRuntimeSnapshot(),counts:{...__pilotLiveCounts}})');
+      assert.equal(playing.snapshot.state,'playing');assert.equal(playing.snapshot.player.character,character);
+      const expected={boti:'woven',nova:'radial',rook:'peaks',swarm:'asymmetric'}[character];
+      assert(playing.counts[character+':'+expected]>0,'forma aprobada no usada en partida real');
+      await shot('playing-'+character);cases.push({character,lobby,playing});
+      ok('vista real '+character);
+    }
+    assert.equal(errors.length,0,JSON.stringify(errors));
+    fs.writeFileSync(path.join(OUT,'report.json'),JSON.stringify({pass:true,cases,errors,network},null,2));return;
+  }
   if(process.argv.includes('--pilot-production')) {
     const data=await require('../desktop/pilot-qa.cjs')(evaluate,async(name,url)=>fs.writeFileSync(path.join(OUT,name+'.png'),Buffer.from(url.split(',')[1],'base64')));
     assert.equal(errors.length,0,JSON.stringify(errors));
@@ -389,7 +653,7 @@ async function fixture(wave, hp = 5000, progression = 'legacy', traversal = fals
         e.arrival=i<3?{stage:'warning',remaining:[.9,.5,.08][i],duration:.9}:{stage:'puff',remaining:[.22,.13,.02][i-3],duration:.22};
         const hide=NV.drawEnemyArrival(ctx,e);
         if(!hide) {ctx.strokeStyle='#61e5ff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(e.x,e.y,14,0,Math.PI*2);ctx.stroke();}
-        ctx.fillStyle='#abbad0';ctx.font='14px monospace';ctx.fillText(i<3?'X / '+e.arrival.remaining+'s':'POOF / '+e.arrival.remaining+'s',e.x-58,185);
+        ctx.fillStyle='#abbad0';ctx.font='14px monospace';ctx.fillText(i<3?'AVISO / '+e.arrival.remaining+'s':'POOF / '+e.arrival.remaining+'s',e.x-58,185);
       }
       return c.toDataURL();
     })()`);

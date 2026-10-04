@@ -281,11 +281,11 @@ t('armas: el submix real sale por el bus weapons y conserva su techo interno', (
   if (!NV.weaponBus) throw new Error('el submix de armas falta');
   if (NV.weaponBus.parent !== NV.mixer.weapons) throw new Error('las armas no salen por el bus weapons');
   if (NV.weaponBus.parent === NV.mixer.sfxPlayer) throw new Error('las armas siguen colgando de sfxPlayer');
-  if (NV.WEAPON_MASTER !== 0.06) throw new Error('el techo interno de armas cambió: ' + NV.WEAPON_MASTER);
-  if (!sb._setValues.includes(0.06)) throw new Error('el ceiling del submix no usó WEAPON_MASTER');
+  if (NV.WEAPON_MASTER !== 0.85) throw new Error('el techo interno de armas cambió: ' + NV.WEAPON_MASTER);
+  if (!sb._setValues.includes(0.85)) throw new Error('el ceiling del submix no usó WEAPON_MASTER');
   NV.setWeaponsVolume(0.4);
   if (NV.getWeaponBus() !== NV.weaponBus.input) throw new Error('el cambio de volumen recreó el submix de armas');
-  if (NV.WEAPON_MASTER !== 0.06) throw new Error('weaponsVolume alteró el techo interno de armas');
+  if (NV.WEAPON_MASTER !== 0.85) throw new Error('weaponsVolume alteró el techo interno de armas');
 });
 
 t('armas: el fallback sintetizado entra por el bus weapons', () => {

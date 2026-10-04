@@ -6,6 +6,7 @@
   NV.beginEnemyArrival = function (enemy, state) {
     if (!state.announceSpawn) return enemy;
     enemy.arrival = { stage: 'warning', remaining: .9, duration: .9 };
+    if (NV.sfx && NV.sfx.spawn) NV.sfx.spawn({ x: enemy.x, worldWidth: state.W });
     return enemy;
   };
   NV.updateEnemyArrival = function (enemy, dt, state) {
@@ -37,16 +38,28 @@
     const progress = Math.max(0, Math.min(1, 1 - a.remaining / a.duration));
     const radius = Math.max(12, Math.min(22, enemy.radius));
     ctx.save(); ctx.shadowBlur = 0;
-    ctx.strokeStyle = '#ff3b4f'; ctx.fillStyle = '#b7c6d0'; ctx.lineWidth = 2.5;
+    ctx.fillStyle = '#b7c6d0';
     if (a.stage === 'warning') {
-      // Una sola X: dos diagonales procedurales; sin anillo, fuente ni emoji.
-      const half = radius * (.72 + .055 * Math.sin(progress * Math.PI * 3));
-      ctx.lineCap = 'round'; ctx.globalAlpha = .65 + progress * .3;
+      // Referencia del usuario: triángulo hueco y ! redondeado, sólo violeta.
+      // Dos pulsos por aviso, por dt del lifecycle: pausa congela la animación.
+      const pulse = .5 - .5 * Math.cos(progress * Math.PI * 4);
+      const half = Math.max(18, radius * 1.12) * (.92 + .04 * progress + .06 * pulse);
+      ctx.translate(enemy.x, enemy.y); ctx.scale(half, half);
+      ctx.globalAlpha = .76 + .12 * progress + .12 * pulse;
+      ctx.fillStyle = '#a000ad';
+      // Contornos exterior/interior conservan las proporciones de la imagen.
+      // evenodd deja el interior transparente sin borrar el escenario detrás.
       ctx.beginPath();
-      ctx.moveTo(enemy.x-half, enemy.y-half); ctx.lineTo(enemy.x+half, enemy.y+half);
-      ctx.moveTo(enemy.x-half, enemy.y+half); ctx.lineTo(enemy.x+half, enemy.y-half);
-      ctx.stroke();
-      ctx.globalAlpha *= .28; ctx.lineWidth = 5; ctx.stroke();
+      ctx.moveTo(0, -.792); ctx.lineTo(1, .792); ctx.lineTo(-1, .792); ctx.closePath();
+      ctx.moveTo(0, -.657); ctx.lineTo(.868, .727); ctx.lineTo(-.868, .727); ctx.closePath();
+      ctx.fill('evenodd');
+      ctx.beginPath();
+      ctx.moveTo(-.114, -.214);
+      ctx.bezierCurveTo(-.12, -.357, .12, -.357, .114, -.214);
+      ctx.lineTo(.055, .35);
+      ctx.bezierCurveTo(.05, .419, -.05, .419, -.055, .35);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.arc(0, .548, .104, 0, Math.PI * 2); ctx.fill();
     } else {
       // Puff detrás del cuerpo: centro denso y lóbulos/fragmentos ligeros.
       ctx.globalAlpha = .3 * (1 - progress);

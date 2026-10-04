@@ -4,12 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Neon Void</title>
-    <link rel="icon" href="assets/brand/neon-void-mark.svg?nv=pilots-20261002a" type="image/svg+xml" />
-    <link rel="stylesheet" href="css/styles.css?nv=pilots-20261002a" />
-    <link rel="stylesheet" href="css/lobby-f093.css?nv=pilots-20261002a" />
-    <link rel="stylesheet" href="css/alpha.css?nv=pilots-20261002a" />
+    <link rel="icon" href="assets/brand/neon-void-mark.svg?nv=audio-20261002b" type="image/svg+xml" />
+    <link rel="stylesheet" href="css/styles.css?nv=audio-20261002b" />
+    <link rel="stylesheet" href="css/lobby-f093.css?nv=audio-20261002b" />
+    <link rel="stylesheet" href="css/alpha.css?nv=audio-20261002b" />
+    <link rel="stylesheet" href="css/lobby-layout.css?nv=lobby-20261003" />
     <!-- Capa móvil: detección por capacidad (se carga primero; solo etiqueta <html>). -->
-    <script src="js/core/capabilities.js?nv=pilots-20261002a"></script>
+    <script src="js/core/capabilities.js?nv=audio-20261002b"></script>
     <!-- La distribución Canvas2D funciona offline. WebGL legado sólo a pedido. -->
   </head>
   <body>
@@ -57,15 +58,11 @@
             <span class="lobby-star star-a"></span><span class="lobby-star star-b"></span>
             <span class="lobby-star star-c"></span><span class="lobby-star star-d"></span>
           </div>
+          <header class="lobby-masthead"><div class="lobby-brand"><span class="lobby-brand-mark">NV</span><h1 id="lobbyTitle">NEON VOID<span>.</span></h1></div><div class="lobby-header-actions"><span class="lobby-online">● SISTEMAS EN LÍNEA</span><button id="lobbySettingsBtn" type="button" aria-label="Ajustes">⚙</button><button id="lobbyFullscreenBtn" class="lobby-fullscreen hidden" type="button" aria-hidden="true">⛶ PANTALLA COMPLETA</button></div></header>
           <section class="main-lobby-panel" aria-labelledby="lobbyTitle">
             <div class="main-lobby-copy">
-              <div class="lobby-kicker">SUPERVIVENCIA · NEON ROGUELITE</div>
-              <div class="lobby-brand" aria-label="Neon Void">
-                <span class="lobby-brand-mark">NV</span>
-                <h1 id="lobbyTitle"><span>NEON</span><strong>VOID</strong></h1>
-              </div>
-              <p class="subtitle">Atravesá el umbral. Prepará tu piloto. Sobreviví al pulso del Vacío.</p>
-              <div class="lobby-hero-info" aria-live="polite">
+              <div class="lobby-hero-info panel-piloto" aria-live="polite">
+                <div class="panel-top"><span>PILOTO SELECCIONADO</span><button id="pilotsBtn" type="button" aria-label="Abrir biblioteca y elegir piloto">VER TODOS ↗</button></div>
                 <div class="hero-info-header">
                   <button id="hero-prev" class="hero-nav hero-prev" type="button" aria-label="Piloto anterior">◀</button>
                   <div class="hero-info-name">
@@ -78,17 +75,19 @@
                 <p class="hero-info-passive"><span>PASIVA</span><strong id="heroPassive">Regenera 1 HP cada 5s</strong></p>
                 <div class="hero-info-skill">
                   <canvas class="hero-skill-icon" id="heroSkillIcon" width="24" height="24"></canvas>
-                  <p><span>ESPECIAL</span><strong id="heroSkillName">Lluvia Criocósmica</strong><small id="heroSkillDesc">12 cometas fríos, con daño reducido contra jefes</small></p>
+                  <p><span>HABILIDAD ESPECIAL</span><strong id="heroSkillName">Lluvia Criocósmica</strong><small id="heroSkillDesc">12 cometas fríos, con daño reducido contra jefes</small></p>
                 </div>
                 <p class="hero-info-identity" id="heroIdentity">Supervivencia estable · especial de alto impacto y recarga larga</p>
+                <span class="pilot-status">● PILOTO LISTO PARA DESPLEGAR</span>
               </div>
               <div class="main-lobby-actions" aria-label="Menú principal">
-                <button id="lobbyPlayBtn" class="primary lobby-play" type="button"><span>JUGAR</span><small>Iniciar con el piloto seleccionado</small></button>
-                <button id="pilotsBtn" class="primary secondary lobby-secondary" type="button">PILOTOS</button>
-                <button id="permBtn" class="primary secondary lobby-secondary" type="button">MEJORAS PERMANENTES</button>
-                <button id="lobbySettingsBtn" class="primary secondary lobby-settings" type="button">AJUSTES</button>
-                <button id="lobbyFullscreenBtn" class="primary secondary lobby-fullscreen hidden" type="button" aria-hidden="true">⛶ PANTALLA COMPLETA</button>
+                <button id="permBtn" class="primary secondary btn-mejoras" type="button"><span aria-hidden="true">↗</span> MEJORAS <span aria-hidden="true">+</span></button>
               </div>
+            </div>
+            <div class="lobby-center">
+              <div class="center-heading"><span>EL VACÍO TE ESPERA</span><h2>LISTO PARA EL SALTO</h2></div>
+              <div class="lobby-hero" aria-label="Vista previa del piloto seleccionado"><span class="orbit-caption orbit-top">NÚCLEO ESTABLE</span><div class="avatar-circle"><canvas id="lobbyPreview" class="lobby-preview"></canvas></div><span class="orbit-caption orbit-bottom">PREPARADO PARA DESPLEGAR</span></div>
+              <button id="lobbyPlayBtn" class="primary lobby-play btn-jugar" type="button"><span>JUGAR</span><span aria-hidden="true">↗</span></button>
               <div class="lobby-difficulty" id="lobbyDifficulty" aria-label="Dificultad">
                 <span class="lobby-diff-label">DIFICULTAD</span>
                 <div class="lobby-diff-options" id="lobbyDiffOptions">
@@ -97,15 +96,18 @@
                   <button type="button" class="lobby-diff-btn" data-diff="hard" aria-pressed="false">DIFÍCIL</button>
                 </div>
               </div>
-              <div class="main-lobby-status" aria-label="Progreso guardado">
-                <span class="status-light"></span>
-                <p><strong>PROGRESO LOCAL ACTIVO</strong><small>Mejoras y ajustes guardados automáticamente</small></p>
-              </div>
+              <div id="lobbyLaunch"></div>
             </div>
-            <div class="lobby-hero" aria-label="Vista previa del piloto seleccionado">
-              <canvas id="lobbyPreview" class="lobby-preview"></canvas>
+            <div class="lobby-modes"><span class="mode-label">TU PRÓXIMO DESTINO</span>
+              <section class="card-mode card-historia"><button id="lobbyModeHistory" class="mode-select" type="button" data-mode="expedition" aria-pressed="true"><span class="mode-heading"><span>01</span><span>EXPEDICIÓN</span></span><strong>HISTORIA</strong><span class="mode-description">Diez encuentros.<br>Un viaje al corazón del vacío.</span></button>
+                <div class="progress-caption"><span id="lobbyRouteLabel">RUTA DE JEFES</span><span id="lobbyStoryProgress">01 / 10</span></div><div class="progress-bar" id="lobbyStoryDots" aria-label="Ruta de jefes"></div>
+                <div id="lobbyStoryTooltip" class="tooltip-historia" role="tooltip"><div class="tooltip-thumbnail" aria-hidden="true"><span class="boss-emblem">✧</span><span id="lobbyBossWave"></span></div><strong id="lobbyBossName"></strong><span id="lobbyBossSector" class="tooltip-subtext"></span></div>
+                <div class="mode-footer"><span>20 OLEADAS · 10 JEFES</span><span aria-hidden="true">↗</span></div>
+              </section>
+              <section class="card-mode card-infinito"><button id="lobbyModeEndless" class="mode-select" type="button" data-mode="endless" aria-pressed="false"><span class="mode-heading"><span>02</span><span>SIN LÍMITES</span></span><span class="infinity-symbol" aria-hidden="true">∞</span><strong>INFINITO</strong><span class="mode-description">Supervivencia sin fin</span></button><div class="infinite-record"><span>RÉCORD GLOBAL</span><strong id="lobbyInfiniteRecord">Oleada 0</strong></div></section>
             </div>
           </section>
+          <footer class="lobby-footer"><span>NEON VOID / EXPLORA. RESISTE. EVOLUCIONA.</span><span>PROGRESO LOCAL ACTIVO</span></footer>
         </div>
 
         <div id="characterSelectScreen" class="overlay lobby-screen character-select-screen hidden">
@@ -337,71 +339,74 @@
       </div>
     </main>
 
-    <script src="js/core/state.js?nv=pilots-20261002a"></script>
-    <script src="js/data/gameData.js?nv=pilots-20261002a"></script>
-    <script src="js/data/balance.js?nv=pilots-20261002a"></script>
-    <script src="js/core/settings.js?nv=pilots-20261002a"></script>
-    <script src="js/core/utils.js?nv=pilots-20261002a"></script>
-    <script src="js/core/viewport.js?nv=pilots-20261002a"></script>
-    <script src="js/core/inputIntent.js?nv=pilots-20261002a"></script>
-    <script src="js/data/consumables.js?nv=pilots-20261002a"></script>
-    <script src="js/audio/synth.js?nv=pilots-20261002a"></script>
-    <script src="js/audio/weaponSfx.js?v=audio-3&amp;nv=pilots-20261002a"></script>
-    <script src="js/ui/dom.js?nv=pilots-20261002a"></script>
-    <script src="js/ui/settingsPanel.js?nv=pilots-20261002a"></script>
-    <script src="js/ui/characters.js?nv=pilots-20261002a"></script>
-    <script src="js/render/canvas.js?nv=pilots-20261002a"></script>
-    <script src="js/render/sectors.js?nv=pilots-20261002a"></script>
-    <script src="js/render/projectiles.js?nv=pilots-20261002a"></script>
-    <script src="js/render/specialEffects.js?nv=pilots-20261002a"></script>
-    <script src="js/render/consumableEffects.js?v=shield-2&amp;nv=pilots-20261002a"></script>
-    <script src="js/render/spectralEnemies2D.js?nv=pilots-20261002a"></script>
-    <script src="js/render/enemies.js?nv=pilots-20261002a"></script>
-    <script src="js/render/metaReadability.js?nv=pilots-20261002a"></script>
-    <script src="js/render/visualBudget.js?nv=pilots-20261002a"></script>
-    <script src="js/render/hazards.js?nv=pilots-20261002a"></script>
-    <script src="js/render/espectroLite.js?nv=pilots-20261002a"></script>
-    <script src="js/render/bosses.js?nv=pilots-20261002a"></script>
-    <script src="js/data/pilotAnimationBaseline.js?nv=pilots-20261002a"></script>
-    <script src="js/render/pilotGeometry.js?nv=pilots-20261002a"></script>
-    <script src="js/render/pilotAppearance.js?nv=pilots-20261002a"></script>
-    <script src="js/render/player.js?nv=pilots-20261002a"></script>
-    <script src="js/render/weaponIcons.js?nv=pilots-20261002a"></script>
-    <script src="js/render/consumableIcons.js?nv=pilots-20261002a"></script>
-    <script src="js/render/metaSkillIcons.js?nv=pilots-20261002a"></script>
-    <script src="js/render/hud.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/rhythm.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/fx.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/drones.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/meteors.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/pickups.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/movement.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/consumables.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/metaDiagnostics.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/hostileBudget.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/enemySpawnRegistry.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/performanceMonitor.js?nv=pilots-20261002a"></script>
-      <script src="js/engine/cameraSafety.js?nv=pilots-20261002a"></script>
-      <script src="js/engine/hazards.js?nv=pilots-20261002a"></script>
-      <script src="js/engine/sectorEncounters.js?nv=pilots-20261002a"></script>
-      <script src="js/engine/enemies.js?nv=pilots-20261002a"></script>
-      <script src="js/engine/enemyArrival.js?nv=pilots-20261002a"></script>
-      <script src="js/engine/wavePressure.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/combat.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/playerStun.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/playtestTelemetry.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/expedition.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/boss.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/bossEncounters.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/bullets.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/flame.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/weapons.js?nv=pilots-20261002a"></script>
-    <script src="js/engine/special.js?nv=pilots-20261002a"></script>
-    <script src="js/game.js?nv=pilots-20261002a"></script>
-    <script src="js/ui/onboarding.js?nv=pilots-20261002a"></script>
-    <script src="js/ui/gamepadControls.js?nv=pilots-20261002a"></script>
-    <script src="js/ui/alpha.js?nv=pilots-20261002a"></script>
+    <script src="js/core/state.js?nv=audio-20261002b"></script>
+    <script src="js/data/gameData.js?nv=audio-20261002b"></script>
+    <script src="js/data/balance.js?nv=audio-20261002b"></script>
+    <script src="js/core/settings.js?nv=audio-20261002b"></script>
+    <script src="js/core/utils.js?nv=audio-20261002b"></script>
+    <script src="js/core/viewport.js?nv=audio-20261002b"></script>
+    <script src="js/core/inputIntent.js?nv=audio-20261002b"></script>
+    <script src="js/data/consumables.js?nv=audio-20261002b"></script>
+    <script src="js/audio/voices.js?nv=groove-20261003"></script>
+    <script src="js/audio/synth.js?nv=musicfix-20261004"></script>
+    <script src="js/audio/soundtrack.js?nv=musicfix-20261004"></script>
+    <script src="js/audio/weaponSfx.js?nv=audio-20261002b"></script>
+    <script src="js/audio/uiAudio.js?nv=audio-20261002b"></script>
+    <script src="js/ui/dom.js?nv=audio-20261002b"></script>
+    <script src="js/ui/settingsPanel.js?nv=audio-20261002b"></script>
+    <script src="js/ui/characters.js?nv=audio-20261002b"></script>
+    <script src="js/render/canvas.js?nv=audio-20261002b"></script>
+    <script src="js/render/sectors.js?nv=audio-20261002b"></script>
+    <script src="js/render/projectiles.js?nv=audio-20261002b"></script>
+    <script src="js/render/specialEffects.js?nv=audio-20261002b"></script>
+    <script src="js/render/consumableEffects.js?v=shield-2&amp;nv=audio-20261002b"></script>
+    <script src="js/render/spectralEnemies2D.js?nv=audio-20261002b"></script>
+    <script src="js/render/enemies.js?nv=audio-20261002b"></script>
+    <script src="js/render/metaReadability.js?nv=audio-20261002b"></script>
+    <script src="js/render/visualBudget.js?nv=audio-20261002b"></script>
+    <script src="js/render/hazards.js?nv=audio-20261002b"></script>
+    <script src="js/render/espectroLite.js?nv=audio-20261002b"></script>
+    <script src="js/render/bosses.js?nv=audio-20261002b"></script>
+    <script src="js/data/pilotAnimationBaseline.js?nv=audio-20261002b"></script>
+    <script src="js/render/pilotGeometry.js?nv=audio-20261002b"></script>
+    <script src="js/render/pilotAppearance.js?nv=audio-20261002b"></script>
+    <script src="js/render/player.js?nv=audio-20261002b"></script>
+    <script src="js/render/weaponIcons.js?nv=audio-20261002b"></script>
+    <script src="js/render/consumableIcons.js?nv=audio-20261002b"></script>
+    <script src="js/render/metaSkillIcons.js?nv=audio-20261002b"></script>
+    <script src="js/render/hud.js?nv=audio-20261002b"></script>
+    <script src="js/engine/rhythm.js?nv=audio-20261002b"></script>
+    <script src="js/engine/fx.js?nv=audio-20261002b"></script>
+    <script src="js/engine/drones.js?nv=audio-20261002b"></script>
+    <script src="js/engine/meteors.js?nv=audio-20261002b"></script>
+    <script src="js/engine/pickups.js?nv=audio-20261002b"></script>
+    <script src="js/engine/movement.js?nv=audio-20261002b"></script>
+    <script src="js/engine/consumables.js?nv=audio-20261002b"></script>
+    <script src="js/engine/metaDiagnostics.js?nv=audio-20261002b"></script>
+    <script src="js/engine/hostileBudget.js?nv=audio-20261002b"></script>
+    <script src="js/engine/enemySpawnRegistry.js?nv=audio-20261002b"></script>
+    <script src="js/engine/performanceMonitor.js?nv=audio-20261002b"></script>
+      <script src="js/engine/cameraSafety.js?nv=audio-20261002b"></script>
+      <script src="js/engine/hazards.js?nv=audio-20261002b"></script>
+      <script src="js/engine/sectorEncounters.js?nv=audio-20261002b"></script>
+      <script src="js/engine/enemies.js?nv=audio-20261002b"></script>
+      <script src="js/engine/enemyArrival.js?nv=spawn-icon-20261003"></script>
+      <script src="js/engine/wavePressure.js?nv=audio-20261002b"></script>
+    <script src="js/engine/combat.js?nv=audio-20261002b"></script>
+    <script src="js/engine/playerStun.js?nv=audio-20261002b"></script>
+    <script src="js/engine/playtestTelemetry.js?nv=audio-20261002b"></script>
+    <script src="js/engine/expedition.js?nv=audio-20261002b"></script>
+    <script src="js/engine/boss.js?nv=audio-20261002b"></script>
+    <script src="js/engine/bossEncounters.js?nv=audio-20261002b"></script>
+    <script src="js/engine/bullets.js?nv=audio-20261002b"></script>
+    <script src="js/engine/flame.js?nv=audio-20261002b"></script>
+    <script src="js/engine/weapons.js?nv=audio-20261002b"></script>
+    <script src="js/engine/special.js?nv=audio-20261002b"></script>
+    <script src="js/game.js?nv=audio-20261002b"></script>
+    <script src="js/ui/onboarding.js?nv=audio-20261002b"></script>
+    <script src="js/ui/gamepadControls.js?nv=audio-20261002b"></script>
+    <script src="js/ui/alpha.js?nv=lobby-20261003"></script>
     <!-- Último: necesita NV.input (expuesto por game.js) y NV.viewport. -->
-    <script src="js/ui/mobileControls.js?nv=pilots-20261002a"></script>
+    <script src="js/ui/mobileControls.js?nv=audio-20261002b"></script>
   </body>
 </html>

@@ -1,9 +1,40 @@
 # NEON VOID
 
-Última entrega local (02-10): **cuatro formas de pilotos aprobadas e integradas**
-en Web y Electron, 160 suites sin fallos y limpieza de builds duplicadas.
+Tráiler dorado DEAD SINGULARITY (03-10): abrir `ABRIR_TRAILER.cmd`.
+La escena autónoma conserva el 3D/caída/apilado y audio de la base original,
+con oro pulido reflectante en caras y volumen, título ajustado al ancho,
+chispazos y fondo oscuro de ruinas. Verificado en Edge y
+Electron; [tratamiento y evidencia](docs/TRAILER_METAL_2026-10-03.md).
+
+HUD con cortina integrado (03-10): armas/consumibles/hints y combo se muestran
+3s tras cambios o especial, con animación de0.32s. Oleada, boss y dash siguen
+visibles; pausa congela el contador. Windows activo `wvYvXn`, web `bHKgiM`.
+165 suites/0 fallos; Edge y EXE verificados. Cerrá la instancia anterior y abrí
+`JUGAR NEON VOID.cmd`. [Detalles](docs/HUD_AUTO_REVEAL_2026-10-03.md).
+
+Lobby integrado (03-10): maqueta aprobada de tres columnas, MEJORAS al ancho del
+panel, piloto real, modos Historia/Infinito, ruta de jefes y checkpoint funcional.
+Responsive de una columna, ajustes y selección conservados. Windows `YXD1IK`,
+web `CjSELh`; abrir `JUGAR NEON VOID.cmd` tras cerrar la instancia anterior.
+[Integración y verificaciones](docs/LOBBY_INTEGRATION_2026-10-03.md).
+
+Último ajuste visual (03-10): aviso de aparición con triángulo violeta y
+exclamación animados, fondo transparente, según la referencia recibida.
+Integrado en web y Windows; abrí `JUGAR NEON VOID.cmd` para ver la entrega nueva.
+[Cambio y verificaciones](docs/SPAWN_ICON_2026-10-03.md).
+
+Audio actualizado (03-10): **cosmic trap**, batería coordinada a 144 BPM,
+808 sostenido, caja a medio tiempo, hats con variaciones y UI más presente.
+Conserva el remaster de armas, avisos y mezcla protegida. Web y Electron
+alineados; 163 suites sin fallos. Los cuatro contornos aprobados se conservan.
 Abrí `JUGAR NEON VOID.cmd` (cerrá una instancia vieja antes).
-[Entrega, pruebas, respaldo y publicación pendiente](docs/PILOT_PRODUCTION_2026-10-02.md).
+Para escuchar sonidos individualmente: `ABRIR_AUDIO_LAB.cmd`.
+[Groove nuevo, entregas y escucha pendiente](docs/AUDIO_GROOVE_2026-10-03.md).
+[Remaster anterior](docs/AUDIO_REMASTER_2026-10-02.md).
+Comparativa experimental, sin cambiar el juego: `ABRIR_AUDIO_EXPERIMENTOS.cmd`.
+Tres soundtracks y tres bajas alternativas junto a la referencia real.
+[Cómo escuchar y elegir](docs/AUDIO_EXPERIMENTOS_2026-10-03.md).
+[Historial de pilotos](docs/PILOT_PRODUCTION_2026-10-02.md).
 Los informes visuales anteriores describen pasos históricos, no esta entrega.
 
 ## Alpha 0.10 — 30 de septiembre de 2026

@@ -78,7 +78,7 @@
       }
       spawnExplosion(player.x, player.y, 20, '#8dfaff', 0.6);
     }
-    sfx.special();
+    sfx.special(player.character);
     return { specialVFX, drones, shake };
   };
 

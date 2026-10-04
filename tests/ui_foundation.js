@@ -18,7 +18,7 @@ t('settings abierto durante play usa pausa compartida', () => {
 });
 
 t('HUD móvil evita duplicar panel canvas de arma/consumible', () => {
-  if (!game.includes('if (!mobilePresentation) drawWeaponHUD()')) throw new Error('panel Canvas no se suprime en móvil');
+  if (!game.includes('if (!mobilePresentation && hudReveal > 0) {\n        drawWeaponHUD();')) throw new Error('panel Canvas no se suprime en móvil o cortina cerrada');
   if (!game.includes('else NV.consumSlotRects = []')) throw new Error('hitboxes Canvas móviles quedan activas');
   if (!html.includes('id="mobileWeaponSwitch"') || !html.includes('id="mobileConsumableSwitch"')) throw new Error('región DOM dedicada ausente');
 });

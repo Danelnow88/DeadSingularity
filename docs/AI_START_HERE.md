@@ -1,5 +1,75 @@
 # NEON VOID — empezar con una IA
 
+**Música / 04-10:** `MUSIC_FIX_2026-10-04.md`. Tema grabado dueño desde la carga;
+sin fragmento synth legacy, duck/fades suavizados, efectos intactos. FRESH abre
+la fuente web local, no Electron. El usuario pidió publicar todos los cambios.
+
+**Tráiler dorado DEAD SINGULARITY (03-10):** `TRAILER_METAL_2026-10-03.md`.
+`dev/TRAILER CINEMATIC.HTML` contiene la base original actualizada por el usuario
+con oro pulido reflectante según referencia de lingotes y el título DEAD/SINGULARITY
+ajustado al ancho real de ambas palabras. Fondo de ruinas conservado. Abrir
+`ABRIR_TRAILER.cmd`; escena autónoma, no modifica el arranque del juego.
+Caída/cámara/apilado/máscaras/audio/controles protegidos por auditoría y
+comparación Edge/Electron en cuatro tamaños.165 suites/0; sin commit/push.
+Copia base/evidencias en `previews/trailer-metal-2026-10-03/`.
+Pendiente sólo feedback artístico. QA del último acabado con `--polish`;
+evidencias `edge-mirror/`, `electron-mirror/` y base `before-mirror.html`.
+Los reflejos móviles usan composición Canvas del entorno y luces de estudio;
+no cambian la geometría de las capas originales ni su proyección.
+No integrar al arranque por discreción. El lanzador de juego sigue en Windows `wvYvXn`.
+
+**HUD con cortina integrado (03-10):** `HUD_AUTO_REVEAL_2026-10-03.md`.
+Esenciales fuera de la cortina; armas/consumibles/hints y combo se ocultan a3s.
+Pausa congelada; hitboxes trasladados/recortados. Chips DOM móviles intactos.
+Windows activo `wvYvXn`, web `bHKgiM`;165 suites/0, Edge desktop y dos móviles
+emulados, paquete web y EXE aislado aprobados. No volver al lanzador anterior.
+Sin cambios de balance/world metrics; sin commit/push. Lo siguiente es probar
+la sensación de3s jugando y cambiar sólo la constante si el usuario lo pide.
+
+**Lobby integrado (03-10):** `LOBBY_INTEGRATION_2026-10-03.md`. Maqueta aprobada
+integrada en producción; datos reales, cuatro pilotos/renderer actual, modos y
+checkpoint existentes. Windows activo `YXD1IK`, web `CjSELh`. 164 suites/0,
+Edge desktop/móvil emulado y EXE aislado aprobados,78 recursos alineados.
+No repetir maquetación ni volver al lanzador anterior. Sin commit/push.
+
+**Audio experimental vigente: DARK V3.** `AUDIO_DARK_V3_2026-10-03.md`.
+Cuatro tarjetas: B/C DARK V2 aprobadas e intactas; A/D son evoluciones de esas
+bases y reemplazan Actual/Pulsar sólo en el laboratorio. No integrar sin elegir.
+
+**Audio experimental vigente: DARK V2 (03-10).** Ver
+`AUDIO_DARK_VARIATIONS_2026-10-03.md`: tres temas oscuros de 64 compases,
+suspenso y variaciones; referencia/bajas intactas. Abrir el mismo laboratorio.
+164 suites y QA Edge completos aprobados; informes en
+`previews/audio-experiments/dark-v2`. Falta elección artística, no integración.
+
+**Última exploración de audio (03-10):** `AUDIO_EXPERIMENTOS_2026-10-03.md`.
+Abrir `ABRIR_AUDIO_EXPERIMENTOS.cmd`: referencia real + tres temas + tres bajas.
+Sólo laboratorio; 75 archivos de producción, index y lanzador intactos.
+164 suites sin fallos; navegador HTTP y archivo local, once renders de audio.
+Falta elección del usuario (Copiar elección). NO integrar ni sustituir el audio
+actual por discreción: conserva la aprobación de la base actual. NO empaquetar
+Electron para esta exploración, NO commit ni push. Mantener los cambios de spawn.
+
+**Último cambio visual (03-10):** aviso de spawn reemplazado por el triángulo
+violeta con exclamación de la referencia del usuario, fondo transparente y dos
+pulsos suaves. Lifecycle/audio preservados. 163 suites sin fallos; Edge desktop
+y dos móviles emulados, paquete web y EXE aislado aprobados. Lanzador Windows
+`SJV3DV`, web `J1T5Zf`. Ver `SPAWN_ICON_2026-10-03.md`. Sin commit ni push.
+
+**Continuidad de audio: AUDIO_GROOVE_2026-10-03.md.** Cosmic trap 144 BPM,
+808/kick sincronizados, una caja por compás, hats con rolls y UI con más cuerpo.
+La entrega de spawn de arriba YA incluye este audio: Web `J1T5Zf`, Windows
+`SJV3DV`. No reemplazar el lanzador por el paquete intermedio de audio.
+163 suites sin fallos; once escenarios de audio real y cuatro pilotos aprobados.
+76 archivos runtime idénticos por SHA256; diferencias de audio menores a 1e-7.
+No repetir el remaster anterior. Falta aprobación de escucha humana.
+La comprobación general de presión anti-espera falla también en la build previa:
+no confundir ese pendiente de gameplay con una regresión del remaster.
+Preservar geometrías aprobadas y la investigación 3D ajena a esta tarea.
+La instrucción vigente de esta tarea es **NO commit / NO push**, por encima de
+la autorización histórica de publicación que se menciona más abajo.
+Preservar también el aviso de spawn de la otra tarea. No borrar sus entregas.
+
 **Última continuidad local 02-10:** `PILOT_PRODUCTION_2026-10-02.md` prevalece
 sobre los informes históricos de pilotos de abajo. El usuario aprobó los cuatro
 contornos: BOTI woven, NOVA radial, ROOK peaks, ENJAMBRE asymmetric. Ya integrados

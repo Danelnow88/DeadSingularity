@@ -19,7 +19,7 @@ function makeSandbox(randomValue) {
   const mathMock = Object.create(Math);
   if (typeof randomValue === 'number') mathMock.random = () => randomValue;
   const sb = { console, Math: mathMock, Object, Array, Number, String, Boolean, Proxy, Reflect, window:{}, globalThis:{}, AudioContext: function () { return ctx; } };
-  sb.window.AudioContext = sb.AudioContext; sb.window.NV = {}; sb._ctx = ctx; return sb;
+  sb.window.AudioContext = sb.AudioContext; sb.window.NV = {audioRandom:()=>typeof randomValue==='number'?randomValue:.5}; sb._ctx = ctx; return sb;
 }
 
 function loadSynth(randomValue) {

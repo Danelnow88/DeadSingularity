@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>NEON VOID · Lobby</title>
+  <link rel="stylesheet" href="lobby.css">
+</head>
+<body>
+  <div class="space" aria-hidden="true"></div>
+  <header class="masthead">
+    <a class="brand" href="#lobby" aria-label="NEON VOID, menú principal"><span class="brand-mark" aria-hidden="true">NV</span> NEON VOID<span class="brand-period">.</span></a>
+    <span class="connection"><span aria-hidden="true"></span> SISTEMAS EN LÍNEA</span>
+  </header>
+
+  <main id="lobby" class="lobby-container" aria-label="Menú principal">
+    <div class="col-left">
+      <section class="panel-piloto" aria-labelledby="pilot-title">
+        <div class="panel-top"><h1 id="pilot-title">PILOTO SELECCIONADO</h1><span class="pilot-index">01 / 04</span></div>
+        <div class="pilot-identity"><span class="eyebrow">UNIDAD DE EXPLORACIÓN</span><h2>BOTI<span>_</span></h2><p>Una pequeña chispa.<br>Un universo por descubrir.</p></div>
+        <div class="stats-row" aria-label="Estadísticas del piloto">
+          <div><span>HP</span><strong>120</strong></div><div><span>SPD</span><strong>195</strong></div><div><span>ARM</span><strong>0</strong></div>
+        </div>
+        <div class="ability-box"><span class="ability-icon" aria-hidden="true">✧</span><div><h3>HABILIDAD ESPECIAL</h3><strong>Lluvia criósmica</strong><p>Desata una lluvia de energía sobre los enemigos.</p></div></div>
+        <div class="pilot-status"><span aria-hidden="true">●</span> PILOTO LISTO PARA DESPLEGAR</div>
+      </section>
+      <button class="btn-mejoras" type="button"><span aria-hidden="true">↗</span> MEJORAS <span class="button-detail" aria-hidden="true">+</span></button>
+    </div>
+
+    <section class="col-center" aria-labelledby="deployment-title">
+      <div class="center-heading"><span class="eyebrow">EL VACÍO TE ESPERA</span><h2 id="deployment-title">LISTO PARA EL SALTO</h2></div>
+      <div class="avatar-stage" role="img" aria-label="Avatar geométrico cian de BOTI dentro de un círculo magenta punteado">
+        <span class="orbit-caption orbit-caption-top" aria-hidden="true">NV / 001</span>
+        <div class="avatar-circle"><div class="avatar-shape"><span class="avatar-core"></span><span class="avatar-eyes"><i></i><i></i></span></div></div>
+        <span class="orbit-caption orbit-caption-bottom" aria-hidden="true">NÚCLEO ESTABLE · 100%</span>
+      </div>
+      <div class="deploy-action"><button class="btn-jugar" type="button">JUGAR <span aria-hidden="true">↗</span></button><p>INICIA TU PRÓXIMA EXPEDICIÓN</p></div>
+    </section>
+
+    <div class="col-right">
+      <span class="eyebrow mode-label">TU PRÓXIMO DESTINO</span>
+      <section class="card-mode card-historia" aria-labelledby="story-title">
+        <div class="mode-heading"><span class="mode-number">01</span><span class="mode-tag">EXPEDICIÓN</span></div>
+        <h2 id="story-title">HISTORIA</h2><p class="mode-description">Diez encuentros.<br>Un viaje al corazón del vacío.</p>
+        <div class="progress-caption"><span>RUTA DE JEFES</span><span>04 / 10</span></div>
+        <div class="progress-bar" aria-label="Ruta de 10 jefes: tres completados, jefe 4 actual">
+          <span class="dot completed"></span><span class="dot completed"></span><span class="dot completed"></span>
+          <button type="button" class="dot active" aria-label="Ver jefe 4: Crios, Sector Helado" aria-describedby="story-tooltip"></button>
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        </div>
+        <div class="tooltip-historia" id="story-tooltip" role="tooltip"><div class="tooltip-thumbnail" aria-hidden="true"><div class="ice-emblem">✧</div><span>SECTOR 04</span></div><strong>Jefe 4: Crios</strong><span class="tooltip-subtext">Sector Helado</span></div>
+        <div class="card-footer"><span>20 OLEADAS · 10 JEFES</span><span aria-hidden="true">↗</span></div>
+      </section>
+      <section class="card-mode card-infinito" aria-labelledby="infinite-title"><div class="mode-heading"><span class="mode-number">02</span><span class="mode-tag">SIN LÍMITES</span></div><div class="infinity-symbol" aria-hidden="true">∞</div><h2 id="infinite-title">INFINITO</h2><p class="mode-description">Supervivencia sin fin</p><div class="infinite-record"><span>RÉCORD PERSONAL</span><strong>Oleada 45</strong></div></section>
+    </div>
+  </main>
+  <footer class="site-footer"><span>NEON VOID <span class="footer-divider">/</span> EXPLORA. RESISTE. EVOLUCIONA.</span><span class="preview-note">VISTA DE DISEÑO · HTML + CSS</span></footer>
+</body>
+</html>

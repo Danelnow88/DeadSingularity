@@ -40,9 +40,9 @@ t('game.js conecta combo, countdown solo sin boss y sfx.victory con milestone', 
   }
 });
 
-t('updateMusic usa comboLayer como capa adaptativa', () => {
+t('updateMusic agrega combo musical sin alterar el tempo', () => {
   const src = fs.readFileSync('js/audio/synth.js', 'utf8');
-  if (!src.includes('comboLayer') || !src.includes('NV.musicState.combo')) throw new Error('sin capa de combo');
+  if (!src.includes('m.combo>12') || !src.includes('NV.musicState.combo')) throw new Error('sin capa de combo');
 });
 
 console.log('RESULT audio_adaptive_wave: pass=' + pass + ' fail=' + fail);

@@ -65,6 +65,7 @@
       };
     }
     if (st.respectInvulnerability !== false && player.invuln > 0) {
+      if (st.sfx && st.sfx.shield && (player.shield > 0 || player.bulwark > 0 || player.phase > 0)) st.sfx.shield();
       return { applied: false, dodged: false, crit: false, damage: 0, hpBefore: player.hp, hpAfter: player.hp, killed: player.hp <= 0, cause, reason: 'invulnerable' };
     }
     const hit = NV.computePlayerHit(baseDamage, {

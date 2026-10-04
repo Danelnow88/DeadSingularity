@@ -17,7 +17,9 @@ presentación, no reemplaza la metadata histórica del cuerpo. Contratos y QA:
 activación por dt. La entidad se reserva en `enemies` desde el aviso para respetar
 presupuesto/cierre; `isEnemyCombatActive/Targetable/Damageable` la excluyen hasta
 activarse. `announceSpawn` se habilita en producción y esbirros; Lab conserva su
-fixture inmediato. Warning .9s ahora es X roja; cuerpo visible durante puff .22s,
+fixture inmediato. Warning .9s usa triángulo violeta hueco con exclamación y dos
+pulsos suaves de escala/opacidad (referencia del usuario, 03-10); interior y
+exterior transparentes mediante Canvas2D evenodd. Cuerpo visible durante puff .22s,
 sin activar contacto/IA antes. Sólo ocupación PRE materialización muda/rearma;
 el puff no traslada una entidad ya visible.
 

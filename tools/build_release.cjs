@@ -28,6 +28,8 @@ if (windows) {
   fs.copyFileSync(path.join(ROOT, 'desktop', 'main.cjs'), path.join(game, 'desktop', 'main.cjs'));
   fs.copyFileSync(path.join(ROOT, 'desktop', 'special-qa.cjs'), path.join(game, 'desktop', 'special-qa.cjs'));
   fs.copyFileSync(path.join(ROOT, 'desktop', 'pilot-qa.cjs'), path.join(game, 'desktop', 'pilot-qa.cjs'));
+  fs.copyFileSync(path.join(ROOT, 'desktop', 'audio-qa.cjs'), path.join(game, 'desktop', 'audio-qa.cjs'));
+  fs.copyFileSync(path.join(ROOT, 'desktop', 'lobby-qa.cjs'), path.join(game, 'desktop', 'lobby-qa.cjs'));
   fs.writeFileSync(path.join(game, 'package.json'), JSON.stringify({ name: pkg.name, version: pkg.version, main: 'desktop/main.cjs', private: true }, null, 2));
 }
 const instructions = 'NEON VOID — ALPHA ' + pkg.version + '\r\n\r\n' +

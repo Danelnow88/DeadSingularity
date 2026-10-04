@@ -7,7 +7,7 @@ function makeSandbox() {
   const freqs = [];
   const gainApi = () => ({ value: 0.6, setValueAtTime(){}, linearRampToValueAtTime(){}, exponentialRampToValueAtTime(){}, cancelScheduledValues(){} });
   const ctx = {
-    createOscillator: () => ({ connect(){}, start(){}, stop(){}, type:'', frequency: { setValueAtTime(v){ freqs.push(v); } } }),
+    createOscillator: () => ({ connect(){}, start(){}, stop(){}, type:'', frequency: { setValueAtTime(v){ freqs.push(v); }, exponentialRampToValueAtTime(){} } }),
     createGain: () => ({ connect(){}, gain: gainApi() }),
     createBiquadFilter: () => ({ connect(){}, type:'', Q:{value:0}, frequency: gainApi() }),
     createBuffer: () => ({ getChannelData: () => new Float32Array(4410) }),

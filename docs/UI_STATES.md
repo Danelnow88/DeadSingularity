@@ -15,7 +15,38 @@
 | Game Over | `data-game-state="gameover"`; `#gameOver` visible | `#gameOver`, resultados, `#restartBtn` | Ocultos |
 | Settings | `data-settings-open="true"`; `#settingsPanel` visible | panel gráfico compartido | Gameplay pausado si se abrió durante play; controles ocultos |
 
+## HUD con cortina (03-10-2026)
+
+Con `showHUD=true`, oleada/progreso, ENEMIGOS/BAJAS/FALTAN, JEFES,
+vida de boss y stamina de dash conservan visibilidad y posición. Combo y panel
+Canvas de armas/consumibles/hints se desplazan desde arriba durante0.32s y
+se ocultan a los3s desde el último cambio de arma/consumible o uso válido del
+especial. `HUD_REVEAL_SECONDS` y `HUD_ANIM_SECONDS` viven en `js/game.js`.
+Inicio/loadout/resume heredan las notificaciones existentes; no hay triggers
+nuevos de oleada/boss. El contador no avanza en pausa ni fuera de play/wave_end.
+HUD/NO HUD sigue ocultando todo; al activarlo revela el panel. Los hitboxes
+siguen el desplazamiento y el clip, y se vacían al cerrar o desactivar HUD.
+En móvil sólo el combo participa: boss/dash son esenciales y los chips DOM
+de arma/consumible siguen fuera de la cortina. El stub de cooldown no cambia.
+QA: `tests/hud_auto_reveal.js`, Edge `--hud-auto-reveal` y EXE `--nv-hud-qa`.
+Evidence: `previews/hud-auto-reveal-2026-10-03/` (headless, no dispositivo físico).
+
 ## Lobby y biblioteca de pilotos
+
+**Integración de la maqueta aprobada, 03-10:** `css/lobby-layout.css` es la capa
+final, acotada a `#startScreen`. Grid de3 columnas en desktop y1 bajo980px;
+scroll único de overlay en móvil/pantallas bajas. El panel usa stats/pasiva/
+especial reales y MEJORAS al mismo ancho. Flechas conservan `NV.selectPilot`;
+`#pilotsBtn` ahora dice VER TODOS dentro del panel (no hay botón PILOTOS junto
+a MEJORAS). El centro conserva el único canvas y `NV.drawPlayer`, dentro del
+círculo punteado magenta aprobado. JUGAR/dificultad/CONTINUAR/ayudas existentes.
+`ui/alpha.js` conecta tarjetas Historia/Infinito a `NV.alpha.setMode`, sin otro
+selector; tooltip/ruta consultan BOSS_TYPES y expedition.bossIndex/sector/load.
+Historia nueva usa10 puntos; checkpoints antiguos conservan sus4 encuentros
+y muestran RUTA ANTERIOR. El récord disponible es GLOBAL (el perfil existente
+no separa modos). Los ejemplos Crios/Helado/45 no se incorporan a datos reales.
+Informe y evidencia: `LOBBY_INTEGRATION_2026-10-03.md`. Las notas F09 anteriores
+describen la base histórica; esta sección prevalece para la composición actual.
 
 - Es UI DOM de viewport completo.
 - No muestra HUD ni controles de gameplay.

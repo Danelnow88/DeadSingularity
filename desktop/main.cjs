@@ -10,6 +10,9 @@ const ARENA_QA = QA && process.argv.includes('--nv-arena-qa');
 const DASH_QA = QA && process.argv.includes('--nv-dash-qa');
 const SPECIAL_QA = QA && process.argv.includes('--nv-special-qa');
 const PILOT_QA = QA && process.argv.includes('--nv-pilot-qa');
+const AUDIO_QA = QA && process.argv.includes('--nv-audio-qa');
+const LOBBY_QA = QA && process.argv.includes('--nv-lobby-qa');
+const HUD_QA = QA && process.argv.includes('--nv-hud-qa');
 const QA_REPORT = (process.argv.find(arg => arg.startsWith('--nv-qa-report=')) || '').slice('--nv-qa-report='.length);
 const ROOT = path.resolve(__dirname, '..');
 if (QA) app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'neon-void-desktop-qa-')));
@@ -50,7 +53,7 @@ app.whenReady().then(async () => {
   if (QA) {
     // QA usa área CLIENTE conocida para comparar las mismas cajas que en web.
     // No cambia el tamaño ni el comportamiento de la ventana del jugador.
-    if (PERIMETER_QA || ARENA_QA || DASH_QA || SPECIAL_QA) win.setContentSize(1280, 800);
+    if (PERIMETER_QA || ARENA_QA || DASH_QA || SPECIAL_QA || LOBBY_QA) win.setContentSize(1280, 800);
     win.webContents.on('console-message', event => { if (event.level === 'error') errors.push(event.message); });
     win.webContents.setFrameRate(60);
   }
@@ -95,7 +98,36 @@ app.whenReady().then(async () => {
     const pilots = PILOT_QA ? await require('./pilot-qa.cjs')(
       code => win.webContents.executeJavaScript(code,true),
       async(name,url)=>{if(QA_REPORT)fs.writeFileSync(path.join(path.dirname(QA_REPORT),'electron-'+name+'.png'),Buffer.from(url.split(',')[1],'base64'));}) : null;
-    const report = { pass: errors.length === 0, first, saved, playing, diagnostics, perimeter, arena, dash, specials, pilots, errors };
+    const audio = AUDIO_QA ? await require('./audio-qa.cjs')(code => win.webContents.executeJavaScript(code,true),
+      async(name,result)=>{if(QA_REPORT)require('./audio-qa.cjs').saveWav(path.join(path.dirname(QA_REPORT),'electron-'+name+'.wav'),result);}) : null;
+    let lobby=null;
+    if(LOBBY_QA){
+      await win.loadURL('nvgame://game/index.html');
+      lobby=await require('./lobby-qa.cjs')(code=>win.webContents.executeJavaScript(code,true),async name=>{
+        if(QA_REPORT)fs.writeFileSync(path.join(path.dirname(QA_REPORT),'electron-'+name+'.png'),(await win.webContents.capturePage()).toPNG());
+      });
+    }
+    let hud=null;
+    if(HUD_QA) {
+      const evaluate=code=>win.webContents.executeJavaScript(code,true);
+      const waitFor=async condition=>{
+        const start=Date.now();
+        while(Date.now()-start<12000) {if(await evaluate(condition))return;await new Promise(r=>setTimeout(r,100));}
+        throw new Error('HUD QA timeout: '+condition);
+      };
+      await waitFor('NV.alpha.snapshot().hudReveal===0');
+      if(await evaluate('NV.consumSlotRects.length'))throw new Error('HUD invisible conserva hitboxes');
+      await evaluate('NV.input.notifyWeaponChange()');await waitFor('NV.alpha.snapshot().hudReveal===1');
+      await evaluate(`document.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyP',bubbles:true}))`);
+      await waitFor('NV.alpha.snapshot().paused');
+      const held=await evaluate('NV.alpha.snapshot().hudHold');await new Promise(r=>setTimeout(r,3400));
+      if(await evaluate('NV.alpha.snapshot().hudHold')!==held)throw new Error('HUD pierde tiempo en pausa');
+      await evaluate(`document.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyP',bubbles:true}))`);
+      await waitFor('NV.alpha.snapshot().hudReveal===0');
+      hud=await evaluate('NV.alpha.snapshot()');
+      if(QA_REPORT)fs.writeFileSync(path.join(path.dirname(QA_REPORT),'electron-hud-hidden.png'),(await win.webContents.capturePage()).toPNG());
+    }
+    const report = { pass: errors.length === 0, first, saved, playing, diagnostics, perimeter, arena, dash, specials, pilots, audio, lobby, hud, errors };
     if (QA_REPORT) fs.writeFileSync(QA_REPORT, JSON.stringify(report, null, 2));
     console.log('DESKTOP_QA ' + JSON.stringify(report));
     app.exit(errors.length ? 1 : 0);

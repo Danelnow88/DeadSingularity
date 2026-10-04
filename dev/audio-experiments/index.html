@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEON VOID · Explorador de sonido</title><link rel="stylesheet" href="style.css">
+<link rel="icon" href="../../assets/brand/neon-void-mark.svg"></head>
+<body><main>
+<header><span class="eyebrow">NEON VOID / LABORATORIO · NO MODIFICA EL JUEGO</span>
+<h1>Encontrar <em>ese</em> sonido.</h1><p>Compará las dos bases aprobadas con sus dos evoluciones. La diferencia tiene que estar en el groove y el impacto, no sólo en subir el volumen.</p></header>
+<div class="transport"><button id="stop" class="quiet">■ Detener todo</button><button id="mute" aria-pressed="false">Silenciar</button>
+<label>Volumen <input id="volume" type="range" min="0" max="1" step=".05" value=".65"></label>
+<output id="status" role="status" aria-live="polite">Listo para escuchar</output></div>
+<section aria-labelledby="music-title"><div class="heading"><div><span class="eyebrow">01 / SOUNTRACK</span><h2 id="music-title">¿Cuál te pide otra partida?</h2></div><button id="restart">Reiniciar tema</button></div>
+<p class="hint">Dark beats · V3. B y C conservan exactamente el sonido aprobado. A y D exploran su evolución: motivos, tensión y drops más desarrollados. Ciclos de unos 107 segundos. La música del juego sigue intacta.</p>
+<label>Escuchar desde <select id="from"><option value="0">Inicio</option><option value="7">Suspenso → primer drop</option><option value="8">Primer drop</option><option value="16">Mutación</option><option value="30">Carga → segundo drop</option><option value="32">Segundo drop</option><option value="40">Vacío tenso</option><option value="48">Respuesta</option><option value="56">Clímax</option></select></label>
+<div id="music-cards" class="cards" role="radiogroup" aria-label="Soundtrack"></div></section>
+<section aria-labelledby="death-title"><div class="heading"><div><span class="eyebrow">02 / BAJAS</span><h2 id="death-title">El golpe que querés volver a oír.</h2></div>
+<label>Enemigo <select id="kind"><option value="normal">Normal</option><option value="elite">Élite</option><option value="boss">Boss</option></select></label></div>
+<p class="hint">Clic en una tarjeta para probar una baja. Evaluá también una ráfaga: tiene que dar placer sin volverse molesto con muchos enemigos.</p>
+<div id="death-cards" class="cards" role="radiogroup" aria-label="Sonido de baja"></div>
+<div class="actions"><button id="single">Una baja</button><button id="burst">12 bajas seguidas</button><button id="combat" class="primary">Combate simulado · 10 s</button><button id="without-music" class="quiet">Escuchar bajas sin música</button></div></section>
+<section class="choice"><div><span class="eyebrow">03 / TU ELECCIÓN</span><h2>No se integra nada hasta elegir.</h2><p id="choice-summary">Música actual · Baja actual</p><p class="hint">La elección queda guardada sólo en este laboratorio. Copiala y pegala en el chat para integrar los ganadores.</p></div>
+<div><button id="copy" class="primary">Copiar elección</button><textarea id="configuration" readonly aria-label="Configuración elegida" rows="5" spellcheck="false"></textarea><output id="copy-status" role="status"></output></div></section>
+<footer><span id="stats">Sin voces activas</span><a href="../audio-remaster/index.html">Laboratorio de todos los efectos →</a><p>Sin samples externos, sin descargas, sin partida ni cambios de balance. Prueba de escritorio y navegador; todavía no cambia Electron ni GitHub Pages.</p></footer>
+</main>
+<script src="../audio-remaster/lab.js"></script><script src="../../js/audio/voices.js"></script><script src="../../js/audio/synth.js"></script><script src="../../js/audio/weaponSfx.js"></script>
+<script src="experiments.js?v=dark-v3"></script><script src="controls.js?v=dark-v3"></script></body></html>

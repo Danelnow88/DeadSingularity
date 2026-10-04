@@ -87,12 +87,13 @@ encounterState.sectorPressureActive=false; NV.updateBossEncounter(boss,.1,encoun
 metrics.viewX=450;metrics.viewY=260;
 NV.updateBossEncounter(boss,.1,encounterState);assert.equal(boss.encounter.stage,'recovery');
 NV.updateBossEncounter(boss,.61,encounterState);assert.equal(boss.encounter.stage,'windup');
-// El puff y la X permanecen en mundo al panear; ninguna mutación en draw.
+// El puff y el aviso permanecen en mundo al panear; ninguna mutación en draw.
 const arrivalEnemy={x:1100,y:650,radius:18,dead:false};NV.beginEnemyArrival(arrivalEnemy,{announceSpawn:true});
 const calls=[]; const drawing=new Proxy({}, {get:(_,key)=>(...args)=>calls.push([key,...args]),set:()=>true});
 const arrivalBefore=JSON.stringify(arrivalEnemy);
 NV.drawEnemyArrival(drawing,arrivalEnemy);metrics.viewX=0;metrics.viewY=0;NV.drawEnemyArrival(drawing,arrivalEnemy);
-assert.equal(JSON.stringify(arrivalEnemy),arrivalBefore);assert.equal(calls.filter(c=>c[0]==='moveTo').length,4);
+assert.equal(JSON.stringify(arrivalEnemy),arrivalBefore);
+assert.deepEqual(calls.filter(c=>c[0]==='translate'),[['translate',1100,650],['translate',1100,650]],'aviso anclado al spawn, independiente de cámara');
 
 // Círculo de fusión descubierto tarde no aplica daño mientras reavisa.
 let hits=0;

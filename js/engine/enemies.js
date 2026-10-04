@@ -2284,6 +2284,7 @@
                   stunChance: 0, stunDuration: 0,
                   sourceEnemy: e, sourceType: 'tank', projectileStyle: 'tankShell',
                 });
+                if (st.sfx && st.sfx.enemyAttack) st.sfx.enemyAttack('tank', { x: e.x, worldWidth: st.W });
               }
               e.tankCannonFired = true;
               e.atkFlash = 0.42;
@@ -2301,6 +2302,7 @@
             }
           } else if (e.tankCannonCooldown <= 1e-9 && dist >= TANK_CANNON_MIN_RANGE && dist <= TANK_CANNON_MAX_RANGE) {
             e.tankCannonState = 'windup';
+            if (st.sfx && st.sfx.telegraph) st.sfx.telegraph({ x: e.x, worldWidth: st.W });
             e.tankCannonTimer = TANK_CANNON_WINDUP;
             e.tankCannonTargetX = player.x;
             e.tankCannonTargetY = player.y;
@@ -2752,8 +2754,10 @@
             const tx0 = (e.spitAimX != null ? e.spitAimX : st.player.x);
             const ty0 = (e.spitAimY != null ? e.spitAimY : st.player.y);
             const ang = Math.atan2(ty0 - e.y, tx0 - e.x);
-            if (bullets.length < MAX_BULLETS && st.enemyBulletCount() < MAX_ENEMY_BULLETS)
+            if (bullets.length < MAX_BULLETS && st.enemyBulletCount() < MAX_ENEMY_BULLETS) {
               bullets.push({ x: e.x, y: e.y, vx: Math.cos(ang) * SPIT_BULLET_SPEED, vy: Math.sin(ang) * SPIT_BULLET_SPEED, damage: e.damage, color: e.color, isEnemy: true, dead: false, stunChance: e.stunChance || 0, stunDuration: e.stunDuration || 0, sourceEnemy: e, sourceType: e.enemyTypeId || 'ranged', projectileStyle: HOSTILE_RANGED_STYLES[e.enemyTypeId] || 'genericBolt' });
+              if (st.sfx && st.sfx.enemyAttack) st.sfx.enemyAttack(e.enemyTypeId, { x: e.x, worldWidth: st.W });
+            }
             e.shootTimer = 0;
             e.spitFired = true;
           };
@@ -2776,6 +2780,7 @@
               e.spitAimY = st.player.y + ly;
               e.spitFired = false;
               setRState('windup', SPIT_WINDUP);
+              if (st.sfx && st.sfx.telegraph) st.sfx.telegraph({ x: e.x, worldWidth: st.W });
             } else {
               let mx, my;
               if (dist > SPIT_FAR) {

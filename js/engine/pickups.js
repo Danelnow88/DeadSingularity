@@ -91,6 +91,7 @@
     const playPickup = () => {
       if (!pickupSfx) return;
       if (typeof pickupSfx === 'function') pickupSfx();
+      else if (pickupSfx.weaponPickup) pickupSfx.weaponPickup();
       else if (pickupSfx.pickup) pickupSfx.pickup();
     };
     const playFuse = (level) => {

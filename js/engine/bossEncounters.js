@@ -162,6 +162,7 @@
       if (NV.cameraThreatReady && !NV.cameraThreatReady(b, dt,
         { x: b.x - b.radius, y: b.y - b.radius, w: b.radius * 2, h: b.radius * 2 }, .6)) return;
       e.stage = 'windup'; e.t = p.windup * timing.windup; e.x = b.x; e.y = b.y;
+      if (st.sfx && st.sfx.telegraph) st.sfx.telegraph({ x: b.x, worldWidth: st.W });
       e.angle = Math.atan2(st.player.y - (b.y + 36), st.player.x - b.x);
       e.rays = rays(p, e.angle, advancedPattern, e.cast, b.primaryAttack);
       e.origins = null;

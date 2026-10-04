@@ -96,6 +96,7 @@
     open = !!open;
     if (openState === open) return;
     openState = open;
+    if(NV.sfx&&NV.sfx.ui)NV.sfx.ui(open?'open':'close');
     if (open) returnFocus = document.activeElement;
     panel.classList.toggle('hidden', !open);
     panel.setAttribute('aria-hidden', open ? 'false' : 'true');

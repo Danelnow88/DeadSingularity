@@ -33,9 +33,9 @@ const lab=state(); lab.announceSpawn=false; NV.spawnEnemy(lab); assert(!lab.enem
 const calls=[]; const ctx=new Proxy({}, {get:(_,key)=>(...args)=>calls.push([key,...args]),set:()=>true});
 NV.beginEnemyArrival(moved,{announceSpawn:true});
 const before=JSON.stringify(moved); assert(NV.drawEnemyArrival(ctx,moved)); assert.equal(JSON.stringify(moved),before);
-assert.equal(calls.filter(c=>c[0]==='moveTo').length,2,'X de dos diagonales');
-assert.equal(calls.filter(c=>c[0]==='lineTo').length,2);
-assert(!calls.some(c=>c[0]==='arc'||c[0]==='fillText'),'el warning anterior se reemplazó, no se superpuso');
+assert(calls.some(c=>c[0]==='fill'&&c[1]==='evenodd'),'el interior del triángulo es transparente');
+assert.equal(calls.filter(c=>c[0]==='arc').length,1,'punto de la exclamación');
+assert(!calls.some(c=>c[0]==='stroke'||c[0]==='fillText'||c[0]==='fillRect'),'sin X, emoji ni fondo opaco');
 occupied.player.x=450;occupied.player.y=260;
 NV.updateEnemyArrival(moved,.91,occupied); assert.equal(moved.arrival.stage,'puff');
 calls.length=0; assert.equal(NV.drawEnemyArrival(ctx,moved),false,'el cuerpo se dibuja durante el puff');

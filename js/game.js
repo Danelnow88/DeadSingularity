@@ -534,6 +534,26 @@
   const analogMove = { x: 0, y: 0 };
   const combatIntent = NV.inputIntent.createCombatIntent(NV.settings.controls.firePolicy);
   let showStats = false, showHUD = true, paused = false;
+  const HUD_REVEAL_SECONDS = 3;
+  const HUD_ANIM_SECONDS = 0.32;
+  let hudHold = 0, hudReveal = 0;
+  function revealHUD() { hudHold = HUD_REVEAL_SECONDS; }
+  function updateHudReveal(dt) {
+    if (paused || (state !== 'playing' && state !== 'wave_end')) return;
+    const step = Math.max(0, dt);
+    const opening = Math.min(step, hudHold);
+    hudReveal = Math.min(1, hudReveal + opening / HUD_ANIM_SECONDS);
+    hudHold = Math.max(0, hudHold - step);
+    hudReveal = Math.max(0, hudReveal - (step - opening) / HUD_ANIM_SECONDS);
+  }
+  function curtainConsumableRects(rects, off, height) {
+    // Mantener índices de grupos; recortar las zonas desplazadas fuera del viewport.
+    return rects.map(r => {
+      const y = Math.max(0, r.y - off);
+      const bottom = Math.min(height, r.y - off + r.h);
+      return Object.assign({}, r, { y, h: Math.max(0, bottom - y), w: bottom > y ? r.w : 0 });
+    });
+  }
   let settingsRestorePaused = false;
 
   // === PUENTE INPUT (táctil → el MISMO sistema lógico) ===
@@ -605,8 +625,8 @@
     };
   };
   // Notifica a la capa móvil cuando cambia el estado de arma/consumible.
-  function notifyMobileWeapon() { const cbs = NV.input._onWeaponChange; if (Array.isArray(cbs)) { const info = NV.input.getWeaponInfo(); try { cbs.forEach((cb) => { if (typeof cb === 'function') cb(info); }); } catch (_) { /* defensivo */ } } }
-  function notifyMobileConsumable() { const cbs = NV.input._onConsumableChange; if (Array.isArray(cbs)) { const info = NV.input.getConsumableInfo(); try { cbs.forEach((cb) => { if (typeof cb === 'function') cb(info); }); } catch (_) { /* defensivo */ } } }
+  function notifyMobileWeapon() { revealHUD(); const cbs = NV.input._onWeaponChange; if (Array.isArray(cbs)) { const info = NV.input.getWeaponInfo(); try { cbs.forEach((cb) => { if (typeof cb === 'function') cb(info); }); } catch (_) { /* defensivo */ } } }
+  function notifyMobileConsumable() { revealHUD(); const cbs = NV.input._onConsumableChange; if (Array.isArray(cbs)) { const info = NV.input.getConsumableInfo(); try { cbs.forEach((cb) => { if (typeof cb === 'function') cb(info); }); } catch (_) { /* defensivo */ } } }
   let lastMobileSpecialSignature = '';
   function notifyMobileSpecial() {
     const cbs = NV.input._onSpecialChange;
@@ -752,6 +772,18 @@
   // === AUDIO (migrado a js/audio/synth.js) ===
   const initAudio = NV.initAudio;
   const updateMusic = NV.updateMusic;
+  // Sinergia pista/partida: si el tema grabado está listo, él controla la música
+  // (menú/combate/jefe al compás; tienda en continuidad, sólo baja el volumen).
+  // Mientras carga —o si falla— sigue la música procedural de synth.js. Sólo lee
+  // estado/boss; nunca modifica gameplay.
+  function runMusic(dt) {
+    const soundtrack = NV.soundtrack;
+    if (soundtrack && typeof soundtrack.update === 'function') {
+      soundtrack.update();
+      if (soundtrack.claimsMusic && soundtrack.claimsMusic()) return;
+    }
+    updateMusic(dt);
+  }
   const playWeaponSound = NV.playWeaponSound;
   const sfx = NV.sfx;
 
@@ -988,13 +1020,13 @@
       }
             for (let i = 0; i < NV.consumSlotRects.length; i++) {
         const r = NV.consumSlotRects[i];
-        if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
+        if (r.w > 0 && r.h > 0 && mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
           // El HUD dibuja hasta 6 slots visuales, pero solo los grupos reales son
           // válidos. Mapear el slot visual al índice real del grupo para evitar que
           // consumSel apunte a un slot vacío/inexistente.
           const groups = NV.groupConsumables(consumableItems);
           const validIdx = i < groups.length ? i : -1;
-          if (validIdx >= 0 && consumSel !== validIdx) { consumSel = validIdx; sfx.wheelSelect(); }
+          if (validIdx >= 0 && consumSel !== validIdx) { consumSel = validIdx; sfx.wheelSelect(); notifyMobileConsumable(); }
           return;
         }
       }
@@ -1004,7 +1036,7 @@
       if (!NV.consumSlotRects || !NV.screenToGame) return false;
       const pt = NV.screenToGame(e.clientX, e.clientY);
       const x = pt.x - viewX(), y = pt.y - viewY();
-      return NV.consumSlotRects.some((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
+      return NV.consumSlotRects.some((r) => r.w > 0 && r.h > 0 && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
     }
     // Desktop manual: mouse client -> mundo mediante la autoridad de viewport.
     canvas.addEventListener('mousemove', (e) => {
@@ -1128,6 +1160,8 @@
         if (dom.hudToggle) {
       dom.hudToggle.addEventListener('click', () => {
         showHUD = !showHUD;
+        if (showHUD) revealHUD();
+        else NV.consumSlotRects = [];
         dom.hudToggle.classList.toggle('active', showHUD);
         dom.hudToggle.textContent = showHUD ? 'HUD' : 'NO HUD';
         if (NV.tutorial && NV.tutorial.setHUDVisible) NV.tutorial.setHUDVisible(showHUD);
@@ -2119,15 +2153,17 @@
         '<div class="offer-desc">' + u.desc + '</div>' +
         "<div class='offer-price'>" + (maxed ? 'MÁX' : '◆ ' + cost) + '</div>';
       el.addEventListener('click', () => {
-        if (maxed) { showBanner(u.name + ' al máximo', '#aaa'); return; }
+        if (maxed) { if(sfx.ui)sfx.ui('error');showBanner(u.name + ' al máximo', '#aaa'); return; }
         if (metaShards >= cost) {
           metaShards -= cost;
           permUpgrades[u.key] = lvl + 1;
           saveMeta();
           showBanner(u.name + ' → Nv ' + (lvl + 1), '#ffd700');
+          if(sfx.shopBuy)sfx.shopBuy();
           renderPermOffers();
         } else {
           showBanner('Fragmentos insuficientes', '#ff5f9b');
+          if(sfx.ui)sfx.ui('error');
         }
       });
       dom.permOffers.appendChild(el);
@@ -2506,10 +2542,12 @@
     // Evita la doble compra con una tarjeta vieja durante su animación de salida.
     if (el.dataset && el.dataset.purchased === 'true') return false;
     if (item.disabled) {
+      if(sfx.ui)sfx.ui('error');
       addFloatText(arenaW()/2, arenaH()/2, item.disabledReason || 'Límite alcanzado', '#ff5f9b');
       return false;
     }
     if (shards < item.price) {
+      if(sfx.ui)sfx.ui('error');
       restartShopBalanceFeedback();
       return false;
     }
@@ -2517,6 +2555,7 @@
     shards -= item.price;
     const ok = item.buy();
     if (ok === false) {
+      if(sfx.ui)sfx.ui('error');
       // Invariante: una compra inválida NUNCA cobra ni muta estado.
       shards += item.price;
       addFloatText(arenaW()/2, arenaH()/2, item.disabledReason || 'Compra no completada', '#ff5f9b');
@@ -2790,7 +2829,7 @@
     if (typeof updateConsumableVfx === 'function') updateConsumableVfx(dt);
     updateBombImpacts(dt);
 
-    updateMusic(dt);
+    runMusic(dt);
 
     // Heartbeat crítico: pulso grave solo mientras el HP está bajo; al recuperarse
     // se resetea el timer para que no quede sonando de fondo ni encadene pulsos.
@@ -2819,6 +2858,7 @@
       combatIntent.aimX, combatIntent.aimY, combatIntent.aimActive,
       dt
     );
+    if (dashing && !wasDashing && sfx.dash) sfx.dash({ x: player.x, worldWidth: arenaW() });
     if (!dashing) NV.updatePlayerMovement(player, effectiveMoveIntent.x, effectiveMoveIntent.y, dt);
     // ===== F3: Hook/Pull =====
     // Orden contractual: dash update -> normal movement -> Hook external
@@ -3061,6 +3101,7 @@
   }
 
   function useSpecial() {
+    revealHUD();
     const res = NV.useSpecial({
       player, CHARACTERS, meteors, particles, drones, W: arenaW(), H: arenaH(), shake, specialVFX,
       enemies, shockwaves,
@@ -3160,7 +3201,7 @@
   function updateEnemies(dt) {
     const res = NV.updateEnemies(dt, {
       enemies, player, bullets, MAX_BULLETS, MAX_ENEMY_BULLETS, shake,
-      enemyBulletCount, applyPlayerDamage, addFloatText, spawnExplosion, waveEvent,
+      enemyBulletCount, applyPlayerDamage, addFloatText, spawnExplosion, waveEvent, sfx,
       wave, hookSystem, hazards, W: arenaW(), H: arenaH(), gameState: state,
       keepInsideArena: !combatLabMode,
       onKill: (e) => killEnemy(e), // autodestrucción de kamikazes: mismo camino que un kill normal
@@ -3173,6 +3214,7 @@
       else if (typeof NV.resetHookSystem === 'function') NV.resetHookSystem(hookSystem);
     }
     enemies = res.enemies; shake = res.shake;
+    if (NV.observeEnemyAudio) NV.observeEnemyAudio(enemies, arenaW());
     if (NV.updateFusionThreats && state === 'playing' && player.hp > 0) NV.updateFusionThreats(dt, {
       enemies, player, applyPlayerDamage, addFloatText, spawnExplosion, onPlayerKilled: gameOver,
     });
@@ -3203,7 +3245,7 @@
     bossChests.push({ x, y, dead: false, timer: 0 });
   }
   function updateBossChests(dt) {
-    bossChests = NV.updateBossChests(dt, bossChests, player, pickups, weaponPickups, WEAPONS, addFloatText, sfx.pickup, isWeaponDropEligible);
+    bossChests = NV.updateBossChests(dt, bossChests, player, pickups, weaponPickups, WEAPONS, addFloatText, sfx.chest || sfx.pickup, isWeaponDropEligible);
   }
 
   // Tarea #8: red de seguridad del botín de jefe. Antes de la transición que
@@ -3898,13 +3940,22 @@
     if (showHUD && (state === 'playing' || state === 'wave_end')) {
       drawSpecialCooldown();
       const mobilePresentation = !!(NV.capabilities && NV.capabilities.isMobile);
+      const off = (1 - easeOutCubic(hudReveal)) * (vh + 64);
+      ctx.save(); ctx.beginPath(); ctx.rect(vx, vy, vw, vh); ctx.clip(); ctx.translate(0, -off);
       ctx.save(); ctx.translate(vx, vy);
       NV.drawCombo(ctx, vw, vh, killCombo, mobilePresentation ? { x: 12, y: 83 } : null);
       ctx.restore();
+      ctx.restore();
       NV.drawBossHUD(ctx, viewX(), viewY(), viewW(), viewH(), boss, mobilePresentation);
       NV.drawDashStamina(ctx, viewX(), viewY(), viewW(), viewH(), player, mobilePresentation);
-      if (!mobilePresentation) drawWeaponHUD();
-      else NV.consumSlotRects = [];
+      ctx.save(); ctx.beginPath(); ctx.rect(vx, vy, vw, vh); ctx.clip(); ctx.translate(0, -off);
+      if (!mobilePresentation && hudReveal > 0) {
+        drawWeaponHUD();
+        NV.consumSlotRects = curtainConsumableRects(NV.consumSlotRects || [], off, vh);
+      } else NV.consumSlotRects = [];
+      ctx.restore();
+    } else {
+      NV.consumSlotRects = [];
     }
 
     if (showStats) { ctx.save(); ctx.translate(vx, vy); drawStats(); ctx.restore(); }
@@ -4320,12 +4371,14 @@
     lastTime = now;
 
     if (NV.audio && typeof NV.audio.update === 'function') {
+      if (NV.updateAudioLifecycle) NV.updateAudioLifecycle({ state, paused, hidden: !!document.hidden });
       if (NV.syncSectorLaserSound) NV.syncSectorLaserSound(hazards, { state, paused, hidden: !!document.hidden });
       NV.audio.update({ state, paused, hidden: !!document.hidden });
     }
 
     if (hitstop > 0) { hitstop = Math.max(0, hitstop - dt); dt = 0; }
     if (!paused) visualTimeSeconds += dt;
+    updateHudReveal(dt);
     if (NV.rhythmTick) {
       const rhythmNow = now / 1000;
       NV.rhythmTick(rhythmNow);
@@ -4336,7 +4389,7 @@
       if (NV.updateRhythmWidgetIcon) NV.updateRhythmWidgetIcon();
     }
 
-    if ((state === 'menu' || state === 'shop' || state === 'shop_enter') && !paused) updateMusic(dt);
+    if ((state === 'menu' || state === 'shop' || state === 'shop_enter') && !paused) runMusic(dt);
     // El tiempo visual del piloto avanza solo mientras el lobby es la vista activa.
     if (isLobbyPreviewActive()) {
       frame++;
@@ -4479,7 +4532,7 @@
   }
   NV.alpha = Object.freeze({
     version: '0.10.0-alpha',
-    snapshot: () => ({ state, paused, showHUD, combatLab: combatLabMode, saveDisabled: metaFrozen, wave, score, shards,
+    snapshot: () => ({ state, paused, showHUD, hudHold, hudReveal, combatLab: combatLabMode, saveDisabled: metaFrozen, wave, score, shards,
       run: expeditionRun ? JSON.parse(JSON.stringify(expeditionRun)) : null,
       mode: expeditionMode, hp: player.hp, maxHp: player.maxHp,
       inventory: inventory.map(w => ({ id: w.id, name: w.name, level: weaponLevels[w.id] || 1, role: w.pro })),

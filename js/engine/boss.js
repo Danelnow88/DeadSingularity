@@ -272,6 +272,7 @@
   const FRIENDLY_RAGE_TEXTS = ['¡SISTEMA EN ALERTA!', '¡CHISPAS!', '¡BUEN DISPARO!', '¡MIS CIRCUITOS!', '¡TODAVÍA SIGO AQUÍ!', '¡ESO NO FUE NADA!'];
   NV.bossHitReaction = function (boss, damage, addFloatText) {
     if (!boss || boss.dead) return false;
+    if (damage > 0 && boss.hp > 0 && NV.sfx && NV.sfx.impact) NV.sfx.impact('boss', { x: boss.x });
     if ((boss.rageCd || 0) > 0) return false;
     // Solo reacciona a golpes contundentes (≥2.5% de su vida máxima).
     if (damage < boss.maxHp * 0.025) return false;
