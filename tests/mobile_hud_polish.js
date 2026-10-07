@@ -55,7 +55,7 @@ t('desktop conserva la posición legacy del combo y sólo relocaliza enemigos', 
 });
 
 t('switching e input especial conservan las rutas existentes', () => {
-  for (const token of ['input.cycleWeapon(1)', 'input.cycleConsumable(1)', 'input.setSpecial && input.setSpecial(true)', 'input.setSpecial && input.setSpecial(false)']) {
+  for (const token of ['input.cycleWeapon(1)', 'input.cycleConsumable(1)', "bindHeldAction(specialBtn, 'setSpecial')", 'input[setter](true)', 'input[setter](false)']) {
     if (!mobile.includes(token)) throw new Error('ruta de input ausente: ' + token);
   }
 });

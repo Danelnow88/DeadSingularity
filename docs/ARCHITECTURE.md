@@ -1,5 +1,12 @@
 # Arquitectura
 
+**Jefes V11:** `NV.BOSS_DESIGNS` conserva las diez entradas exactas del laboratorio
+autorizado. `NV.attachBossDesign` adjunta metadata al jefe creado por el coordinator;
+no sustituye radius, shape, pattern, attack, hp ni color de combate. El renderer
+Canvas usa `boss.visual.radius/color/bossIndex` en mundo, a escala visual 115%.
+Ambos caminos de dibujo delegan en `NV.drawBossDesign`; el camino espectral conserva
+telegraphs de ataques, fase 2 y feedback de daño. Las decoraciones no son hitboxes.
+
 **Especiales cósmicas (02-10):** `render/specialEffects.js` define las cuatro
 manifestaciones y reemplaza el aro genérico de activación. Gameplay conserva
 `meteor/phase/bulwark/hivemind`; el engine sólo notifica activación/impacto/reflejo

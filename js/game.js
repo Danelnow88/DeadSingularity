@@ -1897,6 +1897,7 @@
       name: bt.name, pattern: bt.pattern, attack: bt.attack, shape: bt.shape,
       isBoss: true, hostileClass: 'heavy', stunChance: bt.stunChance || 0,
     };
+    if (NV.attachBossDesign) NV.attachBossDesign(bossCandidate, index);
     return bossCandidate;
   }
 

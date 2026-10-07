@@ -144,37 +144,47 @@ html.nv-mobile.nv-portrait #rotateOverlay {
 @media (prefers-reduced-motion:reduce) { .nv-mobile.nv-portrait .rotate-ico { animation:none; } }
 
 /* Paisaje móvil: los switches siguen siendo accesibles, sin convertirse en una segunda barra HUD. */
-@media (pointer:coarse) and (orientation:landscape) {
+@media (orientation:landscape) {
   html.nv-mobile[data-game-state="playing"] .mobile-weapon-switch,
   html.nv-mobile[data-game-state="wave_end"] .mobile-weapon-switch,
   html.nv-mobile[data-game-state="playing"] .mobile-consumable-switch,
   html.nv-mobile[data-game-state="wave_end"] .mobile-consumable-switch {
-    left:auto !important;
-    right:max(8px,env(safe-area-inset-right,0px)) !important;
-    bottom:auto !important;
-    width:clamp(116px,17vw,142px) !important;
-    height:36px !important;
+    left:50% !important;
+    right:auto !important;
+    transform:translateX(-50%);
+    width:clamp(190px,32vw,300px) !important;
+    height:48px !important;
     min-width:0 !important;
-    gap:0 !important;
+    gap:4px !important;
+    top:auto !important;
   }
   html.nv-mobile[data-game-state="playing"] .mobile-weapon-switch,
-  html.nv-mobile[data-game-state="wave_end"] .mobile-weapon-switch { top:54px !important; }
+  html.nv-mobile[data-game-state="wave_end"] .mobile-weapon-switch { bottom:calc(max(8px,env(safe-area-inset-bottom,0px)) + 54px) !important; }
   html.nv-mobile[data-game-state="playing"] .mobile-consumable-switch,
-  html.nv-mobile[data-game-state="wave_end"] .mobile-consumable-switch { top:94px !important; }
+  html.nv-mobile[data-game-state="wave_end"] .mobile-consumable-switch { bottom:max(8px,env(safe-area-inset-bottom,0px)) !important; }
   html.nv-mobile .mobile-weapon-switch .touch-switch,
-  html.nv-mobile .mobile-consumable-switch .touch-switch { display:none !important; }
+  html.nv-mobile .mobile-consumable-switch .touch-switch { display:flex !important; flex:0 0 40px; width:40px; height:48px; align-items:center; justify-content:center; }
   html.nv-mobile .mobile-weapon-switch .switch-indicator,
   html.nv-mobile .mobile-consumable-switch .switch-indicator {
-    width:100% !important;
+    width:auto !important;
+    flex:1;
     max-width:100% !important;
     min-width:0 !important;
-    height:36px !important;
-    padding:2px 7px !important;
-    font-size:10px !important;
-    gap:2px !important;
+    height:48px !important;
+    padding:4px 6px !important;
+    font-size:12px !important;
+    gap:5px !important;
+    touch-action:manipulation;
+    font-family:system-ui,sans-serif;
+    text-align:left;
   }
   html.nv-mobile .mobile-weapon-switch .switch-indicator::before,
-  html.nv-mobile .mobile-consumable-switch .switch-indicator::before { font-size:7px !important; }
+  html.nv-mobile .mobile-consumable-switch .switch-indicator::before { display:none !important; }
+  html.nv-mobile .switch-indicator-icon { flex:0 0 30px; width:30px; height:30px; }
+  html.nv-mobile .switch-indicator-copy { min-width:0; }
+  html.nv-mobile .switch-indicator-kind { font-size:9px; letter-spacing:0; }
+  html.nv-mobile .switch-indicator-name { font-size:12px; font-weight:800; text-shadow:none; }
+  html.nv-mobile .touch-btn:active { transform:scale(.95); }
 }
 
 /* Layout productivo para teléfonos apaisados, tanto con la barra del navegador
@@ -276,8 +286,9 @@ html.nv-mobile.nv-portrait #rotateOverlay {
     gap:5px !important;
   }
   html.nv-mobile .mobile-actions :is(.touch-use,.touch-slide,.touch-special) {
-    width:74px !important;
-    min-height:46px;
+    width:96px !important;
+    min-height:48px;
+    font-size:13px;
   }
   html.nv-mobile .mobile-actions .touch-special { min-height:62px; }
 }

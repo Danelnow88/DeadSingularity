@@ -111,6 +111,11 @@ Añadir un personaje a `NV.CHARACTERS` y `CHARACTER_ORDER` lo incorpora al mismo
 - Bottom-right: `USAR`, `SHIFT` y `ESPECIAL`.
 - Bottom-center: chips DOM de arma y consumible.
 
+07-10: selectores de48px con flechas visibles, icono y nombre del elemento
+actual. Acciones derechas96px de ancho,48px mínimo; especial62px. Pointer/Touch
+conservan propiedad por dedo y liberación en pausa/settings/blur. La tienda
+horizontal actual muestra tres paneles con fila inferior independiente.
+
 El panel Canvas completo de arma/consumible se omite en móvil porque duplicaba los mismos datos y competía con `☰`. Desktop conserva el renderer Canvas completo.
 
 ## Contrato automático de compatibilidad móvil

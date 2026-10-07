@@ -92,14 +92,20 @@
   const DEAD_PX = 8;     // dead zone en píxeles (tolerancia al apoyar el dedo)
 
   let activePointer = null; // pointerId / touch identifier del joystick activo
+  const heldPointers = new Map();
   let originX = 0, originY = 0;
 
   const hasPointerEvents = !!(w.PointerEvent);
 
   // --- Normalización de eventos (pointer | touch) ---
   function ptOf(e) {
-    if (e.touches && e.touches[0]) return e.touches[0];
-    if (e.changedTouches && e.changedTouches[0]) return e.changedTouches[0];
+    const points = e.type === 'touchmove' ? e.touches : (e.changedTouches || e.touches);
+    if (points && points.length) {
+      if (e.type === 'touchmove' && activePointer !== null) {
+        for (let i=0;i<points.length;i++) if (points[i].identifier === activePointer) return points[i];
+      }
+      return points[0];
+    }
     return e;
   }
   function idOf(e) {
@@ -132,6 +138,7 @@
     if (thumb) thumb.style.transform = '';
   }
   function resetButtons() {
+    heldPointers.clear();
     if (input.setSlide) input.setSlide(false);
     if (input.setSpecial) input.setSpecial(false);
   }
@@ -209,18 +216,28 @@
 
   // ESPECIAL = Espacio/Z/X (habilidad). Se mantiene pulsado como el teclado.
   if (specialBtn) {
-    bind(specialBtn, 'pointerdown', press(() => input.setSpecial && input.setSpecial(true)));
-    bind(specialBtn, 'pointerup', release(() => input.setSpecial && input.setSpecial(false)));
-    bind(specialBtn, 'pointercancel', release(() => input.setSpecial && input.setSpecial(false)));
+    bindHeldAction(specialBtn, 'setSpecial');
   }
   // SHIFT = deslizar/acelerar.
   if (slideBtn) {
-    bind(slideBtn, 'pointerdown', press(() => input.setSlide && input.setSlide(true)));
-    bind(slideBtn, 'pointerup', release(() => input.setSlide && input.setSlide(false)));
-    bind(slideBtn, 'pointercancel', release(() => input.setSlide && input.setSlide(false)));
+    bindHeldAction(slideBtn, 'setSlide');
+  }
+  function bindHeldAction(button, setter) {
+    bind(button, 'pointerdown', e => {
+      if (heldPointers.has(button)) return;
+      heldPointers.set(button,idOf(e));
+      if (input[setter]) input[setter](true);
+    });
+    const end = e => {
+      if (heldPointers.get(button) !== idOf(e)) return;
+      heldPointers.delete(button);
+      if (input[setter]) input[setter](false);
+    };
+    bind(button,'pointerup',end); bind(button,'pointercancel',end);
+    bind(w,'pointerup',end); bind(w,'pointercancel',end);
   }
   for(const [button,setter] of [[slideBtn,'setSlide'],[specialBtn,'setSpecial']]){
-    bind(button,'lostpointercapture',()=>{if(input[setter])input[setter](false);});
+    bind(button,'lostpointercapture',()=>{heldPointers.delete(button);if(input[setter])input[setter](false);});
   }
   // USAR = F (consumible seleccionado). Acción one-shot en el down.
   if (useBtn) {
@@ -261,9 +278,11 @@
   if (mFullscreenBtn) bind(mFullscreenBtn, 'pointerdown', press(() => { if (viewport && typeof viewport.toggleFullscreen === 'function') viewport.toggleFullscreen(); closeOptions(); }));
 
   // --- INDICADORES de arma y consumible (leídos vía NV.input, sin estado duplicado) ---
+  const indicatorContexts = new Map();
   function clearIndicatorIcon(canvas) {
     if (!canvas || typeof canvas.getContext !== 'function') return null;
-    const iconCtx = canvas.getContext('2d');
+    let iconCtx = indicatorContexts.get(canvas);
+    if (!iconCtx) { iconCtx = canvas.getContext('2d'); if (iconCtx) indicatorContexts.set(canvas, iconCtx); }
     if (!iconCtx) return null;
     iconCtx.clearRect(0, 0, canvas.width, canvas.height);
     return iconCtx;
@@ -277,6 +296,7 @@
       NV.drawWeaponIcon(iconCtx, (info && info.id) || 'pistol', 16, 16, 27, { glow: 3 });
     }
     weaponIndicator.title = 'Arma actual: ' + n;
+    weaponIndicator.setAttribute('aria-label', 'Arma: ' + n + '. Tocar para cambiar.');
   }
   function renderConsumableInfo(info) {
     if (!consumableIndicator) return;
@@ -287,7 +307,8 @@
       consumableIndicator.title = 'Sin consumibles';
       return;
     }
-    const label = info.type || info.name || '—';
+    const consumable = NV.CONSUMABLES && NV.CONSUMABLES[info.type];
+    const label = (consumable && consumable.name) || info.name || info.type || '—';
     const count = typeof info.count === 'number' ? info.count : info.stack;
     const s = (typeof count === 'number' && count > 0) ? ' x' + count : '';
     if (consumableIndicatorName) consumableIndicatorName.textContent = label + s;
@@ -295,6 +316,7 @@
       NV.drawConsumableIcon(iconCtx, info.type || info.name, 16, 16, 27, { glow: 3 });
     }
     consumableIndicator.title = 'Consumible: ' + label;
+    consumableIndicator.setAttribute('aria-label', 'Consumible: ' + label + s + '. Tocar para cambiar.');
   }
   function renderSpecialInfo(info) {
     if (!specialBtn || !info) return;
@@ -337,6 +359,7 @@
     if (mobileHudEl && mobileHudEl.classList) {
       mobileHudEl.classList.toggle('nv-paused', pausedFlag);
     }
+    if (pausedFlag || (root && root.getAttribute('data-settings-open') === 'true')) { resetJoystick(); resetButtons(); }
     // El botón ☰ sigue visible e interactivo (no lo ocultamos en pausa).
     if (mPauseBtn && mPauseBtn.textContent) {
       mPauseBtn.textContent = pausedFlag ? '▶ Reanudar' : '⏸ Pausa';
@@ -359,7 +382,7 @@
     try {
       if (d.documentElement && typeof MutationObserver === 'function') {
         const mo = new MutationObserver(() => { refreshPauseState(); syncLobbyFullscreenButton(); });
-        mo.observe(d.documentElement, { attributes: true, attributeFilter: ['data-paused', 'data-game-state'] });
+        mo.observe(d.documentElement, { attributes: true, attributeFilter: ['data-paused', 'data-game-state', 'data-settings-open'] });
         if (startScreen) {
           const lobbyMo = new MutationObserver(() => syncLobbyFullscreenButton());
           lobbyMo.observe(startScreen, { attributes: true, attributeFilter: ['class'] });
@@ -464,8 +487,8 @@
   // --- Higiene global ---
   if (w && typeof w.addEventListener === 'function') {
     w.addEventListener('blur', () => { resetJoystick(); resetButtons(); });
-    w.addEventListener('pointerup', endJoystickPointer);
-    w.addEventListener('pointercancel', endJoystickPointer);
+    bind(w, 'pointerup', endJoystickPointer);
+    bind(w, 'pointercancel', endJoystickPointer);
   }
   if (d && typeof d.addEventListener === 'function') {
     d.addEventListener('visibilitychange', () => { if (d.hidden) { resetJoystick(); resetButtons(); } });

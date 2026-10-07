@@ -2364,6 +2364,20 @@
   NV.drawSpectralBoss2D = function (ctx, boss, frame, player, rhythm) {
     if (!boss || boss.dead) return false;
     const profile = resolveBossProfile(boss);
+    if (boss.visual && NV.drawBossDesign) {
+      ctx.save();
+      ctx.translate(boss.x, boss.y);
+      drawBossAttackTelegraph(ctx, boss, frame, player, profile);
+      if (boss.phase2) {
+        ctx.strokeStyle = 'rgba(255,95,155,.85)'; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.arc(0,0,boss.radius + 12 + Math.sin(frame*.1)*3,0,Math.PI*2); ctx.stroke();
+      }
+      ctx.restore();
+      NV.drawBossDesign(ctx, boss, frame);
+      ctx.save(); ctx.translate(boss.x, boss.y);
+      NV.drawEnemyHitFeedback(ctx, boss, boss.radius); ctx.restore();
+      return true;
+    }
     ctx.save();
     ctx.translate(boss.x, boss.y);
     drawBossAura(ctx, boss, frame, profile);

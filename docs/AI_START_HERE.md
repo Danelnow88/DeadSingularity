@@ -1,5 +1,15 @@
 # NEON VOID — empezar con una IA
 
+**Publicación móvil 07-10:** `MOBILE_RELEASE_2026-10-07.md`. Jefes V11 integrados,
+acciones ampliadas y navegación explícita; tienda de tres paneles preservada.
+Multitouch independiente, contextos de iconos reutilizados, presupuesto visual
+existente aplicado a decoración V11. No confundir QA emulado con Android físico.
+
+**Jefes V11 (07-10):** diseños autorizados de `Desktop/jefesV11.txt` integrados
+en `data/bossDesignLab.js` y `render/bossDesignLab.js`. El spawn adjunta metadata
+visual; radio físico, HP, IA y ataques siguen usando los datos productivos.
+Ver `BOSS_DESIGN_LAB_2026-10-07.md`. No recrear los diseños ni publicar sin pedido.
+
 **Música / 04-10:** `MUSIC_FIX_2026-10-04.md`. Tema grabado dueño desde la carga;
 sin fragmento synth legacy, duck/fades suavizados, efectos intactos. FRESH abre
 la fuente web local, no Electron. El usuario pidió publicar todos los cambios.

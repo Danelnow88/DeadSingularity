@@ -138,6 +138,10 @@ async function fixture(wave, hp = 5000, progression = 'legacy', traversal = fals
       await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:true});
       await send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
       await navigate('?mobile=1');
+      if(width<height){
+        assert(await evaluate('getComputedStyle(document.getElementById("rotateOverlay")).display!=="none"'),'overlay portrait visible');
+        await shot('portrait-'+width+'-'+height);results.push({width,height,portrait:true});continue;
+      }
       await until('document.querySelectorAll(".mobile-lobby-tabs button").length===3');
       for(const tab of [0,1,2]){
         await evaluate(`document.querySelectorAll('.mobile-lobby-tabs button')[${tab}].click()`);

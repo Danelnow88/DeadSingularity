@@ -84,8 +84,9 @@ describen la base histórica; esta sección prevalece para la composición actua
 
 - `#shop` ocupa el viewport disponible.
 - HUD y controles de gameplay quedan ocultos.
-- En móvil, `#shopTabs` muestra una sección a la vez: mejoras, armas o consumibles.
-- El contenido activo tiene un único scroll vertical; el botón de despliegue permanece accesible.
+- En móvil horizontal, tres paneles simultáneos: mejoras, armas y consumibles.
+- Cada catálogo tiene scroll interno limitado; detalle y botones viven juntos
+  en `.shop-bottom-bar` debajo de los paneles. Las tabs históricas se ocultan.
 
 ## Perm Shop
 

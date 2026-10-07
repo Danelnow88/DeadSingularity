@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="css/lobby-f093.css?nv=audio-20261002b" />
     <link rel="stylesheet" href="css/alpha.css?nv=audio-20261002b" />
     <link rel="stylesheet" href="css/lobby-layout.css?nv=lobby-20261003" />
-    <link rel="stylesheet" href="css/mobile.css?nv=mobile-layout-20261007f" />
+    <link rel="stylesheet" href="css/mobile.css?nv=mobile-controls-20261007h" />
     <link rel="stylesheet" href="css/system-menu.css?nv=icons-ui-20261007" />
     <link rel="stylesheet" href="css/shop-remaster.css?nv=shop-mobile-20261007g" />
     <!-- Capa móvil: detección por capacidad (se carga primero; solo etiqueta <html>). -->
@@ -264,20 +264,20 @@
           </button>
         </div>
         <div id="mobileWeaponSwitch" class="mobile-weapon-switch" aria-label="Cambio de arma">
-          <button id="touchWeaponPrev" class="touch-btn touch-switch" type="button">◀</button>
-          <div id="weaponIndicator" class="switch-indicator" aria-live="polite">
+          <button id="touchWeaponPrev" class="touch-btn touch-switch" type="button" aria-label="Arma anterior">◀</button>
+          <button id="weaponIndicator" class="switch-indicator" type="button" aria-label="Cambiar arma" aria-live="polite">
             <canvas id="weaponIndicatorIcon" class="switch-indicator-icon" width="32" height="32" aria-hidden="true"></canvas>
             <span class="switch-indicator-copy"><span class="switch-indicator-kind">ARMA</span><span id="weaponIndicatorName" class="switch-indicator-name">—</span></span>
-          </div>
-          <button id="touchWeaponNext" class="touch-btn touch-switch" type="button">▶</button>
+          </button>
+          <button id="touchWeaponNext" class="touch-btn touch-switch" type="button" aria-label="Arma siguiente">▶</button>
         </div>
         <div id="mobileConsumableSwitch" class="mobile-consumable-switch" aria-label="Selección de consumible">
-          <button id="touchConsumPrev" class="touch-btn touch-switch" type="button">◀</button>
-          <div id="consumableIndicator" class="switch-indicator is-empty" aria-live="polite">
+          <button id="touchConsumPrev" class="touch-btn touch-switch" type="button" aria-label="Consumible anterior">◀</button>
+          <button id="consumableIndicator" class="switch-indicator is-empty" type="button" aria-label="Cambiar consumible" aria-live="polite">
             <canvas id="consumableIndicatorIcon" class="switch-indicator-icon" width="32" height="32" aria-hidden="true"></canvas>
             <span class="switch-indicator-copy"><span class="switch-indicator-kind">ITEM</span><span id="consumableIndicatorName" class="switch-indicator-name">SIN</span></span>
-          </div>
-          <button id="touchConsumNext" class="touch-btn touch-switch" type="button">▶</button>
+          </button>
+          <button id="touchConsumNext" class="touch-btn touch-switch" type="button" aria-label="Consumible siguiente">▶</button>
         </div>
         <div id="mobileOptions" class="mobile-options hidden" aria-label="Panel de opciones">
           <button id="mPauseBtn" class="opt-btn" type="button">⏸ Pausa</button>
@@ -381,6 +381,7 @@
 
     <script src="js/core/state.js?nv=audio-20261002b"></script>
     <script src="js/data/gameData.js?nv=audio-20261002b"></script>
+    <script src="js/data/bossDesignLab.js?nv=boss-lab-20261007"></script>
     <script src="js/data/balance.js?nv=audio-20261002b"></script>
     <script src="js/core/settings.js?nv=audio-20261002b"></script>
     <script src="js/core/utils.js?nv=audio-20261002b"></script>
@@ -400,13 +401,14 @@
     <script src="js/render/projectiles.js?nv=audio-20261002b"></script>
     <script src="js/render/specialEffects.js?nv=audio-20261002b"></script>
     <script src="js/render/consumableEffects.js?v=shield-2&amp;nv=audio-20261002b"></script>
-    <script src="js/render/spectralEnemies2D.js?nv=audio-20261002b"></script>
+    <script src="js/render/spectralEnemies2D.js?nv=boss-lab-20261007"></script>
     <script src="js/render/enemies.js?nv=audio-20261002b"></script>
     <script src="js/render/metaReadability.js?nv=audio-20261002b"></script>
     <script src="js/render/visualBudget.js?nv=audio-20261002b"></script>
     <script src="js/render/hazards.js?nv=audio-20261002b"></script>
     <script src="js/render/espectroLite.js?nv=audio-20261002b"></script>
-    <script src="js/render/bosses.js?nv=audio-20261002b"></script>
+    <script src="js/render/bosses.js?nv=boss-lab-20261007"></script>
+    <script src="js/render/bossDesignLab.js?nv=boss-mobile-20261007h"></script>
     <script src="js/data/pilotAnimationBaseline.js?nv=audio-20261002b"></script>
     <script src="js/render/pilotGeometry.js?nv=audio-20261002b"></script>
     <script src="js/render/pilotAppearance.js?nv=audio-20261002b"></script>
@@ -442,12 +444,12 @@
     <script src="js/engine/flame.js?nv=audio-20261002b"></script>
     <script src="js/engine/weapons.js?nv=audio-20261002b"></script>
     <script src="js/engine/special.js?nv=audio-20261002b"></script>
-    <script src="js/game.js?nv=mobile-20261004"></script>
+    <script src="js/game.js?nv=boss-lab-20261007"></script>
     <script src="js/ui/onboarding.js?nv=audio-20261002b"></script>
     <script src="js/ui/gamepadControls.js?nv=audio-20261002b"></script>
     <script src="js/ui/alpha.js?nv=shop-footer-20261007g"></script>
     <script src="js/ui/systemMenu.js?nv=system-20261007"></script>
     <!-- Último: necesita NV.input (expuesto por game.js) y NV.viewport. -->
-    <script src="js/ui/mobileControls.js?nv=mobile-20261004"></script>
+    <script src="js/ui/mobileControls.js?nv=mobile-controls-20261007h"></script>
   </body>
 </html>

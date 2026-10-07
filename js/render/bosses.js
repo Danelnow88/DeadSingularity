@@ -6,6 +6,13 @@
 
   NV.drawBoss = function (ctx, boss, frame) {
     if (!boss || boss.dead) return;
+    if (NV.drawBossDesign && NV.drawBossDesign(ctx, boss, frame)) {
+      if (NV.drawEnemyHitFeedback) {
+        ctx.save(); ctx.translate(boss.x, boss.y);
+        NV.drawEnemyHitFeedback(ctx, boss, boss.radius); ctx.restore();
+      }
+      return;
+    }
     ctx.save();
     ctx.translate(boss.x, boss.y);
     ctx.fillStyle = boss.color;
