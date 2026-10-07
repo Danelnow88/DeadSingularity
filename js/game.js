@@ -2199,7 +2199,7 @@
         slot.innerHTML = `
           <div class="inv-icon"><canvas width="32" height="32" aria-label="${weapon.name}"></canvas></div>
           <div class="inv-name">${weapon.name}</div>
-          ${fusLevel > 0 ? `<div class="inv-fuse">Fusión Nv${fusLevel}</div>` : ''}
+          ${fusLevel > 0 ? `<div class="inv-fuse"><span class="inv-fuse-label">Fusión </span>Nv${fusLevel}</div>` : ''}
         `;
         drawWeaponCanvas(slot.querySelector('canvas'), weapon, 32, 26);
         if (weapon === currentWeapon) {
@@ -2439,11 +2439,13 @@
       // la tarjeta nunca desaparece, sólo queda `disabled` con su badge "BLOQUEADO".
       // Prioridad determinística del motivo cuando coinciden: 1) global 10/10,
       // 2) visita 3/3, 3) slots de tipos 6/6.
-      const badge = (stacked > 0 ? ('Stock x' + stacked) : 'Sin stock') + ' · compras ' + bought + '/' + CONSUMABLE_CAP;
+      const badgeStock = stacked > 0 ? ('Stock x' + stacked) : 'Sin stock';
+      const badge = badgeStock + ' · compras ' + bought + '/' + CONSUMABLE_CAP;
       consumables.push({
         kind: 'consumable', consumableType: c.key, name: c.name,
         desc: c.desc,
         badge: badge,
+        badgeMobile: badgeStock + ' · ' + bought + '/' + CONSUMABLE_CAP,
         price: c.price,
         disabled: stackFull || visitFull || typeSlotsFull,
         disabledReason: stackFull ? ('Límite ' + CONSUMABLE_STACK_CAP + '/' + CONSUMABLE_STACK_CAP)
@@ -2526,7 +2528,9 @@
       el.className = "offer offer-" + kind + " rarity-" + visualRarity(item.rarity, item.price) + (item.disabled ? " disabled" : "");
       const iconHtml = item.weapon || item.consumableType || item.metaIcon ? '<div class="offer-icon"><canvas></canvas></div>' : '<div class="offer-icon">•</div>';
       const priceHtml = item.disabled ? item.disabledReason : ('◆ ' + item.price);
-      const badgeHtml = item.badge ? '<div class="offer-badge">' + item.badge + '</div>' : '';
+      const badgeHtml = item.badge
+        ? '<div class="offer-badge"><span class="offer-badge-full">' + item.badge + '</span><span class="offer-badge-mobile">' + (item.badgeMobile || item.badge) + '</span></div>'
+        : '';
       el.innerHTML = iconHtml + '<div class="offer-name">' + item.name + "</div><div class=\"offer-desc\">" + item.desc + "</div>" + badgeHtml + "<div class='offer-price'>" + priceHtml + "</div>";
       el.addEventListener("click", () => handleShopPurchase(item, el));
       // La ficha contextual explica el mismo objeto visual; no altera compra,
