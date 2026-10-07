@@ -81,6 +81,24 @@
 .nv-mobile :is(#shop,#permShop) .offer { display:flex; flex-direction:column; align-items:center; gap:4px; }
 .nv-mobile :is(#shop,#permShop) .offer-desc { width:100%; max-width:none; overflow:visible; text-overflow:clip; white-space:normal; text-align:center; }
 .nv-mobile :is(#shop,#permShop) .offer-price { position:static; margin-top:auto; align-self:flex-end; }
+
+/* Legibilidad del lobby: aumenta la lectura sin cambiar su grid ni sus
+   proporciones. Los límites con clamp evitan overflow en paisajes bajos. */
+@media (pointer: coarse) and (orientation: landscape) {
+  html.nv-mobile #startScreen .lobby-header h1,
+  html.nv-mobile #startScreen .main-lobby-panel h1 { font-size:clamp(24px, 6.8vh, 38px); }
+  html.nv-mobile #startScreen .lobby-header .subtitle,
+  html.nv-mobile #startScreen .main-lobby-panel .subtitle { font-size:clamp(10px, 2.5vh, 14px); line-height:1.3; }
+  html.nv-mobile #startScreen .center-heading > span,
+  html.nv-mobile #startScreen .lobby-difficulty .lobby-diff-label { font-size:clamp(9px, 2.2vh, 12px); }
+  html.nv-mobile #startScreen .center-heading h2 { font-size:clamp(21px, 5.3vh, 30px); }
+  html.nv-mobile #startScreen .lobby-diff-btn { min-height:42px; padding:6px 12px; font-size:clamp(10px, 2.4vh, 13px); }
+  html.nv-mobile #startScreen #lobbyLaunch,
+  html.nv-mobile #startScreen .btn-jugar span { font-size:clamp(16px, 4vh, 23px); }
+  html.nv-mobile #startScreen .mode-heading,
+  html.nv-mobile #startScreen .mode-label,
+  html.nv-mobile #startScreen .mode-description { font-size:clamp(10px, 2.3vh, 13px); }
+}
 @media(orientation:portrait) {
   .nv-mobile :is(#shop,#permShop) .shop-terminal-head { display:grid; grid-template-columns:minmax(0,1fr) auto; }
   .nv-mobile :is(#shop,#permShop) .shop-terminal-head > div:first-child { grid-column:1; grid-row:1; }

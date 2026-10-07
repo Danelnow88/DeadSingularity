@@ -6,13 +6,13 @@
   const NV = window.NV;
 
   NV.CONSUMABLES = {
-    potion:    { key: 'potion',    name: 'Poción',     useName: 'POCIÓN',     desc: 'Cura 40 HP (tecla F en partida)',     price: 10, banner: 'Poción guardada (F para usar)',  color: '#22c55e', hp: 40 },
-    overdrive: { key: 'overdrive', name: 'Overdrive',  useName: 'OVERDRIVE',  desc: '+18% velocidad 5s (tecla F)',         price: 18, banner: 'Overdrive guardado (F)',         color: '#caa7ff', speedMult: 1.18, duration: 5 },
-    shield:    { key: 'shield',    name: 'Escudo',     useName: 'ESCUDO',     desc: 'Invulnerable 3s (tecla F)',           price: 22, banner: 'Escudo guardado (F)',            color: '#ffcf76', duration: 3 },
-    bomb:      { key: 'bomb',      name: 'Bomba',      useName: 'BOMBA',      desc: '25% comunes · 50% élites · 8% jefe (F)', price: 34, banner: 'Bomba guardada (F)',             color: '#ff5f9b' },
-    freeze:    { key: 'freeze',    name: 'Congelante', useName: 'CONGELANTE', desc: 'Enemigos lentos 50% 4s · No jefes (F)', price: 26, banner: 'Congelante guardado (F)',        color: '#67e8f9', duration: 4 },
-    magnet:    { key: 'magnet',    name: 'Imán',       useName: 'IMÁN',       desc: 'Atrae todos los shards/armas (F)',    price: 20, banner: 'Imán guardado (F)',              color: '#7cf8ff' },
-    bounty:    { key: 'bounty',    name: 'Recompensa', useName: 'RECOMPENSA', desc: '10s: kills dan +1 shard y x2 score (F)', price: 30, banner: 'Recompensa guardada (F)',        color: '#ffd700', duration: 10 },
+    potion:    { key: 'potion',    name: 'Poción',     useName: 'POCIÓN',     desc: 'Restaura 40 de vida. Usar con F.',     price: 10, banner: 'Poción guardada (F para usar)',  color: '#22c55e', hp: 40 },
+    overdrive: { key: 'overdrive', name: 'Overdrive',  useName: 'OVERDRIVE',  desc: '+18% de velocidad durante 5 s. F para usar.', price: 18, banner: 'Overdrive guardado (F)',         color: '#caa7ff', speedMult: 1.18, duration: 5 },
+    shield:    { key: 'shield',    name: 'Escudo',     useName: 'ESCUDO',     desc: 'Invulnerable durante 3 s. F para usar.',  price: 22, banner: 'Escudo guardado (F)',            color: '#ffcf76', duration: 3 },
+    bomb:      { key: 'bomb',      name: 'Bomba',      useName: 'BOMBA',      desc: 'Daño en área: 25% comunes, 50% élites, 8% jefe.', price: 34, banner: 'Bomba guardada (F)',             color: '#ff5f9b' },
+    freeze:    { key: 'freeze',    name: 'Congelante', useName: 'CONGELANTE', desc: 'Ralentiza 50% durante 4 s. No afecta jefes.', price: 26, banner: 'Congelante guardado (F)',        color: '#67e8f9', duration: 4 },
+    magnet:    { key: 'magnet',    name: 'Imán',       useName: 'IMÁN',       desc: 'Atrae shards y armas cercanas. F para usar.', price: 20, banner: 'Imán guardado (F)',              color: '#7cf8ff' },
+    bounty:    { key: 'bounty',    name: 'Recompensa', useName: 'RECOMPENSA', desc: 'Durante 10 s: cada baja da +1 shard y x2 score.', price: 30, banner: 'Recompensa guardada (F)',        color: '#ffd700', duration: 10 },
   };
   NV.CONSUMABLE_ORDER = ['potion', 'overdrive', 'shield', 'bomb', 'freeze', 'magnet', 'bounty'];
   // Tope acumulado por tipo durante la partida. Generoso para permitir preparación,

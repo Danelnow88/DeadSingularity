@@ -145,3 +145,87 @@
   html.nv-mobile #shop .alpha-save-quit { position:absolute; left:8px; bottom:7px; width:22%; max-width:150px; min-height:46px; }
   html.nv-mobile #shop .alpha-save-status { display:none; }
 }
+
+/* Legibilidad 2026: las tarjetas son un resumen visual; el inspector es la
+   ficha completa. Se conserva el grid, el hover y el precio, pero se elimina
+   el texto diminuto que competía con el nombre y el estado. */
+#shop .offer-desc,
+#permShop .offer-desc { display:none !important; }
+#shop .offer,
+#permShop .offer {
+  grid-template-rows:24px 22px 0 20px 18px;
+}
+#shop .offer-name,
+#permShop .offer-name {
+  color:#ffffff;
+  font-size:clamp(13px, .9vw, 16px);
+  font-weight:900;
+  line-height:1.12;
+  text-shadow:0 1px 2px rgba(0,0,0,.72);
+}
+#shop .offer-badge,
+#permShop .offer-badge {
+  color:#b8fff8;
+  font-size:clamp(10px, .68vw, 12px);
+  font-weight:900;
+  line-height:1.1;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+#shop .offer-price,
+#permShop .offer-price {
+  color:#d9fdff;
+  font-size:clamp(12px, .78vw, 14px);
+  font-weight:900;
+  padding:2px 6px;
+}
+#shop .shop-inspector {
+  grid-template-columns:56px minmax(220px,1fr) auto;
+  width:min(650px,calc(100% - 400px));
+  min-height:76px;
+  padding:10px 14px;
+  gap:12px;
+}
+#shop .shop-inspector canvas { width:56px; height:56px; }
+#shopInspector .shop-inspector-copy > span { font-size:11px; }
+#shopInspector .shop-inspector-copy strong { font-size:17px; line-height:1.15; }
+#shopInspector .shop-inspector-copy p { color:#d7deef; font-size:13px; line-height:1.3; }
+#shopInspector > b { max-width:130px; font-size:15px; }
+
+@media (max-width:700px) {
+  #shop .offer,
+  #permShop .offer { grid-template-rows:auto 0 22px; }
+  #shop .offer-name,
+  #permShop .offer-name { font-size:clamp(13px, 3.1vw, 16px); }
+  #shop .offer-badge,
+  #permShop .offer-badge { font-size:clamp(10px, 2.5vw, 12px); }
+  #shop .offer-price,
+  #permShop .offer-price { font-size:clamp(12px, 2.8vw, 14px); }
+  #shop .shop-inspector { grid-template-columns:48px minmax(0,1fr) auto; min-height:72px; padding:9px 11px; }
+  #shop .shop-inspector canvas { width:48px; height:48px; }
+  #shopInspector .shop-inspector-copy > span { font-size:10px; }
+  #shopInspector .shop-inspector-copy strong { font-size:15px; }
+  #shopInspector .shop-inspector-copy p { font-size:12px; line-height:1.28; }
+  #shopInspector > b { font-size:13px; }
+}
+
+@media (min-aspect-ratio:4/3) {
+  html.nv-mobile #shop .offer,
+  html.nv-mobile #permShop .offer {
+    grid-template-columns:32px minmax(0,1fr);
+    grid-template-rows:22px 0 22px;
+  }
+  html.nv-mobile #shop .offer .offer-name,
+  html.nv-mobile #permShop .offer .offer-name { font-size:clamp(12px, 1.4vw, 15px); line-height:1.1; }
+  html.nv-mobile #shop .offer .offer-badge,
+  html.nv-mobile #permShop .offer .offer-badge { font-size:clamp(9px, 1.1vw, 11px); }
+  html.nv-mobile #shop .offer .offer-price,
+  html.nv-mobile #permShop .offer .offer-price { font-size:clamp(11px, 1.3vw, 13px); }
+  html.nv-mobile #shop .shop-inspector { min-height:58px; grid-template-columns:42px minmax(0,1fr) auto; padding:7px 10px; }
+  html.nv-mobile #shop .shop-inspector canvas { width:42px; height:42px; }
+  html.nv-mobile #shopInspector .shop-inspector-copy > span { font-size:9px; }
+  html.nv-mobile #shopInspector .shop-inspector-copy strong { font-size:13px; }
+  html.nv-mobile #shopInspector .shop-inspector-copy p { font-size:10px; }
+  html.nv-mobile #shopInspector > b { font-size:12px; }
+}
