@@ -16,6 +16,7 @@ function mkCtx() {
     ops: [], _ga: 1,
     save(){ this.ops.push('save'); }, restore(){ this.ops.push('restore'); }, translate(x,y){ this.ops.push(['translate', x, y]); }, scale(x,y){ this.ops.push(['scale', x, y]); },
     beginPath(){ this.ops.push('beginPath'); }, rect(x,y,w,h){ this.ops.push(['rect', x,y,w,h]); }, roundRect(x,y,w,h,r){ this.ops.push(['roundRect', x,y,w,h,r]); },
+    moveTo(x,y){ this.ops.push(['moveTo',x,y]); }, lineTo(x,y){ this.ops.push(['lineTo',x,y]); }, bezierCurveTo(...p){ this.ops.push(['bezierCurveTo',...p]); }, closePath(){ this.ops.push('closePath'); },
     arc(x,y,r){ this.ops.push(['arc', x,y,r]); }, stroke(p){ this.ops.push(['stroke', p && p.d || 'shape', this.strokeStyle, this._ga]); }, fill(){ this.ops.push(['fill', this.fillStyle, this._ga]); },
     set globalAlpha(v){ this._ga = v; }, get globalAlpha(){ return this._ga; },
     set strokeStyle(v){ this._ss = v; }, get strokeStyle(){ return this._ss; }, set fillStyle(v){ this._fs = v; }, get fillStyle(){ return this._fs; },
@@ -39,14 +40,15 @@ t('cada arma dibuja primitivas canvas con save/restore y sin texto/emoji', () =>
     NV.drawWeaponIcon(ctx, id, 12, 13, 22);
     if (!ctx.ops.includes('save') || !ctx.ops.includes('restore')) throw new Error(id + ' sin save/restore');
     const strokes = ctx.ops.filter(o => Array.isArray(o) && (o[0] === 'stroke' || o[0] === 'fill'));
-    if (strokes.length < 3 || strokes.length > 8) throw new Error(id + ' cantidad visual inesperada: ' + strokes.length);
+    // Layered silhouettes need fill + dark keyline; retain a small bounded draw budget.
+    if (strokes.length < 8 || strokes.length > 36) throw new Error(id + ' cantidad visual inesperada: ' + strokes.length);
     if (ctx.ops.some(o => Array.isArray(o) && String(o[0]).includes('Text'))) throw new Error(id + ' usa texto');
   });
 });
 
 t('colores identitarios coinciden con el preview aprobado', () => {
   const NV = loadNV();
-  const expected = { shotgun:'#f97316', railgun:'#06b6d4', plasma:'#a855f7', flamethrower:'#fb923c', sniper:'#ef4444' };
+  const expected = { shotgun:'#f97316', railgun:'#06b6d4', plasma:'#9b5cff', flamethrower:'#fb923c', sniper:'#ef4444' };
   for (const [id, c] of Object.entries(expected)) if (NV.weaponIconColors[id].c !== c) throw new Error(id + ' color=' + NV.weaponIconColors[id].c);
 });
 

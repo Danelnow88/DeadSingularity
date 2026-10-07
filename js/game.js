@@ -2439,10 +2439,11 @@
       // la tarjeta nunca desaparece, sólo queda `disabled` con su badge "BLOQUEADO".
       // Prioridad determinística del motivo cuando coinciden: 1) global 10/10,
       // 2) visita 3/3, 3) slots de tipos 6/6.
+      const badge = (stacked > 0 ? ('Stock x' + stacked) : 'Sin stock') + ' · compras ' + bought + '/' + CONSUMABLE_CAP;
       consumables.push({
         kind: 'consumable', consumableType: c.key, name: c.name,
         desc: c.desc,
-        badge: (stacked > 0 ? ('Equipado x' + stacked) : 'Nuevo') + ' · ' + bought + '/' + CONSUMABLE_CAP,
+        badge: badge,
         price: c.price,
         disabled: stackFull || visitFull || typeSlotsFull,
         disabledReason: stackFull ? ('Límite ' + CONSUMABLE_STACK_CAP + '/' + CONSUMABLE_STACK_CAP)
@@ -2472,6 +2473,7 @@
     renderOffers(dom.upgradesOffers, upgrades);
     renderOffers(dom.weaponOffers, weapons);
     renderOffers(dom.consumableOffers, consumables);
+    renderShopInspector(upgrades.find(item => !item.disabled) || upgrades[0] || weapons.find(item => !item.disabled) || weapons[0]);
     renderShopConsumableLoadout();
     renderUpgradeSlots();
   }
@@ -2527,6 +2529,12 @@
       const badgeHtml = item.badge ? '<div class="offer-badge">' + item.badge + '</div>' : '';
       el.innerHTML = iconHtml + '<div class="offer-name">' + item.name + "</div><div class=\"offer-desc\">" + item.desc + "</div>" + badgeHtml + "<div class='offer-price'>" + priceHtml + "</div>";
       el.addEventListener("click", () => handleShopPurchase(item, el));
+      // La ficha contextual explica el mismo objeto visual; no altera compra,
+      // precios ni estado de inventario.
+      const inspect = () => renderShopInspector(item);
+      el.addEventListener('pointerenter', inspect);
+      el.addEventListener('focus', inspect);
+      el.addEventListener('click', inspect);
       el.addEventListener('keydown', event => {
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handleShopPurchase(item, el); }
       });
@@ -2536,6 +2544,31 @@
       if (c && item.consumableType) drawConsumableCanvas(c, item.consumableType, 64, 48);
       if (c && item.metaIcon) drawMetaSkillCanvas(c, item.metaIcon, 64, 48);
     });
+  }
+
+  function renderShopInspector(item) {
+    if (!item || !dom.shopInspector) return;
+    const kind = item.kind || (item.weapon ? 'weapon' : item.consumableType ? 'consumable' : 'upgrade');
+    const labels = { upgrade: 'MEJORA DE RUN', weapon: 'ARMAMENTO', consumable: 'PROTOCOLO' };
+    if (dom.shopInspectorKind) dom.shopInspectorKind.textContent = labels[kind] || 'SELECCIÓN';
+    if (dom.shopInspectorName) dom.shopInspectorName.textContent = item.name || 'Oferta';
+    if (dom.shopInspectorDesc) dom.shopInspectorDesc.textContent = item.disabled
+      ? (item.disabledReason || 'No disponible ahora')
+      : (item.desc || 'Sin descripción disponible');
+    if (dom.shopInspectorPrice) dom.shopInspectorPrice.textContent = item.disabled
+      ? (item.disabledReason || 'BLOQUEADO')
+      : ('◆ ' + item.price);
+    if (dom.shopInspectorIcon) {
+      const canvas = dom.shopInspectorIcon;
+      const ctx = canvas.getContext && canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (item.weapon) drawWeaponCanvas(canvas, item.weapon, 48, 36);
+        else if (item.consumableType) drawConsumableCanvas(canvas, item.consumableType, 48, 36);
+        else if (item.metaIcon) drawMetaSkillCanvas(canvas, item.metaIcon, 48, 36);
+      }
+    }
+    dom.shopInspector.classList.toggle('is-blocked', !!item.disabled);
   }
 
   function handleShopPurchase(item, el) {
@@ -3666,31 +3699,33 @@
       ctx.textAlign = 'center';
       ctx.fillText('OLEADA ' + wave + (waveTimer <= 0 ? ' · LIMPIEZA' : ' · ' + Math.ceil(waveTimer) + 's'), vx + vw / 2, barY + 18);
       ctx.restore();
-      const countText = 'ENEMIGOS: ' + alive + ' (' + heavy + ')';
       const mobilePresentation = !!(NV.capabilities && NV.capabilities.isMobile);
-      ctx.fillStyle = '#9bb0ff';
-      ctx.font = 'bold 9px system-ui';
-      ctx.textAlign = 'left';
-      const arriving = enemies.reduce((count, enemy) => count + (!enemy.dead && enemy.arrival ? 1 : 0), 0);
-      const bossProgress = expeditionRun && expeditionRun.mode === 'expedition'
-        ? ' · JEFES ' + expeditionRun.bosses + '/' + (expeditionRun.bossProgression === 'full-roster' ? 10 : 4) : '';
-      const activeHeavy = arriving ? NV.heavyHostileCount(enemies.filter(enemy => !enemy.arrival)) : heavy;
-      ctx.fillText((arriving ? 'ENEMIGOS: ' + (alive - arriving) + ' (' + activeHeavy + ')' : countText) + bossProgress, viewX() + 12, viewY() + (mobilePresentation ? 58 : 43));
-      // El objetivo vive fuera del centro: el tutorial no puede taparlo.
-      if (waveGoal) {
-        ctx.fillStyle = waveTimer <= 0 ? '#f5d67c' : '#a9dce8';
-        ctx.font = '700 9px system-ui';
-        ctx.fillText('BAJAS ' + waveDefeats,
-          viewX() + 12, viewY() + (mobilePresentation ? 72 : 57));
-        ctx.fillText('FALTAN APARECER ' + Math.max(0, waveGoal.total - waveSpawned + arriving), viewX() + 12,
-          viewY() + (mobilePresentation ? 86 : 71));
+      // En móvil el panel de sistema contiene estos detalles al abrirse: no tapamos la arena
+      // con telemetría repetida durante una oleada.
+      if (!mobilePresentation) {
+        const countText = 'ENEMIGOS: ' + alive + ' (' + heavy + ')';
+        ctx.fillStyle = '#9bb0ff';
+        ctx.font = 'bold 9px system-ui';
+        ctx.textAlign = 'left';
+        const arriving = enemies.reduce((count, enemy) => count + (!enemy.dead && enemy.arrival ? 1 : 0), 0);
+        const bossProgress = expeditionRun && expeditionRun.mode === 'expedition'
+          ? ' · JEFES ' + expeditionRun.bosses + '/' + (expeditionRun.bossProgression === 'full-roster' ? 10 : 4) : '';
+        const activeHeavy = arriving ? NV.heavyHostileCount(enemies.filter(enemy => !enemy.arrival)) : heavy;
+        ctx.fillText((arriving ? 'ENEMIGOS: ' + (alive - arriving) + ' (' + activeHeavy + ')' : countText) + bossProgress, viewX() + 12, viewY() + 43);
+        // El objetivo vive fuera del centro: el tutorial no puede taparlo.
+        if (waveGoal) {
+          ctx.fillStyle = waveTimer <= 0 ? '#f5d67c' : '#a9dce8';
+          ctx.font = '700 9px system-ui';
+          ctx.fillText('BAJAS ' + waveDefeats, viewX() + 12, viewY() + 57);
+          ctx.fillText('FALTAN APARECER ' + Math.max(0, waveGoal.total - waveSpawned + arriving), viewX() + 12, viewY() + 71);
+        }
       }
     }
 
-    if (showHUD && state === 'playing' && boss && expeditionRun && expeditionRun.mode === 'expedition') {
+    if (showHUD && state === 'playing' && boss && expeditionRun && expeditionRun.mode === 'expedition' && !(NV.capabilities && NV.capabilities.isMobile)) {
       ctx.save(); ctx.fillStyle = '#a9dce8'; ctx.font = 'bold 9px system-ui'; ctx.textAlign = 'left';
       ctx.fillText('JEFES ' + expeditionRun.bosses + '/' + (expeditionRun.bossProgression === 'full-roster' ? 10 : 4), viewX() + 12,
-        viewY() + (NV.capabilities && NV.capabilities.isMobile ? 58 : 43)); ctx.restore();
+        viewY() + 43); ctx.restore();
     }
     ctx.restore();
     if (drawDecorativeVfx && specialVFX) drawSpecialVFX(specialVFX);
@@ -4363,6 +4398,15 @@
     }
   }
   function loop(now) {
+    // Vertical en móvil es una pantalla de orientación, no una partida a medias:
+    // no avanzamos simulación, VFX ni timers hasta que vuelva el paisaje.
+    const portraitMobileBlocked = !!(NV.capabilities && NV.capabilities.isMobile
+      && NV.capabilities.orientation === 'portrait');
+    if (portraitMobileBlocked) {
+      lastTime = now;
+      requestAnimationFrame(loop);
+      return;
+    }
     if (NV.gamepad && typeof NV.gamepad.poll === 'function') NV.gamepad.poll();
     if (NV.tutorial && typeof NV.tutorial.poll === 'function') NV.tutorial.poll(now);
     if (!lastTime) lastTime = now;

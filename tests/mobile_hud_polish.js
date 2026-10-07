@@ -42,8 +42,8 @@ t('estado especial reutiliza cooldown existente sin cambiar valores ni activaci�
 });
 
 t('contador enemigo y combo quedan apilados upper-left en canvas', () => {
-  if (!game.includes('viewY() + (mobilePresentation ? 58 : 43)')) throw new Error('contador no separa mobile/desktop upper-left');
-  if (!game.includes('ctx.translate(vx, vy)') || !game.includes("mobilePresentation ? { x: 12, y: 83 } : null")) throw new Error('combo mobile no queda bajo el contador en la vista trasladada');
+  if (!game.includes('if (!mobilePresentation) {') || !game.includes('viewY() + 43')) throw new Error('telemetría secundaria no se limita a desktop');
+  if (!game.includes('ctx.translate(vx, vy)') || !game.includes("mobilePresentation ? { x: 12, y: 83 } : null")) throw new Error('combo mobile no conserva una posición segura en la vista trasladada');
   if (game.includes('ctx.fillText(countText, barX + barW + 8, barY + 10)')) throw new Error('contador superior-centro antiguo sigue activo');
 });
 

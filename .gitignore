@@ -18,6 +18,7 @@ probe_out.txt
 test_summary.txt
 # Archivos internos/locales de Cline
 .cline/
+.codex-remote-attachments/
 
 # Entregas generadas y evidencia local de navegador (no son fuente).
 releases/

@@ -207,7 +207,8 @@
   }
 
   function drawTank(ctx, e, color, seed, t, target, facingX, facingY) {
-    const bob = Math.sin(t * 0.8 + seed), recoil = Math.sin(t * 2 + seed) * 0.35, pulse = (Math.sin(t * 1.6 + seed) + 1) / 2;
+    // Tanque = silueta pesada y cañón legible. Evitamos halos/telemetría decorativa.
+    const bob = Math.sin(t * 0.8 + seed), recoil = Math.sin(t * 2 + seed) * 0.35;
     ctx.save(); ctx.translate(-4, 10 + bob); ctx.fillStyle = 'rgba(0,0,0,.30)'; ctx.beginPath(); ctx.ellipse(4, 18, 40, 7, 0, 0, TAU); ctx.fill();
     ctx.beginPath(); ctx.moveTo(-38, 6); ctx.lineTo(-18, -4); ctx.lineTo(18, -4); ctx.lineTo(33, 2); ctx.lineTo(37, 10); ctx.lineTo(26, 17); ctx.lineTo(-20, 17); ctx.lineTo(-36, 12); ctx.closePath(); under(ctx, 7); darkFill(ctx); neon(ctx, color, 2.25, 4.1, 0.94);
     ctx.beginPath(); ctx.moveTo(-8, -9); ctx.lineTo(12, -9); ctx.lineTo(24, -4); ctx.lineTo(22, 3); ctx.lineTo(2, 4); ctx.lineTo(-10, 0); ctx.closePath(); under(ctx, 5.3); ctx.fillStyle = '#05070d'; ctx.fill(); neon(ctx, color, 1.75, 3.2, 0.78);
@@ -216,8 +217,8 @@
     ctx.save(); ctx.translate(10 - recoil, 0); ctx.beginPath(); ctx.moveTo(0, -2.8); ctx.lineTo(32, -2.8); ctx.lineTo(40, -1.2); ctx.lineTo(40, 1.2); ctx.lineTo(32, 2.8); ctx.lineTo(0, 2.8); ctx.closePath(); under(ctx, 4.2); ctx.fillStyle = '#03060b'; ctx.fill(); neon(ctx, color, 1.45, 2.8, 0.8); ctx.restore();
     crack(ctx, TANK_CRACK_TURRET, color, 0.18, 1); ctx.restore();
     ctx.beginPath(); ctx.moveTo(-24, 0); ctx.lineTo(-12, -6); ctx.lineTo(-4, -1); ctx.lineTo(-8, 8); ctx.lineTo(-22, 8); ctx.closePath(); under(ctx, 4.4); ctx.fillStyle = '#04070c'; ctx.fill(); neon(ctx, color, 1.3, 2.6, 0.6);
-    for (const x of TANK_FEET) { ctx.beginPath(); ctx.moveTo(x - 5, 16); ctx.lineTo(x + 5, 16); ctx.lineTo(x + 4, 23); ctx.lineTo(x - 4, 23); ctx.closePath(); under(ctx, 3.8); ctx.fillStyle = '#04070c'; ctx.fill(); neon(ctx, color, 1.1, 2.2, 0.5); ctx.beginPath(); ctx.ellipse(x, 26, 5 + pulse * 0.2, 2.5 + pulse * 0.1, 0, 0, TAU); ctx.fillStyle = rgba(color, 0.1); ctx.fill(); ctx.strokeStyle = rgba(color, 0.28); ctx.lineWidth = 1; ctx.stroke(); }
-    crack(ctx, TANK_CRACK_BODY, color, 0.2, 1); ctx.restore();
+    for (const x of TANK_FEET) { ctx.beginPath(); ctx.moveTo(x - 5, 16); ctx.lineTo(x + 5, 16); ctx.lineTo(x + 4, 23); ctx.lineTo(x - 4, 23); ctx.closePath(); under(ctx, 3.8); ctx.fillStyle = '#04070c'; ctx.fill(); neon(ctx, color, 1.1, 2.2, 0.5); }
+    ctx.restore();
   }
 
   function drawShielder(ctx, e, color, seed, t, target, facingX, facingY) {
@@ -559,8 +560,8 @@
       ctx.restore();
     }
 
-    // C1/K2 — Tanque: mira fija durante la carga del cañón. La bala irá a la
-    // posición marcada, por lo que salir de la línea es la respuesta legible.
+    // Tanque: un solo aviso de carga y una marca de impacto. No hay retículas,
+    // líneas largas ni anillos alrededor del cuerpo que parezcan telemetría.
     if (e.enemyTypeId === 'tank' && !e.isElite && e.tankCannonState) {
       ctx.save();
       ctx.shadowBlur = 0;
@@ -570,18 +571,14 @@
         const tx = (Number.isFinite(e.tankCannonTargetX) ? e.tankCannonTargetX : e.x) - e.x;
         const ty = (Number.isFinite(e.tankCannonTargetY) ? e.tankCannonTargetY : e.y) - e.y;
         const td = Math.max(1, Math.hypot(tx, ty));
-        ctx.strokeStyle = 'rgba(255,82,92,' + (0.48 + progress * 0.42) + ')';
-        ctx.lineWidth = 2 + progress * 1.4;
-        ctx.setLineDash([8, 6]);
-        ctx.beginPath(); ctx.moveTo(tx / td * (r + 5), ty / td * (r + 5)); ctx.lineTo(tx, ty); ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.beginPath(); ctx.arc(0, 0, r + 7 + progress * 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress); ctx.stroke();
-        ctx.fillStyle = 'rgba(255,82,92,' + (0.72 + progress * 0.25) + ')';
-        ctx.beginPath(); ctx.arc(tx, ty, 4 + progress * 3, 0, Math.PI * 2); ctx.fill();
-      } else if (e.tankCannonState === 'recovery') {
-        ctx.strokeStyle = 'rgba(255,207,118,.52)';
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(0, 0, r + 7, 0.25, Math.PI - 0.25); ctx.stroke();
+        // Carga sólo en el cañón: comunica el ataque sin invadir la pantalla.
+        ctx.fillStyle = 'rgba(255,98,104,' + (0.35 + progress * 0.55) + ')';
+        ctx.beginPath(); ctx.arc(tx / td * (r * 0.72), ty / td * (r * 0.72), 2 + progress * 2.5, 0, Math.PI * 2); ctx.fill();
+        // Marca compacta donde caerá el tiro; es visible, pero no tapa enemigos.
+        const mark = 5 + progress * 2;
+        ctx.strokeStyle = 'rgba(255,108,116,' + (0.58 + progress * 0.3) + ')';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.moveTo(tx - mark, ty); ctx.lineTo(tx + mark, ty); ctx.moveTo(tx, ty - mark); ctx.lineTo(tx, ty + mark); ctx.stroke();
       }
       ctx.restore();
     }

@@ -10,6 +10,8 @@
         overflow: hidden; background: #000;
         user-select: none; -webkit-user-select: none;
         font-family: 'Impact', 'Arial Black', sans-serif;
+        /* FIX: evita rebote/scroll fantasma en trackpads y móviles */
+        overscroll-behavior: none; touch-action: none;
     }
     canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
 
@@ -20,6 +22,8 @@
         backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
         color: #fff; text-align: center; cursor: pointer;
         transition: opacity 1s ease, visibility 1s;
+        /* FIX: transición más suave */
+        will-change: opacity;
     }
     #overlay.hide { opacity: 0; visibility: hidden; pointer-events: none; }
     #overlay .tag {
@@ -29,9 +33,10 @@
     #overlay h1 {
         margin: 0; max-width: 90vw; line-height: 1.05;
         font-size: clamp(32px, 7vw, 120px); letter-spacing: .04em; font-weight: 900;
-        background: linear-gradient(180deg, #fff4b8 0%, #f4ce61 24%, #75400b 49%, #d88b20 64%, #ffe69a 83%, #9c580e 100%);
+        /* v7: overlay title en cobre iridiscente para coherencia */
+        background: linear-gradient(180deg, #ffe0b8 0%, #f0a058 24%, #4a1408 49%, #c86830 64%, #ffd8a0 83%, #7a2810 100%);
         -webkit-background-clip: text; background-clip: text; color: transparent;
-        filter: drop-shadow(0 6px 18px rgba(255,140,65,.4));
+        filter: drop-shadow(0 6px 18px rgba(255,150,80,.45));
         animation: breathe 3s ease-in-out infinite;
     }
     #overlay .btn {
@@ -44,7 +49,7 @@
     @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.025); } }
     @keyframes pulse {
         0%,100% { opacity: .55; box-shadow: 0 0 0 rgba(255,60,30,0); }
-        50% { opacity: 1; box-shadow: 0 0 28px rgba(255,60,30,.55); }
+        50% { opacity: 1; box-shadow: 0 0 28px rgba(255,140,60,.55); }
     }
     #hint {
         position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 5;
@@ -52,6 +57,11 @@
         opacity: 0; transition: opacity 1.2s; pointer-events: none; text-transform: uppercase; white-space: nowrap;
     }
     #hint.show { opacity: 1; }
+
+    /* FIX: accesibilidad - usuarios con reducción de movimiento */
+    @media (prefers-reduced-motion: reduce) {
+        #overlay h1, #overlay .btn { animation: none; }
+    }
 </style>
 </head>
 <body>
@@ -78,6 +88,9 @@ const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
 const overlay = document.getElementById('overlay');
 const hint = document.getElementById('hint');
+
+/* FIX: accesibilidad - detecta reducción de movimiento del SO */
+const REDUCED_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const TAU = Math.PI * 2;
 const R = Math.random;
@@ -114,6 +127,7 @@ function sprite(stops, w = 128, h = 128) {
     return c;
 }
 
+/* v3: sprites independientes de W/H -> se crean UNA sola vez, no en cada resize */
 const spDust  = sprite([[0, 'rgba(138,103,78,.75)'], [.5, 'rgba(82,55,46,.35)'], [1, 'rgba(40,24,24,0)']]);
 const spSmoke = sprite([[0, 'rgba(18,13,18,.85)'], [.6, 'rgba(25,16,20,.35)'], [1, 'rgba(14,8,16,0)']]);
 const spGlow  = sprite([[0, 'rgba(255,243,210,1)'], [.25, 'rgba(255,162,65,.55)'], [1, 'rgba(235,64,16,0)']]);
@@ -121,6 +135,8 @@ const spMag   = sprite([[0, 'rgba(210,91,62,.65)'], [.3, 'rgba(126,30,48,.3)'], 
 const spCyan  = sprite([[0, 'rgba(150,235,255,.9)'], [.4, 'rgba(50,170,255,.3)'], [1, 'rgba(20,110,255,0)']]);
 const spBlack = sprite([[0, 'rgba(0,0,0,.92)'], [.6, 'rgba(0,0,0,.5)'], [1, 'rgba(0,0,0,0)']]);
 const spCloud = sprite([[0, 'rgba(53,17,42,.65)'], [.55, 'rgba(35,13,32,.3)'], [1, 'rgba(25,8,26,0)']]);
+/* v4: sprite de onda de choque - v7: tinte cobre/dorado con borde iridiscente */
+const spShock = sprite([[0, 'rgba(255,245,220,1)'], [.18, 'rgba(255,180,100,.85)'], [.55, 'rgba(220,100,40,.28)'], [1, 'rgba(80,20,5,0)']]);
 
 /* Ruido para la estática del TV y el grano de película */
 const noiseC = document.createElement('canvas'); noiseC.width = 96; noiseC.height = 72;
@@ -134,7 +150,8 @@ const grainC = document.createElement('canvas'); grainC.width = grainC.height = 
     for (let i = 0; i < im.data.length; i += 4) { const v = R() * 255; im.data[i] = im.data[i+1] = im.data[i+2] = v; im.data[i+3] = 255; }
     g.putImageData(im, 0, 0);
 })();
-let grainPat = null;
+/* v3: patrón de grano creado UNA sola vez (grainC es fijo) */
+const grainPat = ctx.createPattern(grainC, 'repeat');
 
 const bloomC = document.createElement('canvas');
 const bctx = bloomC.getContext('2d');
@@ -162,6 +179,8 @@ let startY, startY2, hitY, demoBase;
 let started = false, tStart = 0, t = 0, amb = 0, lastNow = 0;
 let zoom = 1, roll = 0, shx = 0, shy = 0, vpX = 0, vpY = 0;
 let tvDestroyed = false, flashA = 0, shakeAmp = 0, smokeAcc = 0;
+/* v4: flash de impacto (v7: ahora cobre) */
+let flashWarmA = 0, glitchT = 0;
 let events = [], endFired = false;
 let shards = [], sparks = [], dust = [], rings = [], embers = [], streaks = [], puffs = [], shooters = [];
 
@@ -169,7 +188,11 @@ let shards = [], sparks = [], dust = [], rings = [], embers = [], streaks = [], 
    CONSTRUCCIÓN DE ESCENA (se rehace al redimensionar)
    ===================================================================== */
 function resize() {
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    /* v3: cap adaptativo de dpr en pantallas muy grandes (menos carga GPU, mismo aspecto) */
+    const rawDpr = window.devicePixelRatio || 1;
+    const area = window.innerWidth * window.innerHeight;
+    const cap = area > 2.5e6 ? 1.5 : 2;
+    dpr = Math.min(rawDpr, cap);
     W = window.innerWidth; H = window.innerHeight;
     cv.width = Math.floor(W * dpr); cv.height = Math.floor(H * dpr);
     bloomC.width = Math.ceil(cv.width / 4); bloomC.height = Math.ceil(cv.height / 4);
@@ -296,7 +319,7 @@ function renderTitle(text, size, pal, seed) {
     g.lineWidth = 1;
     for (let i = 0; i < 10; i++) {
         const x = r() * w, y = r() * h, l = 10 + r() * 55;
-        g.strokeStyle = `rgba(255,238,182,${.03 + r() * .055})`;
+        g.strokeStyle = `rgba(255,225,190,${.03 + r() * .055})`;
         g.beginPath(); g.moveTo(x, y); g.lineTo(x + l * .7, y + l * .5); g.stroke();
     }
     for (let i = 0; i < 6; i++) {
@@ -311,9 +334,14 @@ function renderTitle(text, size, pal, seed) {
         g.lineWidth = .5;
         g.beginPath(); g.moveTo(x, y); g.lineTo(x + size * (.1 + r() * .65), y + .5); g.stroke();
     }
+    /* v7: motas metálicas - mezcla de cobre claro y destellos iridiscentes */
     for (let i = 0; i < 24; i++) {
         const x = r() * w, y = r() * h, s = .5 + r() * 1.4;
-        g.fillStyle = i % 3 ? 'rgba(255,245,210,.7)' : 'rgba(255,181,89,.6)';
+        const roll = i % 5;
+        if (roll === 0) g.fillStyle = 'rgba(240,255,255,.55)';       // destello cian
+        else if (roll === 1) g.fillStyle = 'rgba(255,150,240,.5)';    // destello magenta
+        else if (roll === 2) g.fillStyle = 'rgba(180,140,255,.5)';    // destello violeta
+        else g.fillStyle = i % 2 ? 'rgba(255,240,215,.7)' : 'rgba(255,190,110,.6)';
         g.fillRect(x, y, s, s);
     }
     g.globalCompositeOperation = 'source-over';
@@ -323,9 +351,16 @@ function renderTitle(text, size, pal, seed) {
     for (let i = 0; i < 20; i++) {
         const x = r() * w, y = r() * h, radius = size * (.008 + r() * .009);
         const light = gg.createRadialGradient(x, y, 0, x, y, radius);
-        light.addColorStop(0, 'rgba(255,255,242,.95)');
-        light.addColorStop(.22, 'rgba(255,210,126,.65)');
-        light.addColorStop(1, 'rgba(255,150,55,0)');
+        /* v7: reflejos especulares blanco-cálido con borde cobrizo; 1 de cada 4 iridiscente */
+        if (i % 4 === 0) {
+            light.addColorStop(0, 'rgba(255,250,255,.95)');
+            light.addColorStop(.22, 'rgba(180,240,255,.6)');
+            light.addColorStop(1, 'rgba(120,60,220,0)');
+        } else {
+            light.addColorStop(0, 'rgba(255,250,235,.95)');
+            light.addColorStop(.22, 'rgba(255,190,120,.65)');
+            light.addColorStop(1, 'rgba(200,80,30,0)');
+        }
         gg.fillStyle = light; gg.fillRect(x - radius, y - radius, radius * 2, radius * 2);
     }
     gg.globalCompositeOperation = 'destination-in'; gg.drawImage(c, 0, 0, w, h);
@@ -386,12 +421,13 @@ function build() {
         sp: lerp(1.5, 6, r()) * U, a: lerp(.12, .38, r()), s: nsp[(r() * nsp.length) | 0], rot: (r() - .5) * 1.4
     });
 
+    /* v7: cielo en tonos cálidos con un toque más cobrizo en la parte baja */
     skyG = ctx.createLinearGradient(0, 0, 0, hy);
-    [[0, '#05030c'], [.3, '#190b26'], [.6, '#3e132c'], [.85, '#791f29'], [1, '#bb4524']].forEach(s => skyG.addColorStop(s[0], s[1]));
+    [[0, '#05030c'], [.3, '#190b26'], [.6, '#3e132c'], [.85, '#7a1f24'], [1, '#c04a1c']].forEach(s => skyG.addColorStop(s[0], s[1]));
     groundG = ctx.createLinearGradient(0, hy, 0, H * 1.5);
     [[0, '#271712'], [.15, '#100d0d'], [1, '#030204']].forEach(s => groundG.addColorStop(s[0], s[1]));
     hazeG = ctx.createLinearGradient(0, hy - H * .17, 0, hy + 40 * U);
-    hazeG.addColorStop(0, 'rgba(185,57,35,0)'); hazeG.addColorStop(1, 'rgba(225,88,38,.65)');
+    hazeG.addColorStop(0, 'rgba(185,57,35,0)'); hazeG.addColorStop(1, 'rgba(235,110,40,.7)');
 
     // rocas del suelo
     rocks = [];
@@ -436,21 +472,51 @@ function build() {
             + (text.length - 1) * wanted * .004 + wanted * .14;
         return wanted * Math.min(1, maxWidth / (width + 2));
     };
+    /* v7: paleta cobre iridiscente - base cobre/bronce con destellos cian, magenta y violeta
+       en bandas finas, imitando la calcopirita/bornita de la foto */
     titles = {
         J: renderTitle('SINGULARITY', fitTitleSize('SINGULARITY', tsize, W * .76), {
-            stops: [[0, '#fff5bb'], [.14, '#ffe795'], [.30, '#e7b647'], [.46, '#9e590e'], [.50, '#6b3506'], [.58, '#be7b19'], [.76, '#f7ca62'], [.90, '#fff0ac'], [1, '#b77518']],
-            sideNear: [143, 84, 15], sideFar: [43, 21, 5], topNear: [255, 224, 127], topFar: [166, 105, 24]
+            stops: [
+                [0, '#ffe5c0'],       // highlight crema cálido
+                [.10, '#f4a860'],     // cobre claro
+                [.22, '#cc6a34'],     // cobre medio
+                [.30, '#ff5ac8'],     // banda iridiscente magenta
+                [.38, '#8a3818'],     // cobre oscuro
+                [.46, '#4a1408'],     // cobre profundo
+                [.50, '#1e060c'],     // casi negro con matiz violeta
+                [.56, '#4ae0ff'],     // banda iridiscente cian
+                [.64, '#d07038'],     // retorno al cobre
+                [.74, '#f0a860'],     // cobre claro
+                [.84, '#a058ff'],     // destello iridiscente violeta
+                [.92, '#ffd890'],     // highlight dorado
+                [1, '#6a2810']
+            ],
+            sideNear: [200, 110, 60], sideFar: [55, 22, 8],
+            topNear: [255, 230, 200], topFar: [185, 100, 55]
         }, 11),
         D: renderTitle('DEAD', fitTitleSize('DEAD', tsize * 1.12, W * .48), {
-            stops: [[0, '#fff8c7'], [.16, '#ffe69a'], [.31, '#e9b64e'], [.47, '#99520b'], [.51, '#673206'], [.62, '#c78624'], [.78, '#f8ce70'], [.91, '#fff2b5'], [1, '#bb7b21']],
-            sideNear: [158, 92, 17], sideFar: [48, 23, 5], topNear: [255, 230, 143], topFar: [183, 115, 30]
+            stops: [
+                [0, '#ffedc8'],
+                [.12, '#f8b070'],
+                [.24, '#d47a40'],
+                [.32, '#ff6ad0'],     // magenta iridiscente
+                [.40, '#8a3818'],
+                [.48, '#4a1408'],
+                [.51, '#1c050a'],
+                [.58, '#5ae8ff'],     // cian iridiscente
+                [.66, '#d87840'],
+                [.76, '#f4b070'],
+                [.86, '#b068ff'],     // violeta iridiscente
+                [.94, '#ffd898'],
+                [1, '#6a2810']
+            ],
+            sideNear: [210, 120, 65], sideFar: [60, 25, 10],
+            topNear: [255, 235, 205], topFar: [195, 110, 60]
         }, 23)
     };
     startY  = -H * 0.45;
     startY2 = -H * 0.30;
     hitY    = baseY - tv.h * 1.08;
-
-    grainPat = ctx.createPattern(grainC, 'repeat');
 }
 
 /* =====================================================================
@@ -459,7 +525,8 @@ function build() {
 let ac = null, master, bus, noiseBuf, distCurve, pumpTimer = null, nextBar = 0, barIdx = 0, muted = false;
 
 function initAudio() {
-    ac = new (window.AudioContext || window.webkitAudioContext)();
+    /* FIX: latencyHint 'playback' reduce glitches en audio integrado/móvil */
+    ac = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'playback' });
     const len = ac.sampleRate * 3;
     noiseBuf = ac.createBuffer(1, len, ac.sampleRate);
     const d = noiseBuf.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
@@ -469,11 +536,11 @@ function initAudio() {
     comp.threshold.value = -14; comp.ratio.value = 6; comp.attack.value = .003; comp.release.value = .2;
     master.connect(comp); comp.connect(ac.destination);
 
-    // reverb sintética
-    const rl = ac.sampleRate * 2.2, ib = ac.createBuffer(2, rl, ac.sampleRate);
-    for (let ch = 0; ch < 2; ch++) { const dd = ib.getChannelData(ch); for (let i = 0; i < rl; i++) dd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / rl, 2.6); }
+    /* v4: reverb más grande (3.4s) con cola más aireada para darle escala de cine */
+    const rl = ac.sampleRate * 3.4, ib = ac.createBuffer(2, rl, ac.sampleRate);
+    for (let ch = 0; ch < 2; ch++) { const dd = ib.getChannelData(ch); for (let i = 0; i < rl; i++) dd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / rl, 3.2); }
     const conv = ac.createConvolver(); conv.buffer = ib;
-    const wet = ac.createGain(); wet.gain.value = .28;
+    const wet = ac.createGain(); wet.gain.value = .34; /* v4: .28 -> .34 */
     bus = ac.createGain(); bus.gain.value = 1;
     bus.connect(master); bus.connect(wet); wet.connect(conv); conv.connect(master);
 
@@ -505,6 +572,8 @@ function tone(time, o) {
 function boom(time, p) {
     tone(time, { f0: 120, f1: 30, gain: 1.0 * p, dur: 1.3 });
     tone(time, { type: 'triangle', f0: 200, f1: 55, gain: .5 * p, dur: .5 });
+    /* v4: sub-bass 28Hz con cola larga -> patada física perceptible en cualquier parlante con bajos */
+    tone(time, { f0: 28, f1: 22, gain: .55 * p, dur: 2.2, out: master });
     noiseBurst(time, { f0: 5000, f1: 150, gain: .9 * p, dur: .9, q: .7 });
     noiseBurst(time, { type: 'highpass', f0: 2500, gain: .5 * p, dur: .12 });
     noiseBurst(time, { f0: 600, f1: 80, gain: .8 * p, dur: 2.0 });
@@ -553,7 +622,12 @@ function scheduleBar(tb, idx) {
     if (idx % 4 === 0) crashD(tb);
 }
 
-function pump() { if (!ac) return; while (nextBar < ac.currentTime + .5) { scheduleBar(nextBar, barIdx++); nextBar += 1.6; } }
+/* FIX: el scheduler ahora protege contra catch-up masivo tras volver de background */
+function pump() {
+    if (!ac) return;
+    if (nextBar < ac.currentTime - 0.5) nextBar = ac.currentTime + 0.1;
+    while (nextBar < ac.currentTime + .5) { scheduleBar(nextBar, barIdx++); nextBar += 1.6; }
+}
 
 function scheduleAudio(t0) {
     const T = x => t0 + x;
@@ -618,7 +692,8 @@ function spawnSparks(x, y, n, power) {
         x, y, vx: (R() - .5) * 2 * power * U, vy: -(R() * power * .9 + power * .2) * U,
         life: 0, max: lerp(.4, 1.1, R()), g: 1800 * U
     });
-    if (sparks.length > 450) sparks.splice(0, sparks.length - 450);
+    /* v4: cap subido a 700 para que los impactos se sientan más vivos */
+    if (sparks.length > 700) sparks.splice(0, sparks.length - 700);
 }
 function spawnDust(x, y, n, spread, smokeKind) {
     for (let i = 0; i < n; i++) dust.push({
@@ -649,24 +724,27 @@ function ring(maxR, w) { rings.push({ x: cx, y: baseY + 8 * U, r: 10 * U, maxR, 
 function buildEvents() {
     events = [
         { t: T1, done: false, fn() {
-            tvDestroyed = true; spawnShards(); spawnSparks(cx, baseY - tv.h * .5, 110, 900);
-            flashA = .75; shakeAmp = Math.max(shakeAmp, 14 * U);
+            tvDestroyed = true; spawnShards(); spawnSparks(cx, baseY - tv.h * .5, 150, 950);
+            flashA = .75; flashWarmA = .55; glitchT = .18;
+            shakeAmp = Math.max(shakeAmp, 14 * U);
         } },
         { t: TG1, done: false, fn() {
             spawnDust(cx, baseY, 28, titles.J.tw * .9); ring(W * .6, 16 * U);
-            spawnSparks(cx, baseY, 100, 700);
-            flashA = 1; shakeAmp = Math.max(shakeAmp, 30 * U);
+            spawnSparks(cx, baseY, 140, 780);
+            flashA = 1; flashWarmA = .8; glitchT = .28;
+            shakeAmp = Math.max(shakeAmp, 30 * U);
         } },
         { t: T2, done: false, fn() {
             const yb = projY(baseY - titles.J.asc, SF_D), hw = titles.D.tw * .5 * SF_D;
             spawnDust(projX(cx, SF_D), yb, 34, titles.D.tw * SF_D);
             spawnDust(cx, baseY, 18, titles.J.tw);
             ring(W * .75, 20 * U);
-            spawnSparks(projX(cx, SF_D) - hw, yb, 70, 650);
-            spawnSparks(projX(cx, SF_D) + hw, yb, 70, 650);
+            spawnSparks(projX(cx, SF_D) - hw, yb, 95, 680);
+            spawnSparks(projX(cx, SF_D) + hw, yb, 95, 680);
             // Chispas sobre la unión real de las dos losas, sin un impacto nuevo.
-            for (let i = 0; i < 7; i++) spawnSparks(projX(cx, SF_D) + hw * (i / 3 - 1), yb, 12, 420);
-            flashA = .8; shakeAmp = Math.max(shakeAmp, 40 * U);
+            for (let i = 0; i < 7; i++) spawnSparks(projX(cx, SF_D) + hw * (i / 3 - 1), yb, 14, 440);
+            flashA = .8; flashWarmA = .95; glitchT = .32;
+            shakeAmp = Math.max(shakeAmp, 40 * U);
         } }
     ];
 }
@@ -674,16 +752,19 @@ function buildEvents() {
 function start() {
     if (ac) { try { ac.close(); } catch (e) {} }
     clearInterval(pumpTimer);
+    pumpTimer = null; /* FIX: evitar dobles timers si se reinicia */
     initAudio(); ac.resume();
     const lead = .25, t0a = ac.currentTime + lead;
     tStart = performance.now() / 1000 + lead;
     started = true;
     shards = []; sparks = []; dust = []; rings = []; puffs = []; shooters = []; endFired = false;
-    tvDestroyed = false; flashA = 0; shakeAmp = 0;
+    tvDestroyed = false; flashA = 0; flashWarmA = 0; glitchT = 0; shakeAmp = 0;
     buildEvents();
     scheduleAudio(t0a);
     nextBar = t0a + T2; barIdx = 0;
-    pumpTimer = setInterval(pump, 100); pump();
+    pump();
+    /* FIX: document.title dinámico durante la reproducción */
+    document.title = '▶ DEAD SINGULARITY — Trailer';
     overlay.classList.add('hide'); hint.classList.remove('show');
 }
 
@@ -692,6 +773,9 @@ function start() {
    ===================================================================== */
 function update(dt) {
     flashA *= Math.exp(-dt * 6.5);
+    /* v4: el flash cobre decae más lento que el blanco -> sensación de calor residual */
+    flashWarmA *= Math.exp(-dt * 3.8);
+    if (glitchT > 0) glitchT = Math.max(0, glitchT - dt);
     shakeAmp *= Math.exp(-dt * 5);
 
     for (const e of embers) {
@@ -763,6 +847,10 @@ function camera() {
     if (started) roll += .012 * kick(tt, TG1, 4) * Math.sin((tt - TG1) * 26) + .016 * kick(tt, T2, 4) * Math.sin((tt - T2) * 28);
     shx = shakeAmp * (Math.sin(amb * 83) + Math.sin(amb * 47 + 1)) * .5;
     shy = shakeAmp * (Math.sin(amb * 71 + 2) + Math.sin(amb * 53)) * .5;
+    /* v4: el glitch de impacto desplaza el canvas un par de frames */
+    if (glitchT > 0) { shx += (R() - .5) * 14 * U * glitchT * 4; shy += (R() - .5) * 10 * U * glitchT * 4; }
+    /* FIX: accesibilidad - reduce shake y roll si el SO pide menos movimiento */
+    if (REDUCED_MOTION) { shx *= .25; shy *= .25; roll *= .25; }
     return z;
 }
 
@@ -904,7 +992,8 @@ function drawCracks() {
         ctx.strokeStyle = '#000'; ctx.lineWidth = 3.2 * U; ctx.beginPath(); ctx.moveTo(0, 0);
         for (let i = 1; i <= n; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke();
         ctx.globalCompositeOperation = 'lighter';
-        ctx.strokeStyle = `rgba(237,${(127 + 25 * Math.sin(amb * 3)) | 0},65,${.4 + .15 * Math.sin(amb * 5)})`; ctx.lineWidth = 1.3 * U; ctx.stroke();
+        /* v7: el filo de la grieta brilla cobre/dorado */
+        ctx.strokeStyle = `rgba(255,${(140 + 40 * Math.sin(amb * 3)) | 0},${(60 + 40 * Math.sin(amb * 5)) | 0},${.42 + .15 * Math.sin(amb * 5)})`; ctx.lineWidth = 1.3 * U; ctx.stroke();
         ctx.globalCompositeOperation = 'source-over';
     }
     ctx.restore();
@@ -1024,23 +1113,25 @@ function titleSurface(tt, p) {
     const r = tt.reflectionCtx;
     r.save(); r.setTransform(1, 0, 0, 1, 0, 0);
     r.globalCompositeOperation = 'copy'; r.drawImage(goldEnv, 0, 0, w, h);
-    // Oro conductor: el reflejo se tiñe por el metal, conserva luces y sombras.
-    r.globalCompositeOperation = 'multiply'; r.fillStyle = '#ffd36b'; r.fillRect(0, 0, w, h);
+    /* v7: el reflejo del entorno se tiñe de cobre */
+    r.globalCompositeOperation = 'multiply'; r.fillStyle = '#ffb070'; r.fillRect(0, 0, w, h);
     r.globalCompositeOperation = 'source-over'; r.globalAlpha = .88;
     const view = (vpX / W - .5), tilt = (vpY / H + .15);
     const line = (.50 + view * .08 + tilt * .04) * h;
     const band = r.createLinearGradient(0, line - h * .55, w * .025, line + h * .55);
-    [[0,'#6a3205'],[.10,'#b9750d'],[.19,'#ffe396'],[.24,'#fff8de'],[.29,'#dba336'],[.42,'#96560b'],[.48,'#291102'],[.54,'#170a02'],[.60,'#ad6a0b'],[.73,'#f0bf59'],[.86,'#ffedb1'],[.92,'#b77c20'],[1,'#4b2405']].forEach(s=>band.addColorStop(...s));
+    /* v7: banda de reflexión cobre con destellos iridiscentes insertados */
+    [[0,'#3a1208'],[.08,'#8a4818'],[.18,'#f0b878'],[.24,'#fff0d8'],[.30,'#d48838'],[.38,'#ff5ac8'],[.44,'#7a3010'],[.50,'#2a0a02'],[.56,'#0c0301'],[.62,'#4ae0ff'],[.68,'#a85828'],[.76,'#e89858'],[.82,'#a058ff'],[.88,'#ffd8a8'],[.94,'#8a3818'],[1,'#3a1208']].forEach(s=>band.addColorStop(...s));
     r.fillStyle = band; r.fillRect(0, 0, w, h);
     r.globalAlpha = 1; r.globalCompositeOperation = 'screen';
     // Reflejo angosto de una fuente blanca; se desplaza con el punto de fuga.
     const x = (.46 + view * .48) * w;
     const key = r.createLinearGradient(x - w * .19, 0, x + w * .19, h * .25);
-    [[0,'rgba(255,240,171,0)'],[.35,'rgba(255,215,118,.10)'],[.46,'rgba(255,250,221,.82)'],[.50,'rgba(255,255,243,.98)'],[.54,'rgba(255,234,155,.70)'],[.70,'rgba(255,193,53,.09)'],[1,'rgba(255,215,96,0)']].forEach(s=>key.addColorStop(...s));
+    /* v7: reflejo especular cálido con toque cian */
+    [[0,'rgba(255,225,180,0)'],[.35,'rgba(255,190,120,.10)'],[.46,'rgba(255,240,220,.82)'],[.50,'rgba(255,250,240,.98)'],[.54,'rgba(255,220,180,.70)'],[.70,'rgba(255,150,80,.09)'],[1,'rgba(180,240,255,0)']].forEach(s=>key.addColorStop(...s));
     r.fillStyle = key; r.fillRect(0, 0, w, h);
     if (p >= 0 && p <= 1) {
         const sweepX = lerp(-.3, 1.3, p) * w, sweep = r.createLinearGradient(sweepX-w*.055,0,sweepX+w*.055,h*.2);
-        sweep.addColorStop(0,'rgba(255,250,215,0)');sweep.addColorStop(.5,'rgba(255,255,235,.72)');sweep.addColorStop(1,'rgba(255,250,215,0)');
+        sweep.addColorStop(0,'rgba(255,225,200,0)');sweep.addColorStop(.5,'rgba(255,245,225,.72)');sweep.addColorStop(1,'rgba(255,225,200,0)');
         r.fillStyle=sweep;r.fillRect(0,0,w,h);
     }
     r.globalCompositeOperation = 'destination-in'; r.drawImage(tt.faceMask, 0, 0); r.restore();
@@ -1051,10 +1142,10 @@ function titleSurface(tt, p) {
 function captureMetalEnvironment() {
     const g = goldEnvCtx;
     g.globalCompositeOperation = 'copy'; g.drawImage(cv, 0, 0, cv.width, cv.height * .64, 0, 0, 256, 128);
-    // Entorno de estudio para reflejos opacos: oscuro entre fuentes claras.
+    /* v7: entorno con tonos cobre/oscuros en vez de verde */
     g.globalCompositeOperation = 'source-over';
     const gradient = g.createLinearGradient(0, 0, 0, 128);
-    [[0,'rgba(255,223,139,.55)'],[.24,'rgba(62,30,5,.80)'],[.40,'rgba(8,4,2,.91)'],[.56,'rgba(180,115,24,.48)'],[.78,'rgba(255,218,117,.80)'],[1,'rgba(50,20,3,.85)']].forEach(s=>gradient.addColorStop(...s));
+    [[0,'rgba(255,200,150,.55)'],[.24,'rgba(70,30,10,.80)'],[.40,'rgba(14,5,2,.91)'],[.56,'rgba(200,120,60,.48)'],[.78,'rgba(255,200,150,.80)'],[1,'rgba(50,20,5,.85)']].forEach(s=>gradient.addColorStop(...s));
     g.fillStyle=gradient;g.fillRect(0,0,256,128);
 }
 
@@ -1069,7 +1160,8 @@ function reflectMetalDepth(tt) {
         g.globalCompositeOperation='source-in';
         const x=(.47+view*.65-f*.045)*tt.w;
         const gradient=g.createLinearGradient(x-tt.w*.31,0,x+tt.w*.31,tt.h*.22);
-        [[0,'#643006'],[.2,'#dc961b'],[.35,'#ffe690'],[.44,'#fff4c1'],[.50,'#d69826'],[.61,'#4a2104'],[.70,'#251002'],[.85,'#bd7610'],[1,'#f0bc46']].forEach(s=>gradient.addColorStop(...s));
+        /* v7: gradiente lateral cobre con destello iridiscente en el borde */
+        [[0,'#3a1208'],[.15,'#8a4818'],[.30,'#e0a068'],[.40,'#fff0d0'],[.46,'#4ae0ff'],[.52,'#d48838'],[.60,'#ff5ac8'],[.68,'#3a1208'],[.78,'#1a0602'],[.88,'#a058ff'],[1,'#d08848']].forEach(s=>gradient.addColorStop(...s));
         g.fillStyle=gradient;g.fillRect(0,0,tt.w,tt.h);g.globalCompositeOperation='source-over';
     }
 }
@@ -1123,8 +1215,9 @@ function slab(tt, o) {
     ctx.translate(o.px, o.py); ctx.rotate(o.rot); ctx.scale(o.sx, o.sy);
     const dx = -(tt.bx + tt.tw / 2), dy = -tt.by;
     if (o.aber > .4) {
-        ctx.shadowColor = 'rgba(255,173,84,.8)'; ctx.shadowOffsetX = -o.aber; ctx.drawImage(surf, dx, dy, tt.w, tt.h);
-        ctx.shadowColor = 'rgba(207,222,236,.8)'; ctx.shadowOffsetX = o.aber;
+        /* v7: aber cromático cobre/cian (como el borde iridiscente del mineral) */
+        ctx.shadowColor = 'rgba(255,180,100,.9)'; ctx.shadowOffsetX = -o.aber; ctx.drawImage(surf, dx, dy, tt.w, tt.h);
+        ctx.shadowColor = 'rgba(120,220,255,.85)'; ctx.shadowOffsetX = o.aber;
     } else if (o.glowBlur > 0) { ctx.shadowColor = o.glowColor; ctx.shadowBlur = o.glowBlur; }
     ctx.drawImage(surf, dx, dy, tt.w, tt.h);
     ctx.shadowBlur = 0; ctx.shadowOffsetX = 0;
@@ -1158,15 +1251,18 @@ function drawTitles() {
         if (tt < T1) {
             const u = clamp((tt - T_SHOW1) / (T1 - T_SHOW1));
             py = lerp(startY, hitY, Math.pow(u, 2.3)); m = 1 + 1.5 * Math.pow(1 - u, 1.6); rot = (1 - u) * .12; a = clamp((tt - T_SHOW1) / .3);
-            if (u > .25) for (let k = 1; k <= 4; k++) {
-                const uu = u - .014 * k; if (uu <= 0) continue;
-                ghosts.push({ py: lerp(startY, hitY, Math.pow(uu, 2.3)), m: 1 + 1.5 * Math.pow(1 - uu, 1.6), rot: (1 - uu) * .12, a: .13 * (1 - k / 5) * a });
+            /* v4: motion blur más denso durante la caída (7 ghosts, alpha más alto) */
+            if (u > .18) for (let k = 1; k <= 7; k++) {
+                const uu = u - .011 * k; if (uu <= 0) continue;
+                ghosts.push({ py: lerp(startY, hitY, Math.pow(uu, 2.3)), m: 1 + 1.5 * Math.pow(1 - uu, 1.6), rot: (1 - uu) * .12, a: .18 * (1 - k / 8) * a });
             }
         } else if (tt < TG1) { const v = (tt - T1) / (TG1 - T1); py = lerp(hitY, baseY, v * v); }
         slab(J, {
             px: cx, py, sF: 1, sB: SB_J, m, rot, sx: sxJ, sy: syJ, alpha: a, ghosts,
-            glowColor: 'rgba(240,191,130,.65)', glowBlur: tt > TG1 ? (4 + 4 * Math.sin(amb * 2.4)) * U * clamp((tt - TG1) / .8) : 0,
-            aber: tt >= TG1 ? 7 * U * kick(tt, TG1, 5) : 0,
+            /* v7: glow cobre */
+            glowColor: 'rgba(255,170,100,.75)', glowBlur: tt > TG1 ? (4 + 4 * Math.sin(amb * 2.4)) * U * clamp((tt - TG1) / .8) : 0,
+            /* v4: aber cromático más visible al impactar */
+            aber: tt >= TG1 ? 9 * U * kick(tt, TG1, 5) : 0,
             sweep: tt > T2 + 1.45 ? ((tt - T2 - 1.45) % 4.5) / 1.1 : -1
         });
     }
@@ -1178,16 +1274,18 @@ function drawTitles() {
         if (tt < T2) {
             const u = clamp((tt - T_SHOW2) / (T2 - T_SHOW2));
             py = lerp(startY2, yt, Math.pow(u, 2.1)); m = 1 + 1.3 * Math.pow(1 - u, 1.6); rot = -(1 - u) * .1; a = clamp((tt - T_SHOW2) / .25);
-            if (u > .25) for (let k = 1; k <= 4; k++) {
-                const uu = u - .018 * k; if (uu <= 0) continue;
-                ghosts.push({ py: lerp(startY2, yt, Math.pow(uu, 2.1)), m: 1 + 1.3 * Math.pow(1 - uu, 1.6), rot: -(1 - uu) * .1, a: .13 * (1 - k / 5) * a });
+            /* v4: motion blur más denso durante la caída de DEMO */
+            if (u > .18) for (let k = 1; k <= 7; k++) {
+                const uu = u - .014 * k; if (uu <= 0) continue;
+                ghosts.push({ py: lerp(startY2, yt, Math.pow(uu, 2.1)), m: 1 + 1.3 * Math.pow(1 - uu, 1.6), rot: -(1 - uu) * .1, a: .18 * (1 - k / 8) * a });
             }
         }
         const sd = d2 > 0 ? Math.exp(-d2 * 6) * Math.cos(d2 * 30) : 0;
         slab(D, {
             px: cx, py, sF: SF_D, sB: SB_D, m, rot, sx: 1 + .08 * sd, sy: 1 - .16 * sd, alpha: a, ghosts,
-            glowColor: 'rgba(255,192,105,.6)', glowBlur: tt > T2 ? (10 + 8 * Math.sin(amb * 3)) * U * clamp((tt - T2) / .6) : 0,
-            aber: tt >= T2 ? 9 * U * kick(tt, T2, 4.5) : 0,
+            glowColor: 'rgba(255,180,110,.7)', glowBlur: tt > T2 ? (10 + 8 * Math.sin(amb * 3)) * U * clamp((tt - T2) / .6) : 0,
+            /* v4: aber más notorio */
+            aber: tt >= T2 ? 12 * U * kick(tt, T2, 4.5) : 0,
             sweep: tt > T2 + 1.2 ? ((tt - T2 - 1.2) % 4.5) / 1.1 : -1
         });
     }
@@ -1219,14 +1317,15 @@ function drawText() {
     }
     // eslogan y cierre
     ctx.font = `700 ${19 * U}px 'Arial Narrow', Arial, sans-serif`;
-    ctx.shadowColor = 'rgba(150,80,255,.85)'; ctx.shadowBlur = 12 * U;
+    /* v7: sombra del texto ahora cobre */
+    ctx.shadowColor = 'rgba(255,150,80,.9)'; ctx.shadowBlur = 12 * U;
     const y = baseY + 48 * U;
     if (t > 6.0 && t < 9.7) {
-        ctx.fillStyle = 'rgba(255,238,225,.95)';
+        ctx.fillStyle = 'rgba(255,240,225,.95)';
         const fade = t > 9.0 ? clamp((9.7 - t) / .7) : 1;
         drawSpaced('SOBREVIVE.   RESISTE.   REPITE.', W / 2, y, 8 * U, 6.0, fade);
     }
-    if (t > 9.7) { ctx.fillStyle = 'rgba(120,225,255,.95)'; ctx.shadowColor = 'rgba(60,200,255,.8)'; drawSpaced('PRÓXIMAMENTE', W / 2, y, 14 * U, 9.7, 1); }
+    if (t > 9.7) { ctx.fillStyle = 'rgba(255,200,150,.95)'; ctx.shadowColor = 'rgba(255,140,70,.85)'; drawSpaced('PRÓXIMAMENTE', W / 2, y, 14 * U, 9.7, 1); }
     ctx.shadowBlur = 0;
     if (t > 12 && !hint.classList.contains('show')) hint.classList.add('show');
 }
@@ -1277,13 +1376,17 @@ function draw() {
 
         ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
         for (const s of sparks) {
-            const k = 1 - s.life / s.max; ctx.strokeStyle = `rgba(255,${(130 + 115 * k) | 0},${(35 + 180 * k * k) | 0},${k})`; ctx.lineWidth = (1 + 1.6 * k) * U;
-            ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x - s.vx * .035, s.y - s.vy * .035); ctx.stroke();
+            const k = 1 - s.life / s.max;
+            /* v7: chispas cobre/dorado */
+            ctx.strokeStyle = `rgba(255,${(180 + 60 * k) | 0},${(80 + 100 * k) | 0},${k})`; ctx.lineWidth = (1 + 1.6 * k) * U;
+            /* v4: estela más larga (.035 -> .06) */
+            ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x - s.vx * .06, s.y - s.vy * .06); ctx.stroke();
         }
         for (const r of rings) {
             const k = 1 - r.life / r.max;
-            ctx.strokeStyle = `rgba(235,160,86,${.6 * k})`; ctx.lineWidth = r.w * k + 1; ctx.beginPath(); ctx.ellipse(r.x, r.y, r.r, r.r * .22, 0, 0, TAU); ctx.stroke();
-            ctx.strokeStyle = `rgba(255,255,255,${.5 * k})`; ctx.lineWidth = 2 * U; ctx.beginPath(); ctx.ellipse(r.x, r.y, r.r * .96, r.r * .21, 0, 0, TAU); ctx.stroke();
+            /* v7: ondas de choque en cobre */
+            ctx.strokeStyle = `rgba(255,170,90,${.6 * k})`; ctx.lineWidth = r.w * k + 1; ctx.beginPath(); ctx.ellipse(r.x, r.y, r.r, r.r * .22, 0, 0, TAU); ctx.stroke();
+            ctx.strokeStyle = `rgba(255,240,225,${.5 * k})`; ctx.lineWidth = 2 * U; ctx.beginPath(); ctx.ellipse(r.x, r.y, r.r * .96, r.r * .21, 0, 0, TAU); ctx.stroke();
         }
         ctx.globalCompositeOperation = 'source-over';
     });
@@ -1311,7 +1414,21 @@ function draw() {
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .13 + flashA * .2;
     ctx.drawImage(bloomC, 0, 0, cv.width, cv.height); ctx.restore();
 
-    if (flashA > .01) { ctx.fillStyle = `rgba(255,241,215,${clamp(flashA)})`; ctx.fillRect(0, 0, W, H); }
+    /* v4/v7: flash cobre superpuesto -> el impacto "carga" un instante más */
+    if (flashWarmA > .01) {
+        const fw = ctx.createRadialGradient(cx, baseY - tv.h * .5, 0, cx, baseY - tv.h * .5, Math.max(W, H) * .7);
+        fw.addColorStop(0, `rgba(255,200,130,${clamp(flashWarmA) * .85})`);
+        fw.addColorStop(.5, `rgba(220,100,50,${clamp(flashWarmA) * .35})`);
+        fw.addColorStop(1, 'rgba(60,15,5,0)');
+        ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = fw; ctx.fillRect(0, 0, W, H); ctx.restore();
+        /* onda de choque cobre expandiéndose desde el punto de impacto */
+        const shR = Math.max(W, H) * (1 - flashWarmA) * .55;
+        ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = clamp(flashWarmA) * .35;
+        ctx.drawImage(spShock, cx - shR, baseY - tv.h * .5 - shR, shR * 2, shR * 2);
+        ctx.restore();
+    }
+
+    if (flashA > .01) { ctx.fillStyle = `rgba(255,235,205,${clamp(flashA)})`; ctx.fillRect(0, 0, W, H); }
 
     const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.max(W, H) * .75);
     vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(0,0,0,${.72 + .1 * Math.sin(amb * 1.3)})`);
@@ -1342,6 +1459,8 @@ function frame(nowMs) {
     t = started ? now - tStart : 0;
     if (started) for (const e of events) if (!e.done && t >= e.t) { e.done = true; e.fn(); }
     if (started && !endFired && t > 14) { endFired = true; window.dispatchEvent(new CustomEvent('trailer:end')); }
+    /* FIX: el scheduler de audio corre desde el RAF (menos throttling que setInterval) */
+    if (started) pump();
     update(dt); draw();
 }
 
@@ -1359,6 +1478,29 @@ window.addEventListener('keydown', e => {
     else if (k === 'f') { if (!document.fullscreenElement) document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
 });
 window.addEventListener('resize', resize);
+
+/* FIX: bloquea el menú contextual en el canvas (clic derecho en plena cinemática) */
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
+/* FIX: si el navegador suspende el AudioContext (política de autoplay), reanudar al primer gesto */
+window.addEventListener('pointerdown', () => { if (ac && ac.state === 'suspended' && started) ac.resume(); }, { passive: true });
+window.addEventListener('keydown', () => { if (ac && ac.state === 'suspended' && started) ac.resume(); }, { passive: true });
+
+/* FIX: pausar el audio y reanclar el scheduler al volver de segundo plano.
+   Evita que el riff se atropelle o se corte al minimizar/cambiar de pestaña. */
+window.addEventListener('visibilitychange', () => {
+    if (!ac) return;
+    if (document.hidden) {
+        ac.suspend();
+    } else {
+        ac.resume();
+        /* Reancla el scheduler al tiempo real: descarta barras atrasadas */
+        nextBar = ac.currentTime + 0.1;
+        /* Evita un salto raro de dt en el primer frame al volver */
+        lastNow = performance.now() / 1000;
+        pump();
+    }
+});
 
 resize();
 requestAnimationFrame(frame);

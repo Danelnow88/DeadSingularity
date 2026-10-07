@@ -61,5 +61,11 @@
     shopTabs: document.getElementById('shopTabs'),
     weaponIndicator: document.getElementById('weaponIndicator'),
     consumableIndicator: document.getElementById('consumableIndicator'),
+    shopInspector: document.getElementById('shopInspector'),
+    shopInspectorIcon: document.getElementById('shopInspectorIcon'),
+    shopInspectorKind: document.getElementById('shopInspectorKind'),
+    shopInspectorName: document.getElementById('shopInspectorName'),
+    shopInspectorDesc: document.getElementById('shopInspectorDesc'),
+    shopInspectorPrice: document.getElementById('shopInspectorPrice'),
   };
 })();

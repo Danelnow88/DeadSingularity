@@ -97,6 +97,34 @@ async function fixture(wave, hp = 5000, progression = 'legacy', traversal = fals
   await send('Runtime.enable'); await send('Page.enable'); await send('Network.enable');
   await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
   await navigate();
+  if(process.argv.includes('--shop-remaster')) {
+    const results=[];
+    for(const [width,height,mobile] of [[1600,900,false],[915,412,true]]) {
+      await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:mobile?2:1,mobile});
+      await send('Emulation.setTouchEmulationEnabled',{enabled:mobile,maxTouchPoints:mobile?5:1});
+      await navigate(mobile?'?mobile=1&fresh=1':'?fresh=1');
+      assert(await fixture(1,5000,'full-roster')); await evaluate('NV.alpha.resume()');
+      await until('!!NV.getBoss()'); await evaluate('NV.getBoss().hp=0'); await until('NV.getState()==="shop"');
+      const info=await evaluate(`(() => {
+        const cards=[...document.querySelectorAll('#shop .shop-section')].map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,w:r.width,h:r.height};});
+        const offer=document.querySelector('#shop .offer:not(.disabled)'); offer.focus();
+        const panel=document.getElementById('shopInspector'),r=panel.getBoundingClientRect();
+        const grid=document.querySelector('#shop .shop-grid');
+        return {cards, detail:{x:r.x,y:r.y,right:r.right,bottom:r.bottom,w:r.width,h:r.height,name:document.getElementById('shopInspectorName').textContent,expected:offer.querySelector('.offer-name').textContent}, scroll:document.documentElement.scrollWidth, gridScroll:{width:grid.scrollWidth,client:grid.clientWidth,overflowX:getComputedStyle(grid).overflowX}};
+      })()`);
+      assert.equal(info.cards.length,3,'tres tarjetas de tienda');
+      const visibleCards=info.cards.filter(card=>card.w>0&&card.h>0);
+      assert.equal(visibleCards.length,3,'las tres tarjetas deben conservarse visibles '+JSON.stringify(info.cards));
+      assert.equal(info.detail.name,info.detail.expected,'el foco actualiza el detalle');
+      assert(info.detail.x>=-1&&info.detail.right<=width+1&&info.detail.y>=0&&info.detail.bottom<=height+1,'detalle dentro del viewport '+JSON.stringify(info.detail));
+      assert(info.scroll<=width+1,'sin desborde horizontal '+JSON.stringify(info));
+      if(mobile) assert.equal(info.gridScroll.overflowX,'hidden','sin barra horizontal interna '+JSON.stringify(info.gridScroll));
+      await shot('shop-'+width+'-'+height); results.push({width,height,mobile,...info});
+    }
+    assert.equal(errors.length,0,JSON.stringify(errors));
+    fs.writeFileSync(path.join(OUT,'report.json'),JSON.stringify({pass:true,source:BASE,results,errors},null,2));
+    ok('tienda: tres paneles, detalle contextual y adaptación móvil',results); return;
+  }
   if(process.argv.includes('--mobile-polish')) {
     const results=[];
     for(const [width,height] of [[640,360],[844,390],[915,412],[1024,600],[360,800],[412,915]]){
@@ -142,6 +170,28 @@ async function fixture(wave, hp = 5000, progression = 'legacy', traversal = fals
     }
     assert.equal(errors.length,0,JSON.stringify(errors));fs.writeFileSync(path.join(OUT,'report.json'),JSON.stringify({pass:true,results,errors},null,2));ok('mobile: lobby tabs/settings/shop/controls on six viewports');return;
   }
+  if(process.argv.includes('--orientation-gate')) {
+    // Samsung S20 FE CSS viewport: vertical first, then its gameplay landscape.
+    await send('Emulation.setDeviceMetricsOverride',{width:360,height:800,deviceScaleFactor:3,mobile:true});
+    await send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
+    await navigate('?mobile=1&fresh=1');
+    await until('document.documentElement.classList.contains("nv-portrait")');
+    const portrait=await evaluate(`(()=>{const q=s=>{const e=document.querySelector(s),r=e.getBoundingClientRect(),c=getComputedStyle(e);return {display:c.display,visibility:c.visibility,w:r.width,h:r.height,z:c.zIndex};};return {overlay:q('#rotateOverlay'),canvas:q('#game'),state:NV.getState()};})()`);
+    assert.notEqual(portrait.overlay.display,'none','overlay vertical visible');
+    assert.equal(portrait.canvas.visibility,'hidden','canvas vertical oculto');
+    await shot('s20fe-portrait-rotate');
+    await send('Emulation.setDeviceMetricsOverride',{width:800,height:360,deviceScaleFactor:3,mobile:true});
+    await until('document.documentElement.classList.contains("nv-landscape")');
+    const landscape=await evaluate(`(()=>{const q=s=>{const e=document.querySelector(s),r=e.getBoundingClientRect(),c=getComputedStyle(e);return {display:c.display,visibility:c.visibility,right:r.right,bottom:r.bottom,w:r.width,h:r.height};};return {overlay:q('#rotateOverlay'),canvas:q('#game'),toggle:q('#systemMenuToggle'),scroll:document.documentElement.scrollWidth};})()`);
+    assert.equal(landscape.overlay.display,'none','overlay horizontal oculto');
+    assert.notEqual(landscape.canvas.visibility,'hidden','canvas horizontal visible');
+    assert(landscape.canvas.right<=801&&landscape.canvas.bottom<=361,'canvas dentro de S20 FE '+JSON.stringify(landscape));
+    assert(landscape.scroll<=801,'sin overflow horizontal '+JSON.stringify(landscape));
+    await shot('s20fe-landscape-ready');
+    assert.equal(errors.length,0,JSON.stringify(errors));
+    fs.writeFileSync(path.join(OUT,'report.json'),JSON.stringify({pass:true,portrait,landscape,errors},null,2));
+    ok('móvil: gate vertical y paisaje S20 FE', {portrait,landscape});return;
+  }
   if(process.argv.includes('--system-menu')) {
     const results=[];
     for(const [width,height,mobile] of [[1280,800,false],[915,412,true],[360,800,true]]) {
@@ -156,9 +206,11 @@ async function fixture(wave, hp = 5000, progression = 'legacy', traversal = fals
       assert(before.vitals.w>0&&before.vitals.x>=0&&before.vitals.right<=width,'vitals '+JSON.stringify(before));
       assert(before.toggle.w>=42&&before.toggle.x>=0&&before.toggle.right<=width,'toggle '+JSON.stringify(before));
       await evaluate('document.getElementById("systemMenuToggle").click()');
-      const panel=await evaluate(`(()=>{const r=document.getElementById('systemMenu').getBoundingClientRect();return {hidden:document.getElementById('systemMenu').hidden,x:r.x,y:r.y,right:r.right,bottom:r.bottom,w:r.width,h:r.height,wave:document.getElementById('systemWave').textContent,sourceWave:document.getElementById('wave').textContent,hp:document.getElementById('systemHpText').textContent,sourceHp:document.getElementById('hpText').textContent}})()`);
+      const panel=await evaluate(`(()=>{const r=document.getElementById('systemMenu').getBoundingClientRect(),mobileHud=getComputedStyle(document.getElementById('mobileHud'));return {hidden:document.getElementById('systemMenu').hidden,x:r.x,y:r.y,right:r.right,bottom:r.bottom,w:r.width,h:r.height,wave:document.getElementById('systemWave').textContent,sourceWave:document.getElementById('wave').textContent,hp:document.getElementById('systemHpText').textContent,sourceHp:document.getElementById('hpText').textContent,mobileHudVisibility:mobileHud.visibility}})()`);
       assert.equal(panel.hidden,false);assert(panel.x>=0&&panel.y>=0&&panel.right<=width+1&&panel.bottom<=height+1,'panel '+JSON.stringify(panel));
       assert.equal(panel.wave,panel.sourceWave);assert.equal(panel.hp,panel.sourceHp);
+      if(mobile)assert.equal(panel.mobileHudVisibility,'hidden','controles detrás del menú '+JSON.stringify(panel));
+      if(mobile)await shot('system-open-'+width+'-'+height);
       await evaluate('document.getElementById("systemMenuClose").click()');
       assert.equal(await evaluate('document.getElementById("systemMenu").hidden'),true);
       await shot('system-'+width+'-'+height);results.push({width,height,mobile,before,panel});

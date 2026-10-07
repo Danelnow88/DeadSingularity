@@ -6,12 +6,12 @@ html,body,.shell { width:100%; height:100%; margin:0; overflow:hidden; }
 .shell > .game-box { position:fixed; inset:0; margin:0 !important; width:100%; height:100%; min-width:0; min-height:0; border:0; border-radius:0; aspect-ratio:auto; }
 
 .system-vitals,.system-menu-toggle,.system-menu { position:fixed; z-index:32; font-family:system-ui,sans-serif; }
-.system-vitals { top:max(12px,env(safe-area-inset-top,0px)); left:max(12px,env(safe-area-inset-left,0px)); display:none; align-items:center; gap:7px; padding:6px 8px; border:1px solid rgba(124,248,255,.35); border-radius:10px; color:#dffcff; background:rgba(3,9,22,.82); box-shadow:0 6px 20px rgba(0,0,0,.28); pointer-events:none; }
+.system-vitals { top:max(12px,env(safe-area-inset-top,0px)); left:max(12px,env(safe-area-inset-left,0px)); display:none; align-items:center; gap:7px; padding:6px 8px; border:1px solid rgba(124,248,255,.32); border-radius:11px; color:#dffcff; background:rgba(3,9,22,.78); box-shadow:0 6px 20px rgba(0,0,0,.28); pointer-events:none; }
 .system-vitals-label { font:800 9px/1 system-ui,sans-serif; letter-spacing:.12em; color:#8fa9be; }
-.system-vitals-bar { position:relative; width:112px; height:16px; overflow:hidden; border:1px solid rgba(124,248,255,.5); border-radius:999px; background:rgba(255,255,255,.09); }
-.system-vitals-bar i { position:absolute; inset:0 auto 0 0; width:100%; background:linear-gradient(90deg,#56e2e8,#8ff8ff); transition:width .2s ease,background .18s ease; }
+.system-vitals-bar { position:relative; width:clamp(168px,15vw,238px); height:30px; overflow:hidden; border:3px solid #d3ffff; border-radius:10px; background:#081322; box-shadow:0 0 0 2px rgba(2,5,13,.92),inset 0 0 0 1px rgba(124,248,255,.18); }
+.system-vitals-bar i { position:absolute; inset:0 auto 0 0; width:100%; background:linear-gradient(90deg,#29c8d7,#7cf8ff); transition:width .2s ease,background .18s ease; }
 .system-vitals-bar i.is-critical { background:linear-gradient(90deg,#ff1935,#ff6675); }
-.system-vitals-bar span { position:absolute; inset:0; display:grid; place-items:center; font:800 9px/1 system-ui,sans-serif; text-shadow:0 1px 2px #000; }
+.system-vitals-bar span { position:absolute; inset:0; display:grid; place-items:center; font:900 14px/1 system-ui,sans-serif; color:#fff; letter-spacing:.02em; text-shadow:0 1px 3px #000,1px 0 2px #000,-1px 0 2px #000; }
 .system-menu-toggle { top:max(12px,env(safe-area-inset-top,0px)); right:max(12px,env(safe-area-inset-right,0px)); display:none; width:42px; height:42px; border:1px solid rgba(124,248,255,.52); border-radius:12px; color:#dffcff; background:rgba(3,9,22,.86); box-shadow:0 6px 22px rgba(0,0,0,.32),inset 0 1px rgba(255,255,255,.1); cursor:pointer; font:700 20px/1 system-ui,sans-serif; }
 .system-menu-toggle:hover,.system-menu-toggle:focus-visible { border-color:#7cf8ff; background:rgba(16,50,65,.94); outline:none; }
 html[data-game-state="playing"] .system-vitals,html[data-game-state="playing"] .system-menu-toggle,html[data-game-state="wave_end"] .system-vitals,html[data-game-state="wave_end"] .system-menu-toggle { display:flex; }
@@ -38,10 +38,12 @@ html[data-game-state="playing"] .system-menu-toggle,html[data-game-state="wave_e
 .system-experimental .rhythm-widget { position:static !important; display:flex; width:max-content; max-width:100%; transform:none !important; }
 @media (pointer:coarse) {
   .system-vitals { top:max(7px,env(safe-area-inset-top,0px)); left:max(7px,env(safe-area-inset-left,0px)); padding:5px 6px; }
-  .system-vitals-bar { width:96px; height:17px; }
+  .system-vitals-bar { width:148px; height:27px; }
   .system-menu-toggle { top:max(7px,env(safe-area-inset-top,0px)); right:max(7px,env(safe-area-inset-right,0px)); width:44px; height:44px; }
   .system-menu { top:max(6px,env(safe-area-inset-top,0px)); right:max(6px,env(safe-area-inset-right,0px)); width:min(380px,calc(100vw - 12px)); padding:12px; }
   .system-actions button { min-height:46px; font-size:11px; }
+  html.nv-system-menu-open .mobile-hud { visibility:hidden !important; pointer-events:none !important; }
+  html.nv-system-menu-open .system-vitals,html.nv-system-menu-open .system-menu-toggle { visibility:hidden; }
 }
-@media (max-width:420px) { .system-vitals-label { display:none; } .system-vitals-bar { width:88px; } .system-readout { gap:4px; } .system-readout div { padding:7px 5px; } }
+@media (max-width:420px) { .system-vitals-label { display:none; } .system-vitals-bar { width:136px; } .system-readout { gap:4px; } .system-readout div { padding:7px 5px; } }
 @media (prefers-reduced-motion:reduce) { .system-vitals-bar i { transition:none; } }

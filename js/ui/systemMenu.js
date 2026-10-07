@@ -39,6 +39,7 @@
   }
   function setOpen(open) {
     menu.hidden = !open;
+    d.documentElement.classList.toggle('nv-system-menu-open', open);
     toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     if (open) { sync(); const target = menu.querySelector('button'); if (target) target.focus(); }
     else toggle.focus();

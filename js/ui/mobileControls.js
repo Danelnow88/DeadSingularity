@@ -423,6 +423,24 @@
     }
     syncLobbyFullscreenButton();
   }
+  // Rotar no siempre cuenta como gesto de usuario; probamos una sola vez al
+  // entrar en paisaje y el navegador decide si permite fullscreen. Si no, el
+  // juego sigue correctamente en landscape sin mostrar un error ni un popup.
+  let landscapeFullscreenAttempted = false;
+  function tryLandscapeFullscreen() {
+    const root = d.documentElement;
+    const landscape = !!(root && root.classList && root.classList.contains('nv-landscape'));
+    const playing = !!(root && root.getAttribute && (root.getAttribute('data-game-state') === 'playing' || root.getAttribute('data-game-state') === 'wave_end'));
+    const fullscreen = !!(viewport && viewport.readFullscreen && viewport.readFullscreen());
+    if (!landscape) { landscapeFullscreenAttempted = false; return; }
+    if (landscapeFullscreenAttempted || !playing || fullscreen || !viewport || typeof viewport.requestFullscreen !== 'function') return;
+    landscapeFullscreenAttempted = true;
+    viewport.requestFullscreen().then((ok) => {
+      if (ok && typeof viewport.lockLandscape === 'function') viewport.lockLandscape();
+      if (typeof viewport.refresh === 'function') viewport.refresh();
+      updateFullscreenUI();
+    });
+  }
   if (fullscreenBtn) {
     bind(fullscreenBtn, 'pointerdown', (e) => {
       // NO preventDefault: el click sintético debe llegar intacto.
@@ -433,14 +451,15 @@
   if (w && typeof w.addEventListener === 'function') {
     w.addEventListener('fullscreenchange', updateFullscreenUI);
     w.addEventListener('webkitfullscreenchange', updateFullscreenUI);
-    w.addEventListener('orientationchange', updateFullscreenUI);
-    w.addEventListener('resize', updateFullscreenUI);
+    w.addEventListener('orientationchange', () => { updateFullscreenUI(); tryLandscapeFullscreen(); });
+    w.addEventListener('resize', () => { updateFullscreenUI(); tryLandscapeFullscreen(); });
   }
   if (d && typeof d.addEventListener === 'function') {
     d.addEventListener('fullscreenchange', updateFullscreenUI);
     d.addEventListener('webkitfullscreenchange', updateFullscreenUI);
   }
   updateFullscreenUI();
+  d.addEventListener('nv-game-state-change', tryLandscapeFullscreen);
 
   // --- Higiene global ---
   if (w && typeof w.addEventListener === 'function') {

@@ -22,6 +22,10 @@ test('menú refleja fuentes existentes y delega acciones en vez de duplicar game
   }
   if (js.includes('NV.getState =')) throw new Error('el menú no puede reescribir el estado del juego');
 });
+test('abrir el sistema despeja los controles móviles detrás del panel', () => {
+  if (!js.includes("classList.toggle('nv-system-menu-open', open)")) throw new Error('el menú no publica su estado visual');
+  if (!css.includes('html.nv-system-menu-open .mobile-hud')) throw new Error('los controles móviles siguen detrás del menú');
+});
 test('música externa queda dentro de la sección experimental del sistema', () => {
   if (!html.includes('id="systemMusicSlot"') || !html.includes('MÚSICA EXPERIMENTAL')) throw new Error('slot experimental ausente');
   if (!js.includes('slot.appendChild(rhythm)')) throw new Error('el widget no se reubica');

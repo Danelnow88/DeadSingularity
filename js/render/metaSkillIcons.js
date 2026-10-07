@@ -21,7 +21,7 @@
   };
 
   function idOf(item) { return typeof item === 'string' ? item : (item && (item.key || item.special || item.id || item.type)) || 'damage'; }
-  function color(id, cls) { const p = COLORS[id] || COLORS.damage; return cls === 'accent' ? p.c : cls === 'alt' ? p.c2 : cls === 'ghost' ? p.c : '#e5eefb'; }
+  function color(id, cls) { const p = COLORS[id] || COLORS.damage; return cls[0] === '#' ? cls : cls === 'accent' ? p.c : cls === 'alt' ? p.c2 : cls === 'ghost' ? p.c : '#e5eefb'; }
   function fallbackPath(ctx, d) {
     if (typeof ctx.moveTo !== 'function' || typeof ctx.lineTo !== 'function') return false;
     const tokens = d.match(/[a-zA-Z]|-?\d*\.?\d+/g) || [];
@@ -52,22 +52,59 @@
     else { ctx.beginPath(); if (fallbackPath(ctx, d)) ctx.stroke(); }
     ctx.globalAlpha = 1;
   }
+  // Curved filled silhouettes remain vector-native and use the same dark keyline.
+  function solidPath(ctx, cls, d) {
+    ctx.fillStyle=color(this.id,cls); ctx.strokeStyle='#060b15';
+    const width=ctx.lineWidth; ctx.lineWidth=2.4;
+    if(typeof Path2D !== 'undefined'){const p=new Path2D(d);ctx.stroke(p);ctx.fill(p);}
+    else {ctx.beginPath();if(fallbackPath(ctx,d)){ctx.stroke();ctx.fill();}}
+    ctx.lineWidth=width;
+  }
   function circle(ctx, cls, x, y, r, fill) { ctx.strokeStyle = color(this.id, cls); ctx.fillStyle = color(this.id, cls); ctx.globalAlpha = cls === 'ghost' ? 0.42 : 1; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); fill ? ctx.fill() : ctx.stroke(); ctx.globalAlpha = 1; }
+  function polygon(ctx, cls, points, fill) { if (typeof ctx.moveTo !== 'function' || typeof ctx.lineTo !== 'function') return; ctx.strokeStyle = color(this.id, cls); ctx.fillStyle = color(this.id, cls); ctx.globalAlpha = 1; ctx.beginPath(); ctx.moveTo(points[0][0], points[0][1]); for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]); ctx.closePath(); if (fill) { const width=ctx.lineWidth,blur=ctx.shadowBlur; ctx.shadowBlur=0; ctx.strokeStyle='#060b15'; ctx.lineWidth=2.4; ctx.stroke(); ctx.fill(); ctx.lineWidth=width; ctx.shadowBlur=blur; } else ctx.stroke(); ctx.globalAlpha = 1; }
+  function line(ctx, cls, x1, y1, x2, y2, width) { if (typeof ctx.moveTo !== 'function' || typeof ctx.lineTo !== 'function') return; ctx.strokeStyle = color(this.id, cls); ctx.globalAlpha = cls === 'ghost' ? 0.42 : 1; const old = ctx.lineWidth; if (width) ctx.lineWidth = width; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.lineWidth = old; ctx.globalAlpha = 1; }
 
   const DRAW = {
-    damage(ctx) { path.call(this, ctx, 'base', 'M7 25l12-12'); path.call(this, ctx, 'accent', 'M17 5l10 10-5 1-6 6-6-6 6-6 1-5Z'); path.call(this, ctx, 'ghost', 'M6 16l4-4M16 26l4-4'); },
-    speed(ctx) { path.call(this, ctx, 'accent', 'M6 18h15'); path.call(this, ctx, 'accent', 'M17 12l6 6-6 6'); path.call(this, ctx, 'base', 'M4 12h9M2 24h10'); path.call(this, ctx, 'ghost', 'M8 7h8'); },
-    hp(ctx) { path.call(this, ctx, 'base', 'M16 27S6 20.5 6 12.8C6 8.8 8.6 6 12 6c2 0 3.3 1 4 2.2C16.7 7 18 6 20 6c3.4 0 6 2.8 6 6.8C26 20.5 16 27 16 27Z'); path.call(this, ctx, 'accent', 'M16 12v8M12 16h8'); path.call(this, ctx, 'ghost', 'M9 12.5c0-1.8 1.2-3.3 3-3.6'); },
-    armor(ctx) { path.call(this, ctx, 'base', 'M16 4l9 4v7c0 6-3.7 10.2-9 13-5.3-2.8-9-7-9-13V8l9-4Z'); path.call(this, ctx, 'accent', 'M11 13h10M10 17h12M13 21h6'); path.call(this, ctx, 'ghost', 'M16 7v18'); },
-    luck(ctx) { circle.call(this, ctx, 'base', 13, 13, 3.2, false); circle.call(this, ctx, 'base', 19, 13, 3.2, false); circle.call(this, ctx, 'base', 13, 19, 3.2, false); circle.call(this, ctx, 'base', 19, 19, 3.2, false); path.call(this, ctx, 'accent', 'M18.5 20.5L24 26'); },
-    crit(ctx) { circle.call(this, ctx, 'base', 16, 16, 8, false); path.call(this, ctx, 'accent', 'M16 8v5M16 19v5M8 16h5M19 16h5'); path.call(this, ctx, 'alt', 'M13 13l6 6M19 13l-6 6'); path.call(this, ctx, 'ghost', 'M23 9l3-3M9 23l-3 3'); },
-    dodge(ctx) { path.call(this, ctx, 'base', 'M12 8c4 3 4 13 0 16'); path.call(this, ctx, 'ghost', 'M18 8c4 3 4 13 0 16'); path.call(this, ctx, 'accent', 'M4 16h9'); path.call(this, ctx, 'alt', 'M22 12l5 4-5 4'); },
-    regen(ctx) { path.call(this, ctx, 'base', 'M24 11a9 9 0 0 0-15-3'); path.call(this, ctx, 'base', 'M8 21a9 9 0 0 0 15 3'); path.call(this, ctx, 'accent', 'M9 5v5h5M23 27v-5h-5'); path.call(this, ctx, 'alt', 'M16 12v8M12 16h8'); },
-    greed(ctx) { path.call(this, ctx, 'base', 'M16 5l8 6-3 12H11L8 11l8-6Z'); path.call(this, ctx, 'accent', 'M8 11h16M11 23l5-18 5 18'); path.call(this, ctx, 'alt', 'M25 5l.8 1.7 1.7.8-1.7.8L25 11l-.8-1.7-1.7-.8 1.7-.8L25 5Z'); },
-    meteor(ctx) { path.call(this,ctx,'accent','M27 3L16 12M23 2L12 10M29 8L20 17'); path.call(this,ctx,'base','M14 11l8 6-5 9-10-2-3-7 10-6Z'); path.call(this,ctx,'alt','M14 14l4 4-5 5-5-6 6-3Z'); },
-    phase(ctx) { path.call(this,ctx,'accent','M16 3l3 7 6-3-2 8 6 3-8 3-2 8-5-5-7 2 2-8-6-4 8-2 5-9Z'); path.call(this,ctx,'base','M16 10c-5 6-4 12 1 13 5-2 5-7-1-13Z'); path.call(this,ctx,'alt','M16 16l2 4-2 2-2-2 2-4Z'); },
-    bulwark(ctx) { path.call(this,ctx,'accent','M12 4l4-2 4 2M24 6l5 8M29 18l-5 8M20 28l-4 2-4-2M8 26l-5-8M3 14l5-8'); path.call(this,ctx,'base','M16 8l7 4v8l-7 4-7-4v-8l7-4Z'); path.call(this,ctx,'alt','M16 11v10M12 16h8'); },
-    hivemind(ctx) { circle.call(this,ctx,'base',16,16,4,true);circle.call(this,ctx,'ghost',16,16,10,false);for(let i=0;i<6;i++){const a=i*Math.PI/3;circle.call(this,ctx,i%2?'accent':'alt',16+Math.cos(a)*10,16+Math.sin(a)*10,2,true);} },
+    damage(ctx) { polygon.call(this,ctx,'base',[[5,25],[18,12],[17,6],[27,15],[21,16],[15,22]],true); line.call(this,ctx,'accent',17,6,27,15,2); line.call(this,ctx,'alt',7,26,13,20,1.3); },
+    speed(ctx) {
+      polygon.call(this,ctx,'accent',[[15,5],[24,5],[23,17],[28,19],[28,24],[9,24],[9,20],[15,17]],true);
+      polygon.call(this,ctx,'#eefaff',[[14,19],[8,15],[3,8],[10,9],[8,5],[17,12],[18,16]],true);
+      line.call(this,ctx,'#90cbea',7,10,13,15,1.3); line.call(this,ctx,'#90cbea',11,10,15,14,1.3);
+      polygon.call(this,ctx,'#27628e',[[9,24],[28,24],[28,27],[9,27]],true);
+      line.call(this,ctx,'alt',17,7,22,7,1.4); line.call(this,ctx,'alt',18,12,22,12,1.3);
+      line.call(this,ctx,'alt',18,15,21,15,1.3); line.call(this,ctx,'alt',2,24,6,24,1.3);
+    },
+    hp(ctx) {
+      solidPath.call(this,ctx,'accent','M16 28C13 25 3 18 3 11C3 3 12 2 16 9C20 2 29 3 29 11C29 18 19 25 16 28Z');
+      solidPath.call(this,ctx,'#159868','M16 28C22 21 27 15 28 10C31 19 20 25 16 28Z');
+      path.call(this,ctx,'#bcffd1','M6 11C6 7 10 6 12 9');
+      line.call(this,ctx,'#edfff4',16,13,16,21,2.8); line.call(this,ctx,'#edfff4',12,17,20,17,2.8);
+    },
+    armor(ctx) {
+      polygon.call(this,ctx,'#7b8ca9',[[6,5],[12,4],[13,8],[19,8],[20,4],[26,5],[29,12],[25,16],[23,27],[9,27],[7,16],[3,12]],true);
+      polygon.call(this,ctx,'base',[[10,9],[13,11],[19,11],[22,9],[24,16],[21,24],[11,24],[8,16]],true);
+      polygon.call(this,ctx,'#b0bfd0',[[16,11],[22,9],[24,16],[21,24],[16,24]],true);
+      line.call(this,ctx,'accent',10,17,22,17,2); line.call(this,ctx,'accent',16,12,16,24,1.5);
+      line.call(this,ctx,'#f1f6ff',5,8,9,6,1.4); line.call(this,ctx,'alt',11,26,21,26,1.3);
+    },
+    luck(ctx) {
+      // Four broad heart-shaped leaves, not four disconnected dots.
+      line.call(this,ctx,'#4d8b27',16,19,23,28,2.8);
+      solidPath.call(this,ctx,'accent','M16 16C11 17 5 14 5 9C5 4 11 4 12 8C16 5 19 10 16 16Z');
+      solidPath.call(this,ctx,'#6fae2c','M16 16C15 11 18 5 23 5C28 5 28 11 24 12C27 16 22 19 16 16Z');
+      solidPath.call(this,ctx,'#4e952e','M16 16C21 15 27 18 27 23C27 28 21 28 20 24C16 27 13 22 16 16Z');
+      solidPath.call(this,ctx,'#9ad945','M16 16C17 21 14 27 9 27C4 27 4 21 8 20C5 16 10 13 16 16Z');
+      path.call(this,ctx,'#dbf79a','M8 9C8 7 10 7 11 9');
+      line.call(this,ctx,'#d5f891',16,16,11,11,1); line.call(this,ctx,'#c0e28b',16,16,21,11,1);
+    },
+    crit(ctx) { circle.call(this,ctx,'base',16,16,9,true); line.call(this,ctx,'accent',16,7,16,12,2); line.call(this,ctx,'accent',16,20,16,25,2); line.call(this,ctx,'accent',7,16,12,16,2); line.call(this,ctx,'accent',20,16,25,16,2); line.call(this,ctx,'alt',12,12,20,20,1.4); line.call(this,ctx,'alt',20,12,12,20,1.4); },
+    dodge(ctx) { path.call(this,ctx,'base','M11 7c6 4 6 14 0 18'); path.call(this,ctx,'ghost','M18 7c6 4 6 14 0 18'); polygon.call(this,ctx,'accent',[[3,16],[13,11],[13,14],[25,14],[25,18],[13,18],[13,21]],true); },
+    regen(ctx) { path.call(this,ctx,'base','M25 11a10 10 0 0 0-17-3'); path.call(this,ctx,'base','M7 21a10 10 0 0 0 17 3'); polygon.call(this,ctx,'accent',[[8,5],[14,5],[14,11],[8,11]],true); line.call(this,ctx,'alt',16,12,16,21,1.8); line.call(this,ctx,'alt',12,16,20,16,1.8); },
+    greed(ctx) { polygon.call(this,ctx,'base',[[16,4],[25,11],[22,25],[10,25],[7,11]],true); line.call(this,ctx,'accent',7,11,25,11,1.7); line.call(this,ctx,'accent',11,24,16,5,1.4); line.call(this,ctx,'accent',21,24,16,5,1.4); polygon.call(this,ctx,'alt',[[25,4],[27,8],[25,11],[23,8]],true); },
+    meteor(ctx) { polygon.call(this,ctx,'base',[[5,14],[14,10],[23,16],[18,26],[8,24]],true); polygon.call(this,ctx,'alt',[[10,14],[15,13],[19,17],[15,22],[10,20]],true); line.call(this,ctx,'accent',26,4,17,13,2.2); line.call(this,ctx,'accent',29,9,20,18,1.2); },
+    phase(ctx) { polygon.call(this,ctx,'accent',[[16,3],[20,10],[27,7],[24,15],[30,19],[22,21],[20,29],[15,24],[8,27],[10,19],[3,15],[11,11]],true); polygon.call(this,ctx,'base',[[16,10],[20,16],[17,23],[12,18]],true); circle.call(this,ctx,'alt',16,17,2,true); },
+    bulwark(ctx) { polygon.call(this,ctx,'base',[[16,7],[24,12],[24,20],[16,25],[8,20],[8,12]],true); line.call(this,ctx,'accent',16,2,16,30,1.6); line.call(this,ctx,'accent',3,16,29,16,1.6); line.call(this,ctx,'alt',12,12,20,20,1.3); line.call(this,ctx,'alt',20,12,12,20,1.3); },
+    hivemind(ctx) { circle.call(this,ctx,'base',16,16,4,true); circle.call(this,ctx,'ghost',16,16,11,false); for(let i=0;i<6;i++){const a=i*Math.PI/3; line.call(this,ctx,'ghost',16+Math.cos(a)*4,16+Math.sin(a)*4,16+Math.cos(a)*9,16+Math.sin(a)*9,1); circle.call(this,ctx,i%2?'accent':'alt',16+Math.cos(a)*11,16+Math.sin(a)*11,2.5,true);} },
   };
 
   NV.META_SKILL_ICON_IDS = Object.keys(DRAW);

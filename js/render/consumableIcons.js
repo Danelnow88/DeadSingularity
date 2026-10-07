@@ -1,5 +1,5 @@
 // ===== RENDER: iconos SVG-approved de consumibles convertidos a canvas =====
-// Grilla lógica 32x32. Diseños minimalistas aprobados en previews/consumable-icons-preview.html.
+// Grilla lógica 32x32. Volúmenes sólidos con luz superior y símbolos reconocibles a 24 px.
 (() => {
   'use strict';
   const NV = window.NV;
@@ -8,14 +8,14 @@
     potion: { c: '#22c55e', c2: '#86efac' },
     overdrive: { c: '#caa7ff', c2: '#f0abfc' },
     shield: { c: '#ffcf76', c2: '#fde68a' },
-    bomb: { c: '#ff5f9b', c2: '#fca5a5' },
+    bomb: { c: '#64748b', c2: '#ff7a45' },
     freeze: { c: '#67e8f9', c2: '#c4b5fd' },
     magnet: { c: '#7cf8ff', c2: '#93c5fd' },
     bounty: { c: '#ffd700', c2: '#fbbf24' },
   };
 
   function idOf(item) { return typeof item === 'string' ? item : (item && (item.type || item.id || item.key)) || 'potion'; }
-  function color(id, cls) { const p = COLORS[id] || COLORS.potion; return cls === 'accent' ? p.c2 : cls === 'alt' ? p.c2 : cls === 'ghost' ? p.c : p.c; }
+  function color(id, cls) { const p = COLORS[id] || COLORS.potion; return cls[0] === '#' ? cls : cls === 'alt' || cls === 'accent' ? p.c2 : cls === 'ghost' ? '#263347' : p.c; }
   function fallbackPath(ctx, d) {
     if (typeof ctx.moveTo !== 'function' || typeof ctx.lineTo !== 'function') return false;
     const tokens = d.match(/[a-zA-Z]|-?\d*\.?\d+/g) || [];
@@ -44,16 +44,62 @@
     else { ctx.beginPath(); if (fallbackPath(ctx, d)) ctx.stroke(); }
     ctx.globalAlpha = 1;
   }
-  function circle(ctx, cls, x, y, r, fill) { ctx.strokeStyle = color(this.id, cls); ctx.fillStyle = color(this.id, cls); ctx.globalAlpha = cls === 'ghost' ? 0.42 : 1; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); fill ? ctx.fill() : ctx.stroke(); ctx.globalAlpha = 1; }
+  function circle(ctx, cls, x, y, r, fill) { ctx.strokeStyle = color(this.id, cls); ctx.fillStyle = color(this.id, cls); ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); if(fill){ const width=ctx.lineWidth; ctx.strokeStyle='#060b15'; ctx.lineWidth=2.4; ctx.stroke(); ctx.fill(); ctx.lineWidth=width; }else ctx.stroke(); }
+  function polygon(ctx, cls, points, fill) { if (typeof ctx.moveTo !== 'function' || typeof ctx.lineTo !== 'function') return; ctx.strokeStyle = color(this.id, cls); ctx.fillStyle = color(this.id, cls); ctx.globalAlpha = 1; ctx.beginPath(); ctx.moveTo(points[0][0], points[0][1]); for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]); ctx.closePath(); if (fill) { const width=ctx.lineWidth,blur=ctx.shadowBlur; ctx.shadowBlur=0; ctx.strokeStyle='#060b15'; ctx.lineWidth=2.4; ctx.stroke(); ctx.fill(); ctx.lineWidth=width; ctx.shadowBlur=blur; } else ctx.stroke(); ctx.globalAlpha = 1; }
+  function line(ctx, cls, x1, y1, x2, y2, width) { if (typeof ctx.moveTo !== 'function' || typeof ctx.lineTo !== 'function') return; ctx.strokeStyle = color(this.id, cls); ctx.globalAlpha = cls === 'ghost' ? 0.42 : 1; const old = ctx.lineWidth; if (width) ctx.lineWidth = width; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.lineWidth = old; ctx.globalAlpha = 1; }
 
   const DRAW = {
-    potion(ctx) { path.call(this, ctx, 'base', 'M13 5h6'); path.call(this, ctx, 'base', 'M14 8v4l-4 8c-1.4 2.8.6 6 3.8 6h4.4c3.2 0 5.2-3.2 3.8-6l-4-8V8'); path.call(this, ctx, 'accent', 'M11.5 20h9'); circle.call(this, ctx, 'base', 17.8, 17, 1, true); },
-    overdrive(ctx) { path.call(this, ctx, 'accent', 'M18 3l-7 13h6l-3 13 9-16h-6l1-10Z'); path.call(this, ctx, 'base', 'M6 11h5'); path.call(this, ctx, 'ghost', 'M4 16h5M7 21h4'); },
-    shield(ctx) { path.call(this, ctx, 'base', 'M16 4l9 4v7c0 6-3.7 10.2-9 13-5.3-2.8-9-7-9-13V8l9-4Z'); path.call(this, ctx, 'accent', 'M12 16l3 3 6-7'); path.call(this, ctx, 'ghost', 'M16 7v18'); },
-    bomb(ctx) { circle.call(this, ctx, 'base', 15, 18, 8, false); path.call(this, ctx, 'accent', 'M20.5 11.5l3-3'); path.call(this, ctx, 'alt', 'M25 5l1 2.2 2.2.8-2.2.9-1 2.1-1-2.1-2.2-.9 2.2-.8L25 5Z'); path.call(this, ctx, 'ghost', 'M10.5 14.5c1-1.2 2.4-1.9 4-2'); },
-    freeze(ctx) { circle.call(this, ctx, 'ghost', 16, 16, 10, false); path.call(this, ctx, 'accent', 'M16 5v22'); path.call(this, ctx, 'base', 'M6.5 10.5l19 11'); path.call(this, ctx, 'base', 'M25.5 10.5l-19 11'); path.call(this, ctx, 'accent', 'M12 8l4 4 4-4M12 24l4-4 4 4'); },
-    magnet(ctx) { path.call(this, ctx, 'base', 'M9 7v9c0 4 2.7 7 7 7s7-3 7-7V7'); path.call(this, ctx, 'accent', 'M9 7h5v7M18 14V7h5'); path.call(this, ctx, 'alt', 'M6 10H3M29 10h-3'); circle.call(this, ctx, 'base', 16, 23, 1.1, true); },
-    bounty(ctx) { circle.call(this, ctx, 'base', 16, 16, 9, false); circle.call(this, ctx, 'ghost', 16, 16, 5, false); path.call(this, ctx, 'accent', 'M16 7v4M16 21v4M7 16h4M21 16h4'); path.call(this, ctx, 'alt', 'M16 13l1.1 2.1 2.4.3-1.7 1.7.4 2.4-2.2-1.1-2.2 1.1.4-2.4-1.7-1.7 2.4-.3L16 13Z'); },
+    potion(ctx) {
+      polygon.call(this,ctx,'#acdace',[[12,8],[20,8],[20,13],[25,20],[24,25],[21,28],[11,28],[8,25],[7,20],[12,13]],true);
+      polygon.call(this,ctx,'base',[[9,18],[23,18],[23,24],[20,26],[12,26],[9,24]],true);
+      polygon.call(this,ctx,'#976849',[[12,4],[20,4],[20,8],[12,8]],true);
+      line.call(this,ctx,'alt',11,20,11,23,1.7); line.call(this,ctx,'#ebfff6',12,11,12,14,1.5);
+      line.call(this,ctx,'#d1a675',13,5,18,5,1.2); circle.call(this,ctx,'alt',19,21,1.4,true);
+    },
+    overdrive(ctx) {
+      polygon.call(this,ctx,'#44335f',[[10,6],[20,6],[24,10],[22,25],[9,25],[7,10]],true);
+      polygon.call(this,ctx,'base',[[19,3],[10,16],[16,16],[13,29],[24,13],[18,13]],true);
+      line.call(this,ctx,'#fff0ff',17,8,13,14,1.4); line.call(this,ctx,'alt',5,10,2,10,1.5);
+      line.call(this,ctx,'alt',5,18,2,18,1.5); line.call(this,ctx,'alt',27,21,30,21,1.5);
+    },
+    shield(ctx) {
+      polygon.call(this,ctx,'#bf8737',[[16,3],[27,7],[26,18],[22,25],[16,29],[10,25],[6,18],[5,7]],true);
+      polygon.call(this,ctx,'base',[[16,6],[24,9],[23,17],[20,23],[16,26],[12,23],[9,17],[8,9]],true);
+      polygon.call(this,ctx,'#ffeeb8',[[16,6],[16,26],[12,23],[9,17],[8,9]],true);
+      polygon.call(this,ctx,'#f0ab38',[[16,11],[20,16],[16,21],[12,16]],true);
+      line.call(this,ctx,'#fff6da',9,9,14,7,1.3);
+    },
+    bomb(ctx) {
+      circle.call(this,ctx,'base',14,19,9,true);
+      polygon.call(this,ctx,'ghost',[[8,22],[16,25],[22,20],[20,26],[14,28],[8,26]],true);
+      polygon.call(this,ctx,'#9facc0',[[15,9],[19,9],[20,12],[15,13]],true);
+      path.call(this,ctx,'#ffcf76','M18 9C18 4 23 10 25 6');
+      polygon.call(this,ctx,'alt',[[25,2],[26,5],[29,6],[26,8],[25,11],[23,8],[21,6],[24,5]],true);
+      line.call(this,ctx,'#c5d5e8',9,14,13,12,2); line.call(this,ctx,'#8fa7c7',8,17,8,19,1.3);
+      circle.call(this,ctx,'#fff0bd',25,6,1,true);
+    },
+    freeze(ctx) {
+      polygon.call(this,ctx,'#387bc1',[[16,2],[26,10],[25,23],[16,30],[7,23],[6,10]],true);
+      polygon.call(this,ctx,'base',[[16,5],[23,11],[22,22],[16,27],[10,22],[9,11]],true);
+      line.call(this,ctx,'#edffff',16,8,16,24,1.8);
+      line.call(this,ctx,'#edffff',10,12,22,20,1.8); line.call(this,ctx,'#edffff',22,12,10,20,1.8);
+      path.call(this,ctx,'#edffff','M13 9L16 12L19 9M13 23L16 20L19 23');
+      line.call(this,ctx,'alt',9,11,14,6,1.2);
+    },
+    magnet(ctx) {
+      polygon.call(this,ctx,'base',[[6,5],[13,5],[13,18],[16,21],[19,18],[19,5],[26,5],[26,19],[22,26],[16,29],[10,26],[6,19]],true);
+      polygon.call(this,ctx,'#e4f7ff',[[6,5],[13,5],[13,11],[6,11]],true);
+      polygon.call(this,ctx,'#97b5f8',[[19,5],[26,5],[26,11],[19,11]],true);
+      path.call(this,ctx,'alt','M8 13L8 19L11 24');
+      line.call(this,ctx,'base',2,13,4,13,1.6); line.call(this,ctx,'base',28,13,30,13,1.6);
+    },
+    bounty(ctx) {
+      polygon.call(this,ctx,'#ae7623',[[7,8],[13,8],[15,11],[17,11],[19,8],[25,8],[24,18],[20,22],[18,22],[18,26],[22,26],[22,29],[10,29],[10,26],[14,26],[14,22],[10,22],[8,18]],true);
+      polygon.call(this,ctx,'base',[[10,4],[22,4],[22,15],[20,19],[16,22],[12,19],[10,15]],true);
+      path.call(this,ctx,'alt','M10 8L5 8L5 13L9 17M22 8L27 8L27 13L23 17');
+      polygon.call(this,ctx,'#fff1a8',[[16,8],[17,11],[20,12],[17,14],[16,17],[15,14],[12,12],[15,11]],true);
+      line.call(this,ctx,'#fff1a8',11,5,20,5,1.3); line.call(this,ctx,'alt',12,27,20,27,1.2);
+    },
   };
 
   NV.CONSUMABLE_ICON_IDS = Object.keys(DRAW);

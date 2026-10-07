@@ -96,3 +96,65 @@
   .nv-mobile #startScreen .btn-jugar,.nv-mobile #startScreen .lobby-difficulty,.nv-mobile #startScreen #lobbyLaunch { grid-column:2; width:100%; }
   .nv-mobile #startScreen .btn-jugar span { font-size:20px; }
 }
+
+/* Gate de orientación: en vertical no hay una partida comprimida detrás.
+   La capa cubre también lobby/tienda para que el flujo sea inequívoco. */
+.rotate-overlay { display:none; }
+html.nv-mobile.nv-portrait #rotateOverlay {
+  position:fixed;
+  inset:0;
+  z-index:1000;
+  display:flex !important;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  padding:28px;
+  color:#e9feff;
+  text-align:center;
+  background:radial-gradient(circle at 50% 32%,rgba(24,115,139,.28),transparent 36%),#030714;
+}
+.nv-mobile.nv-portrait .rotate-ico { width:76px; height:76px; color:#7cf8ff; filter:drop-shadow(0 0 16px rgba(124,248,255,.48)); animation:nv-rotate-prompt 1.8s ease-in-out infinite; }
+.nv-mobile.nv-portrait .rotate-overlay p { font:900 19px/1 system-ui,sans-serif; letter-spacing:.12em; }
+.nv-mobile.nv-portrait .rotate-hint { max-width:250px; color:#aabbd0; font:600 14px/1.45 system-ui,sans-serif; }
+.nv-mobile.nv-portrait .game-box > canvas,
+.nv-mobile.nv-portrait .system-vitals,
+.nv-mobile.nv-portrait .system-menu-toggle,
+.nv-mobile.nv-portrait .mobile-hud { visibility:hidden; }
+.nv-mobile.nv-landscape .rotate-overlay { display:none !important; }
+@keyframes nv-rotate-prompt { 0%,100% { transform:rotate(0deg) scale(1); } 50% { transform:rotate(90deg) scale(1.06); } }
+@media (prefers-reduced-motion:reduce) { .nv-mobile.nv-portrait .rotate-ico { animation:none; } }
+
+/* Paisaje móvil: los switches siguen siendo accesibles, sin convertirse en una segunda barra HUD. */
+@media (pointer:coarse) and (orientation:landscape) {
+  html.nv-mobile[data-game-state="playing"] .mobile-weapon-switch,
+  html.nv-mobile[data-game-state="wave_end"] .mobile-weapon-switch,
+  html.nv-mobile[data-game-state="playing"] .mobile-consumable-switch,
+  html.nv-mobile[data-game-state="wave_end"] .mobile-consumable-switch {
+    left:auto !important;
+    right:max(8px,env(safe-area-inset-right,0px)) !important;
+    bottom:auto !important;
+    width:clamp(116px,17vw,142px) !important;
+    height:36px !important;
+    min-width:0 !important;
+    gap:0 !important;
+  }
+  html.nv-mobile[data-game-state="playing"] .mobile-weapon-switch,
+  html.nv-mobile[data-game-state="wave_end"] .mobile-weapon-switch { top:54px !important; }
+  html.nv-mobile[data-game-state="playing"] .mobile-consumable-switch,
+  html.nv-mobile[data-game-state="wave_end"] .mobile-consumable-switch { top:94px !important; }
+  html.nv-mobile .mobile-weapon-switch .touch-switch,
+  html.nv-mobile .mobile-consumable-switch .touch-switch { display:none !important; }
+  html.nv-mobile .mobile-weapon-switch .switch-indicator,
+  html.nv-mobile .mobile-consumable-switch .switch-indicator {
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    height:36px !important;
+    padding:2px 7px !important;
+    font-size:10px !important;
+    gap:2px !important;
+  }
+  html.nv-mobile .mobile-weapon-switch .switch-indicator::before,
+  html.nv-mobile .mobile-consumable-switch .switch-indicator::before { font-size:7px !important; }
+}
