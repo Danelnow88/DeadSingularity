@@ -229,3 +229,93 @@
   html.nv-mobile #shopInspector .shop-inspector-copy p { font-size:10px; }
   html.nv-mobile #shopInspector > b { font-size:12px; }
 }
+
+/* Tienda móvil: composición vertical reservada. El header, los tres paneles y
+   la ficha seleccionada ocupan zonas distintas; desktop no recibe estas reglas. */
+@media (pointer: coarse) and (orientation: landscape) and (min-aspect-ratio:4/3) {
+  html.nv-mobile #shop.shop-screen {
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    padding:10px 8px 8px;
+    overflow:hidden;
+  }
+  html.nv-mobile #shop .shop-terminal-head { flex:0 0 auto; }
+  html.nv-mobile #shop .shop-grid {
+    flex:1 1 auto;
+    min-height:0;
+    height:auto;
+    align-items:stretch;
+    gap:8px;
+    overflow:hidden !important;
+  }
+  html.nv-mobile #shop .shop-section[data-shop-tab] {
+    height:100% !important;
+    min-height:0;
+    overflow:hidden !important;
+  }
+  html.nv-mobile #shop .shop-section > .offers {
+    flex:1 1 auto;
+    min-height:0;
+    grid-template-rows:repeat(6, minmax(54px, 1fr));
+    grid-auto-rows:54px;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    scrollbar-width:none;
+  }
+  html.nv-mobile #shop .shop-section > .offers::-webkit-scrollbar { display:none; width:0; height:0; }
+  html.nv-mobile #shop .shop-section > .offers > .offer {
+    width:100%;
+    min-height:54px;
+    height:auto;
+    max-height:none;
+    grid-template-columns:40px minmax(0,1fr);
+    grid-template-rows:20px 0 20px;
+    column-gap:5px;
+    padding:5px 6px;
+  }
+  html.nv-mobile #shop .shop-section > .offers > .offer .offer-icon {
+    width:40px;
+    height:40px;
+    grid-column:1;
+    grid-row:1 / span 3;
+    align-self:center;
+  }
+  html.nv-mobile #shop .shop-section > .offers > .offer .offer-name {
+    grid-column:2;
+    grid-row:1;
+    font-size:clamp(12px, 1.45vw, 15px);
+    line-height:1.1;
+  }
+  html.nv-mobile #shop .shop-section > .offers > .offer .offer-badge {
+    grid-column:2;
+    grid-row:3;
+    font-size:clamp(9px, 1.1vw, 11px);
+  }
+  html.nv-mobile #shop .shop-section > .offers > .offer .offer-price {
+    grid-column:2;
+    grid-row:3;
+    font-size:clamp(11px, 1.3vw, 13px);
+  }
+  html.nv-mobile #shop :is(.protocol-loadout,.shop-weapon-dock,.shop-upgrade-dock) {
+    flex:0 0 auto;
+    min-height:48px;
+  }
+  html.nv-mobile #shop :is(.loadout-slot,.inv-slot) {
+    height:42px;
+    min-height:42px;
+  }
+  html.nv-mobile #shop :is(.loadout-slot,.inv-slot) canvas {
+    width:34px;
+    height:34px;
+  }
+  html.nv-mobile #shop .shop-inspector {
+    position:static;
+    transform:none;
+    align-self:center;
+    flex:0 0 58px;
+    width:min(43%,390px);
+    min-height:58px;
+    margin:0;
+  }
+}
