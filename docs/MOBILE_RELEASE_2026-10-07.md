@@ -42,3 +42,9 @@ a la build nueva. `tools/verify_pages.cjs` contrasta el HTML y todos sus scripts
 y hojas de estilo servidos por Pages con los archivos locales (normalizando EOL).
 El EXE definitivo pasó `--nv-qa`: inicio aislado, almacenamiento y entrada en
 partida sin errores. Esto no sustituye la prueba táctil en Android real.
+
+Publicación: commit de juego `0999595`, origin/master actualizado. Verificación
+real de Pages: HTML + 79 scripts/estilos idénticos al estado local, normalizando
+EOL y BOM. Recorrido --mobile-polish sobre la URL pública pasó en los seis
+tamaños (lobby, ajustes, tienda y controles; vertical muestra el gate).
+Resultados locales: `previews/mobile-release/pages-final`.

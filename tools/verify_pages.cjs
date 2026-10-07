@@ -4,7 +4,8 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
 const base = new URL(process.argv[2] || 'https://danelnow88.github.io/JuegoDemo/');
-const normalize = text => text.replace(/\r\n/g, '\n');
+// fetch elimina BOM UTF-8; fs conserva ese marcador. No es una diferencia de código.
+const normalize = text => text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
 const localHTML = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const resources = new Set(['index.html']);
 for (const match of localHTML.matchAll(/<(?:script|link)\b[^>]*\b(?:src|href)=["']([^"']+)["']/gi)) {
