@@ -64,14 +64,14 @@
 
 /* Mobile paisaje mantiene la arquitectura de escritorio: tres terminales en el
    mismo orden. Cada lista puede desplazarse con el dedo, sin barra visible. */
-@media (pointer:coarse) and (orientation:landscape) and (max-height:600px) {
-  html.nv-mobile.nv-landscape #shop.shop-screen { padding:6px 8px 62px; gap:6px; }
-  html.nv-mobile.nv-landscape #shop .shop-terminal-head { min-height:46px; padding:6px 10px; }
-  html.nv-mobile.nv-landscape #shop .shop-title { font-size:13px; }
-  html.nv-mobile.nv-landscape #shop .shop-sub { font-size:9px; }
-  html.nv-mobile.nv-landscape #shop .shard-bar { min-width:66px; padding:4px 8px; font-size:16px; }
-  html.nv-mobile.nv-landscape #shop .shop-tabs { display:none !important; }
-  html.nv-mobile.nv-landscape #shop .shop-grid {
+@media (min-aspect-ratio:4/3) {
+  html.nv-mobile #shop.shop-screen { padding:6px 8px 62px; gap:6px; }
+  html.nv-mobile #shop .shop-terminal-head { min-height:46px; padding:6px 10px; }
+  html.nv-mobile #shop .shop-title { font-size:13px; }
+  html.nv-mobile #shop .shop-sub { font-size:9px; }
+  html.nv-mobile #shop .shard-bar { min-width:66px; padding:4px 8px; font-size:16px; }
+  html.nv-mobile #shop .shop-tabs { display:none !important; }
+  html.nv-mobile #shop .shop-grid {
     display:grid !important;
     grid-template-columns:repeat(3,minmax(0,1fr)) !important;
     align-items:stretch;
@@ -81,7 +81,7 @@
     overflow:hidden !important;
     padding:0;
   }
-  html.nv-mobile.nv-landscape #shop .shop-section[data-shop-tab] {
+  html.nv-mobile #shop .shop-section[data-shop-tab] {
     display:flex !important;
     flex-direction:column;
     width:auto;
@@ -92,14 +92,14 @@
     border-radius:12px;
     overflow:hidden !important;
   }
-  html.nv-mobile.nv-landscape #shop .shop-section-title { flex:0 0 auto; margin-bottom:4px; padding:1px 1px 5px; font-size:10px; }
-  html.nv-mobile.nv-landscape #shop .protocol-loadout,
-  html.nv-mobile.nv-landscape #shop .shop-weapon-dock,
-  html.nv-mobile.nv-landscape #shop .shop-upgrade-dock { flex:0 0 auto; margin-bottom:4px; padding:4px; }
-  html.nv-mobile.nv-landscape #shop .dock-label { font-size:7px; }
-  html.nv-mobile.nv-landscape #shop .inv-hint { display:none; }
-  html.nv-mobile.nv-landscape #shop :is(.loadout-slot,.inv-slot) { min-width:0; height:34px; }
-  html.nv-mobile.nv-landscape #shop .offers {
+  html.nv-mobile #shop .shop-section-title { flex:0 0 auto; margin-bottom:4px; padding:1px 1px 5px; font-size:10px; }
+  html.nv-mobile #shop .protocol-loadout,
+  html.nv-mobile #shop .shop-weapon-dock,
+  html.nv-mobile #shop .shop-upgrade-dock { flex:0 0 auto; margin-bottom:4px; padding:4px; }
+  html.nv-mobile #shop .dock-label { font-size:7px; }
+  html.nv-mobile #shop .inv-hint { display:none; }
+  html.nv-mobile #shop :is(.loadout-slot,.inv-slot) { min-width:0; height:34px; }
+  html.nv-mobile #shop .offers {
     flex:1 1 auto;
     min-height:0;
     display:grid;
@@ -112,9 +112,9 @@
     scrollbar-width:none;
     touch-action:pan-y;
   }
-  html.nv-mobile.nv-landscape #shop .offers::-webkit-scrollbar { display:none; width:0; height:0; }
-  html.nv-mobile.nv-landscape #shop .offer,
-  html.nv-mobile.nv-landscape #shop .offers-consumables .offer-consumable {
+  html.nv-mobile #shop .offers::-webkit-scrollbar { display:none; width:0; height:0; }
+  html.nv-mobile #shop .offer,
+  html.nv-mobile #shop .offers-consumables .offer-consumable {
     display:grid;
     grid-template-columns:24px minmax(0,1fr);
     grid-template-rows:18px 18px 16px;
@@ -128,20 +128,20 @@
     text-align:left;
     transform-origin:center;
   }
-  html.nv-mobile.nv-landscape #shop .offer:hover,
-  html.nv-mobile.nv-landscape #shop .offer:focus-visible { transform:scale(.985); }
-  html.nv-mobile.nv-landscape #shop .offer .offer-icon { grid-column:1; grid-row:1 / span 2; width:24px; height:24px; margin:0; }
-  html.nv-mobile.nv-landscape #shop .offer .offer-name { grid-column:2; grid-row:1; font-size:9px; line-height:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  html.nv-mobile.nv-landscape #shop .offer .offer-desc { grid-column:2; grid-row:2; font-size:7px; line-height:1.15; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  html.nv-mobile.nv-landscape #shop .offer .offer-badge { grid-column:1 / -1; grid-row:3; align-self:end; font-size:7px; line-height:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  html.nv-mobile.nv-landscape #shop .offer .offer-price { grid-column:2; grid-row:3; justify-self:end; align-self:end; font-size:8px; line-height:1; padding:2px 4px; }
-  html.nv-mobile.nv-landscape #shop .shop-inspector { bottom:7px; width:min(43%,390px); min-height:46px; grid-template-columns:34px minmax(0,1fr) auto; padding:5px 8px; }
-  html.nv-mobile.nv-landscape #shop .shop-inspector canvas { width:34px; height:34px; }
-  html.nv-mobile.nv-landscape #shopInspector .shop-inspector-copy > span { font-size:7px; }
-  html.nv-mobile.nv-landscape #shopInspector .shop-inspector-copy strong { font-size:10px; }
-  html.nv-mobile.nv-landscape #shopInspector .shop-inspector-copy p { font-size:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  html.nv-mobile.nv-landscape #shopInspector > b { font-size:10px; }
-  html.nv-mobile.nv-landscape #shop .shop-deploy { position:absolute; right:8px; bottom:7px; width:25%; min-width:0; min-height:46px; padding:7px; font-size:11px; }
-  html.nv-mobile.nv-landscape #shop .alpha-save-quit { position:absolute; left:8px; bottom:7px; width:22%; max-width:150px; min-height:46px; }
-  html.nv-mobile.nv-landscape #shop .alpha-save-status { display:none; }
+  html.nv-mobile #shop .offer:hover,
+  html.nv-mobile #shop .offer:focus-visible { transform:scale(.985); }
+  html.nv-mobile #shop .offer .offer-icon { grid-column:1; grid-row:1 / span 2; width:24px; height:24px; margin:0; }
+  html.nv-mobile #shop .offer .offer-name { grid-column:2; grid-row:1; font-size:9px; line-height:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  html.nv-mobile #shop .offer .offer-desc { grid-column:2; grid-row:2; font-size:7px; line-height:1.15; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  html.nv-mobile #shop .offer .offer-badge { grid-column:1 / -1; grid-row:3; align-self:end; font-size:7px; line-height:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  html.nv-mobile #shop .offer .offer-price { grid-column:2; grid-row:3; justify-self:end; align-self:end; font-size:8px; line-height:1; padding:2px 4px; }
+  html.nv-mobile #shop .shop-inspector { bottom:7px; width:min(43%,390px); min-height:46px; grid-template-columns:34px minmax(0,1fr) auto; padding:5px 8px; }
+  html.nv-mobile #shop .shop-inspector canvas { width:34px; height:34px; }
+  html.nv-mobile #shopInspector .shop-inspector-copy > span { font-size:7px; }
+  html.nv-mobile #shopInspector .shop-inspector-copy strong { font-size:10px; }
+  html.nv-mobile #shopInspector .shop-inspector-copy p { font-size:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  html.nv-mobile #shopInspector > b { font-size:10px; }
+  html.nv-mobile #shop .shop-deploy { position:absolute; right:8px; bottom:7px; width:25%; min-width:0; min-height:46px; padding:7px; font-size:11px; }
+  html.nv-mobile #shop .alpha-save-quit { position:absolute; left:8px; bottom:7px; width:22%; max-width:150px; min-height:46px; }
+  html.nv-mobile #shop .alpha-save-status { display:none; }
 }

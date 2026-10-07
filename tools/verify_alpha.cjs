@@ -99,7 +99,7 @@ async function fixture(wave, hp = 5000, progression = 'legacy', traversal = fals
   await navigate();
   if(process.argv.includes('--shop-remaster')) {
     const results=[];
-    for(const [width,height,mobile] of [[1600,900,false],[915,412,true]]) {
+    for(const [width,height,mobile] of [[1600,900,false],[800,360,true],[915,412,true],[1280,576,true]]) {
       await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:mobile?2:1,mobile});
       await send('Emulation.setTouchEmulationEnabled',{enabled:mobile,maxTouchPoints:mobile?5:1});
       await navigate(mobile?'?mobile=1&fresh=1':'?fresh=1');
@@ -182,15 +182,26 @@ async function fixture(wave, hp = 5000, progression = 'legacy', traversal = fals
     await shot('s20fe-portrait-rotate');
     await send('Emulation.setDeviceMetricsOverride',{width:800,height:360,deviceScaleFactor:3,mobile:true});
     await until('document.documentElement.classList.contains("nv-landscape")');
-    const landscape=await evaluate(`(()=>{const q=s=>{const e=document.querySelector(s),r=e.getBoundingClientRect(),c=getComputedStyle(e);return {display:c.display,visibility:c.visibility,right:r.right,bottom:r.bottom,w:r.width,h:r.height};};return {overlay:q('#rotateOverlay'),canvas:q('#game'),toggle:q('#systemMenuToggle'),scroll:document.documentElement.scrollWidth};})()`);
+    const landscape=await evaluate(`(()=>{const q=s=>{const e=document.querySelector(s),r=e.getBoundingClientRect(),c=getComputedStyle(e);return {display:c.display,visibility:c.visibility,left:r.left,top:r.top,right:r.right,bottom:r.bottom,w:r.width,h:r.height};};return {overlay:q('#rotateOverlay'),canvas:q('#game'),toggle:q('#systemMenuToggle'),tabs:q('.mobile-lobby-tabs'),panel:q('#startScreen .main-lobby-panel'),pilot:q('#startScreen .main-lobby-copy'),center:q('#startScreen .lobby-center'),modes:q('#startScreen .lobby-modes'),scroll:document.documentElement.scrollWidth,media:matchMedia('(min-aspect-ratio:4/3)').matches};})()`);
     assert.equal(landscape.overlay.display,'none','overlay horizontal oculto');
     assert.notEqual(landscape.canvas.visibility,'hidden','canvas horizontal visible');
     assert(landscape.canvas.right<=801&&landscape.canvas.bottom<=361,'canvas dentro de S20 FE '+JSON.stringify(landscape));
     assert(landscape.scroll<=801,'sin overflow horizontal '+JSON.stringify(landscape));
+    assert.equal(landscape.media,true,'media query paisaje activa '+JSON.stringify(landscape));
+    assert.equal(landscape.tabs.display,'none','tabs redundantes ocultas en paisaje '+JSON.stringify(landscape));
+    assert.equal(landscape.panel.display,'grid','lobby distribuido en tres columnas '+JSON.stringify(landscape));
+    for(const key of ['pilot','center','modes'])assert(landscape[key].w>0&&landscape[key].right<=801&&landscape[key].bottom<=361,key+' visible dentro del lobby '+JSON.stringify(landscape));
     await shot('s20fe-landscape-ready');
+    await evaluate('document.getElementById("lobbyPlayBtn").click()');
+    await until('NV.getState()==="playing"');
+    const actions=await evaluate(`(()=>{const root=document.getElementById('mobileActions'),q=id=>{const r=document.getElementById(id).getBoundingClientRect();return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,w:r.width,h:r.height};};return {direction:getComputedStyle(root).flexDirection,use:q('touchUseBtn'),dash:q('touchSlideBtn'),special:q('touchSpecialBtn')};})()`);
+    assert.equal(actions.direction,'column','acciones táctiles apiladas '+JSON.stringify(actions));
+    assert(actions.use.top<actions.dash.top&&actions.dash.top<actions.special.top,'orden USAR/DASH/ESPECIAL '+JSON.stringify(actions));
+    for(const key of ['use','dash','special'])assert(actions[key].right<=801&&actions[key].bottom<=361,key+' dentro del viewport '+JSON.stringify(actions));
+    await shot('s20fe-landscape-controls');
     assert.equal(errors.length,0,JSON.stringify(errors));
-    fs.writeFileSync(path.join(OUT,'report.json'),JSON.stringify({pass:true,portrait,landscape,errors},null,2));
-    ok('móvil: gate vertical y paisaje S20 FE', {portrait,landscape});return;
+    fs.writeFileSync(path.join(OUT,'report.json'),JSON.stringify({pass:true,portrait,landscape,actions,errors},null,2));
+    ok('móvil: gate vertical, lobby y controles en paisaje S20 FE', {portrait,landscape,actions});return;
   }
   if(process.argv.includes('--system-menu')) {
     const results=[];

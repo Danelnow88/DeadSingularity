@@ -158,3 +158,117 @@ html.nv-mobile.nv-portrait #rotateOverlay {
   html.nv-mobile .mobile-weapon-switch .switch-indicator::before,
   html.nv-mobile .mobile-consumable-switch .switch-indicator::before { font-size:7px !important; }
 }
+
+/* Layout productivo para teléfonos apaisados, tanto con la barra del navegador
+   como en fullscreen. Se decide por proporción, no por el tipo de puntero ni
+   por una altura física concreta: Android puede reportar ambas de forma distinta. */
+@media (min-aspect-ratio:4/3) {
+  html.nv-mobile #startScreen { overflow:hidden; }
+  html.nv-mobile #startScreen .mobile-lobby-tabs { display:none !important; }
+  html.nv-mobile #startScreen .lobby-masthead {
+    min-height:50px;
+    padding:6px max(12px,env(safe-area-inset-right,0px)) 6px max(12px,env(safe-area-inset-left,0px));
+  }
+  html.nv-mobile #startScreen .lobby-masthead h1 { font-size:18px; }
+  html.nv-mobile #startScreen .lobby-online { font-size:8px; }
+  html.nv-mobile #startScreen .lobby-header-actions button { min-height:38px; height:38px; padding:4px 9px; }
+  html.nv-mobile #startScreen .main-lobby-panel {
+    display:grid !important;
+    grid-template-columns:minmax(205px,.9fr) minmax(255px,1.05fr) minmax(205px,.9fr) !important;
+    align-items:center;
+    gap:clamp(8px,1.4vw,18px);
+    width:100%;
+    height:calc(100dvh - 50px);
+    min-height:0;
+    max-width:none;
+    margin:0;
+    padding:8px max(12px,env(safe-area-inset-right,0px)) 8px max(12px,env(safe-area-inset-left,0px));
+    overflow:hidden;
+  }
+  html.nv-mobile #startScreen .main-lobby-copy,
+  html.nv-mobile #startScreen .lobby-center,
+  html.nv-mobile #startScreen .lobby-modes {
+    display:flex !important;
+    min-width:0;
+    width:100%;
+    max-height:100%;
+    margin:0;
+  }
+  html.nv-mobile #startScreen .main-lobby-copy { grid-column:1; grid-row:1; gap:7px; overflow:hidden; }
+  html.nv-mobile #startScreen .panel-piloto { gap:7px; padding:10px; }
+  html.nv-mobile #startScreen .panel-top { font-size:8px; }
+  html.nv-mobile #startScreen .panel-top button { min-height:28px; padding:3px 7px; font-size:7px; }
+  html.nv-mobile #startScreen .hero-info-header { gap:5px; }
+  html.nv-mobile #startScreen .hero-nav { width:30px; height:30px; min-height:30px; }
+  html.nv-mobile #startScreen .hero-info-name > span { font-size:clamp(17px,3.6vh,23px); }
+  html.nv-mobile #startScreen .hero-info-name small,
+  html.nv-mobile #startScreen .hero-info-stats { font-size:8px; }
+  html.nv-mobile #startScreen .hero-info-passive { padding:5px 7px; }
+  html.nv-mobile #startScreen .hero-info-passive span,
+  html.nv-mobile #startScreen .hero-info-skill span { font-size:7px; }
+  html.nv-mobile #startScreen .hero-info-passive strong,
+  html.nv-mobile #startScreen .hero-info-skill strong { font-size:9px; }
+  html.nv-mobile #startScreen .hero-info-skill { padding:5px 7px; gap:6px; }
+  html.nv-mobile #startScreen .hero-skill-icon { width:24px; height:24px; }
+  html.nv-mobile #startScreen .hero-info-skill small,
+  html.nv-mobile #startScreen .hero-info-identity { font-size:7px; line-height:1.15; }
+  html.nv-mobile #startScreen .pilot-status { font-size:7px; padding:4px; }
+  html.nv-mobile #startScreen .main-lobby-actions { width:100%; }
+  html.nv-mobile #startScreen .btn-mejoras { width:100%; min-height:38px; padding:6px; font-size:9px; }
+
+  html.nv-mobile #startScreen .lobby-center {
+    grid-column:2;
+    grid-row:1;
+    display:flex !important;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    gap:7px;
+  }
+  html.nv-mobile #startScreen .center-heading { display:block; }
+  html.nv-mobile #startScreen .center-heading > span { font-size:7px; }
+  html.nv-mobile #startScreen .center-heading h2 { font-size:clamp(16px,3.2vh,22px); }
+  html.nv-mobile #startScreen .lobby-hero { display:flex; height:auto; max-height:none; padding:0; }
+  html.nv-mobile #startScreen .avatar-circle { width:clamp(102px,24vh,146px); }
+  html.nv-mobile #startScreen .btn-jugar { width:min(250px,100%); min-height:44px; padding:6px 12px; }
+  html.nv-mobile #startScreen .btn-jugar span { font-size:18px; }
+  html.nv-mobile #startScreen .lobby-difficulty { width:min(290px,100%); }
+  html.nv-mobile #startScreen .lobby-diff-btn { min-height:36px; padding:4px 6px; font-size:8px; }
+  html.nv-mobile #startScreen #lobbyLaunch { width:min(290px,100%); font-size:7px; }
+
+  html.nv-mobile #startScreen .lobby-modes { grid-column:3; grid-row:1; flex-direction:column; justify-content:center; gap:7px; }
+  html.nv-mobile #startScreen .mode-label { font-size:7px; }
+  html.nv-mobile #startScreen .card-mode { padding:9px; }
+  html.nv-mobile #startScreen .mode-select { gap:2px; }
+  html.nv-mobile #startScreen .mode-heading { font-size:7px; }
+  html.nv-mobile #startScreen .mode-select > strong { margin:5px 0 3px; font-size:clamp(14px,3vh,19px); }
+  html.nv-mobile #startScreen .mode-description { font-size:8px; line-height:1.2; }
+  html.nv-mobile #startScreen .progress-caption { margin-top:7px; }
+  html.nv-mobile #startScreen .progress-bar { margin-top:5px; }
+  html.nv-mobile #startScreen .mode-footer { margin-top:6px; padding-top:6px; }
+  html.nv-mobile #startScreen .infinity-symbol { margin-top:1px; font-size:28px; line-height:.9; }
+  html.nv-mobile #startScreen .infinite-record { margin-top:5px; padding-top:5px; }
+  html.nv-mobile #startScreen .progress-caption,
+  html.nv-mobile #startScreen .mode-footer,
+  html.nv-mobile #startScreen .infinite-record { font-size:7px; }
+
+  html.nv-mobile .mobile-actions {
+    flex-direction:column !important;
+    align-items:stretch !important;
+    gap:5px !important;
+  }
+  html.nv-mobile .mobile-actions :is(.touch-use,.touch-slide,.touch-special) {
+    width:74px !important;
+    min-height:46px;
+  }
+  html.nv-mobile .mobile-actions .touch-special { min-height:62px; }
+}
+
+@media (min-aspect-ratio:4/3) and (max-height:430px) {
+  html.nv-mobile #startScreen .hero-info-skill small,
+  html.nv-mobile #startScreen .hero-info-identity { display:none; }
+  html.nv-mobile #startScreen .panel-piloto { gap:5px; padding:7px; }
+  html.nv-mobile #startScreen .avatar-circle { width:96px; }
+  html.nv-mobile #startScreen .center-heading { display:none; }
+  html.nv-mobile #startScreen .card-mode { padding:7px; }
+}
