@@ -199,9 +199,16 @@ async function fixture(wave, hp = 5000, progression = 'legacy', traversal = fals
     assert(actions.use.top<actions.dash.top&&actions.dash.top<actions.special.top,'orden USAR/DASH/ESPECIAL '+JSON.stringify(actions));
     for(const key of ['use','dash','special'])assert(actions[key].right<=801&&actions[key].bottom<=361,key+' dentro del viewport '+JSON.stringify(actions));
     await shot('s20fe-landscape-controls');
+    await send('Emulation.setDeviceMetricsOverride',{width:1280,height:576,deviceScaleFactor:2,mobile:true});
+    await navigate('?mobile=1&fresh=1');
+    await until('document.documentElement.classList.contains("nv-landscape")');
+    const wideLobby=await evaluate(`(()=>{const q=s=>{const r=document.querySelector(s).getBoundingClientRect();return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,w:r.width,h:r.height};};return {pilot:q('#startScreen .main-lobby-copy'),center:q('#startScreen .lobby-center'),modes:q('#startScreen .lobby-modes'),scroll:document.documentElement.scrollWidth};})()`);
+    for(const key of ['pilot','center','modes'])assert(wideLobby[key].w>0&&wideLobby[key].right<=1281&&wideLobby[key].bottom<=577,key+' visible en paisaje amplio '+JSON.stringify(wideLobby));
+    assert(wideLobby.scroll<=1281,'sin overflow en paisaje amplio '+JSON.stringify(wideLobby));
+    await shot('s20fe-wide-lobby');
     assert.equal(errors.length,0,JSON.stringify(errors));
-    fs.writeFileSync(path.join(OUT,'report.json'),JSON.stringify({pass:true,portrait,landscape,actions,errors},null,2));
-    ok('móvil: gate vertical, lobby y controles en paisaje S20 FE', {portrait,landscape,actions});return;
+    fs.writeFileSync(path.join(OUT,'report.json'),JSON.stringify({pass:true,portrait,landscape,actions,wideLobby,errors},null,2));
+    ok('móvil: gate vertical, lobby y controles en paisaje S20 FE', {portrait,landscape,actions,wideLobby});return;
   }
   if(process.argv.includes('--system-menu')) {
     const results=[];
