@@ -333,9 +333,10 @@
   text-shadow:none;
 }
 #shop .offer-badge-mobile { display:none; }
+#shop .shop-bottom-bar { display:contents; }
 
 /* Layout final exclusivo de tienda móvil horizontal. */
-@media (pointer: coarse) and (orientation: landscape) and (min-aspect-ratio:4/3) {
+@media (orientation: landscape) {
   html.nv-mobile #shop.shop-screen {
     display:grid;
     grid-template-columns:minmax(112px,22%) minmax(0,1fr) minmax(180px,25%);
@@ -624,4 +625,23 @@
     font-weight:900;
   }
   html.nv-mobile #shop .alpha-save-status { display:none; }
+  html.nv-mobile #shop .shop-bottom-bar {
+    grid-column:1 / -1;
+    grid-row:5;
+    display:grid;
+    grid-template-columns:minmax(112px,22%) minmax(0,1fr) minmax(180px,25%);
+    column-gap:10px;
+    min-height:0;
+    height:64px;
+    position:relative;
+    z-index:4;
+  }
+  html.nv-mobile #shop .shop-bottom-bar > :is(.shop-inspector,.shop-deploy,.alpha-save-quit) {
+    grid-row:1;
+    top:auto;
+    right:auto;
+    bottom:auto;
+    left:auto;
+    order:0;
+  }
 }

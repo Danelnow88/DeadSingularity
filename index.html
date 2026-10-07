@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="css/lobby-layout.css?nv=lobby-20261003" />
     <link rel="stylesheet" href="css/mobile.css?nv=mobile-layout-20261007f" />
     <link rel="stylesheet" href="css/system-menu.css?nv=icons-ui-20261007" />
-    <link rel="stylesheet" href="css/shop-remaster.css?nv=shop-mobile-20261007e" />
+    <link rel="stylesheet" href="css/shop-remaster.css?nv=shop-mobile-20261007g" />
     <!-- Capa móvil: detección por capacidad (se carga primero; solo etiqueta <html>). -->
     <script src="js/core/capabilities.js?nv=audio-20261002b"></script>
     <!-- La distribución Canvas2D funciona offline. WebGL legado sólo a pedido. -->
@@ -178,11 +178,6 @@
             <button type="button" class="shop-tab shop-tab-weapons" data-tab="weapons" role="tab">ARMAS</button>
             <button type="button" class="shop-tab shop-tab-consumables" data-tab="consumables" role="tab">CONSUMIBLES</button>
           </div>
-          <section id="shopInspector" class="shop-inspector" aria-live="polite" aria-label="Detalle de oferta">
-            <canvas id="shopInspectorIcon" width="48" height="48" aria-hidden="true"></canvas>
-            <div class="shop-inspector-copy"><span id="shopInspectorKind">SELECCIÓN</span><strong id="shopInspectorName">Explorá una mejora</strong><p id="shopInspectorDesc">Pasá el cursor, enfocá o tocá una oferta para ver su efecto.</p></div>
-            <b id="shopInspectorPrice">◆ —</b>
-          </section>
           <div class="shop-grid">
             <div class="shop-section shop-section-calibrations" data-shop-tab="upgrades">
               <div class="shop-section-title"><span class="section-chip">SYS</span> MEJORAS</div>
@@ -209,7 +204,14 @@
               <div id="consumableOffers" class="offers offers-consumables"></div>
             </div>
           </div>
-          <button id="skipWave" class="primary shop-deploy" type="button">DESPLEGAR EN OLEADA <span id="shopNextWave">2</span></button>
+          <div class="shop-bottom-bar">
+            <section id="shopInspector" class="shop-inspector" aria-live="polite" aria-label="Detalle de oferta">
+              <canvas id="shopInspectorIcon" width="48" height="48" aria-hidden="true"></canvas>
+              <div class="shop-inspector-copy"><span id="shopInspectorKind">SELECCIÓN</span><strong id="shopInspectorName">Explorá una mejora</strong><p id="shopInspectorDesc">Pasá el cursor, enfocá o tocá una oferta para ver su efecto.</p></div>
+              <b id="shopInspectorPrice">◆ —</b>
+            </section>
+            <button id="skipWave" class="primary shop-deploy" type="button">DESPLEGAR EN OLEADA <span id="shopNextWave">2</span></button>
+          </div>
         </div>
 
         <div id="permShop" class="shop-screen hidden">
@@ -443,7 +445,7 @@
     <script src="js/game.js?nv=mobile-20261004"></script>
     <script src="js/ui/onboarding.js?nv=audio-20261002b"></script>
     <script src="js/ui/gamepadControls.js?nv=audio-20261002b"></script>
-    <script src="js/ui/alpha.js?nv=lobby-20261003"></script>
+    <script src="js/ui/alpha.js?nv=shop-footer-20261007g"></script>
     <script src="js/ui/systemMenu.js?nv=system-20261007"></script>
     <!-- Último: necesita NV.input (expuesto por game.js) y NV.viewport. -->
     <script src="js/ui/mobileControls.js?nv=mobile-20261004"></script>

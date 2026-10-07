@@ -99,7 +99,7 @@ async function fixture(wave, hp = 5000, progression = 'legacy', traversal = fals
   await navigate();
   if(process.argv.includes('--shop-remaster')) {
     const results=[];
-    for(const [width,height,mobile] of [[1600,900,false],[800,360,true],[915,412,true],[1280,576,true]]) {
+    for(const [width,height,mobile] of [[1600,900,false],[640,360,true],[800,360,true],[915,412,true],[1280,576,true]]) {
       await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:mobile?2:1,mobile});
       await send('Emulation.setTouchEmulationEnabled',{enabled:mobile,maxTouchPoints:mobile?5:1});
       await navigate(mobile?'?mobile=1&fresh=1':'?fresh=1');
@@ -107,10 +107,11 @@ async function fixture(wave, hp = 5000, progression = 'legacy', traversal = fals
       await until('!!NV.getBoss()'); await evaluate('NV.getBoss().hp=0'); await until('NV.getState()==="shop"');
       const info=await evaluate(`(() => {
         const cards=[...document.querySelectorAll('#shop .shop-section')].map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,w:r.width,h:r.height};});
-        const offer=document.querySelector('#shop .offer:not(.disabled)'); offer.focus();
+        const offer=document.querySelector('#shop .offer-consumable:not(.disabled)') || document.querySelector('#shop .offer:not(.disabled)'); offer.focus(); offer.dispatchEvent(new Event('pointerenter'));
         const panel=document.getElementById('shopInspector'),r=panel.getBoundingClientRect();
         const grid=document.querySelector('#shop .shop-grid');
-        return {cards, detail:{x:r.x,y:r.y,right:r.right,bottom:r.bottom,w:r.width,h:r.height,name:document.getElementById('shopInspectorName').textContent,expected:offer.querySelector('.offer-name').textContent}, scroll:document.documentElement.scrollWidth, gridScroll:{width:grid.scrollWidth,client:grid.clientWidth,overflowX:getComputedStyle(grid).overflowX}};
+        const footer=[...document.querySelectorAll('#shop .shop-inspector,#shop .shop-deploy,#shop .alpha-save-quit')].map(e=>{const b=e.getBoundingClientRect();return {x:b.x,y:b.y,right:b.right,bottom:b.bottom};});
+        return {cards,footer, detail:{x:r.x,y:r.y,right:r.right,bottom:r.bottom,w:r.width,h:r.height,name:document.getElementById('shopInspectorName').textContent,expected:offer.querySelector('.offer-name').textContent}, scroll:document.documentElement.scrollWidth, gridScroll:{width:grid.scrollWidth,client:grid.clientWidth,overflowX:getComputedStyle(grid).overflowX}};
       })()`);
       assert.equal(info.cards.length,3,'tres tarjetas de tienda');
       const visibleCards=info.cards.filter(card=>card.w>0&&card.h>0);
@@ -119,6 +120,12 @@ async function fixture(wave, hp = 5000, progression = 'legacy', traversal = fals
       assert(info.detail.x>=-1&&info.detail.right<=width+1&&info.detail.y>=0&&info.detail.bottom<=height+1,'detalle dentro del viewport '+JSON.stringify(info.detail));
       assert(info.scroll<=width+1,'sin desborde horizontal '+JSON.stringify(info));
       if(mobile) assert.equal(info.gridScroll.overflowX,'hidden','sin barra horizontal interna '+JSON.stringify(info.gridScroll));
+      if(mobile) {
+        const panelBottom=Math.max(...info.cards.map(c=>c.bottom));
+        for(const control of info.footer) assert(control.y>=panelBottom+8 && control.bottom<=height+1,'fila inferior separada de paneles '+JSON.stringify(info));
+        const sorted=info.footer.slice().sort((a,b)=>a.x-b.x);
+        for(let i=1;i<sorted.length;i++) assert(sorted[i].x>=sorted[i-1].right+8,'controles inferiores separados '+JSON.stringify(info.footer));
+      }
       await shot('shop-'+width+'-'+height); results.push({width,height,mobile,...info});
     }
     assert.equal(errors.length,0,JSON.stringify(errors));

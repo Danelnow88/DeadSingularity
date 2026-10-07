@@ -133,7 +133,7 @@
     if (NV.alpha.dockAndQuit()) { savedStatus.textContent = ''; refresh(true); }
     else savedStatus.textContent = 'No se pudo guardar. Revisá el almacenamiento del juego.';
   }, 'alpha-button alpha-save-quit');
-  if (shop) shop.append(saveQuit, savedStatus);
+  if (shop) (shop.querySelector('.shop-bottom-bar') || shop).append(saveQuit, savedStatus);
   const result = document.querySelector('.game-over-future'); if (result) { result.classList.add('alpha-result'); result.removeAttribute('aria-hidden'); }
   const strip = el('div', 'alpha-run-strip'); strip.setAttribute('aria-label', 'Objetivo de expedición');
   document.querySelector('main').append(strip);
