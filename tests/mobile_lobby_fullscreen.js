@@ -83,8 +83,9 @@ t('mobile landscape lobby soportado muestra el botón', () => {
   if (r.lobbyButton.getAttribute('aria-hidden') !== 'false') throw new Error('aria no visible');
 });
 
-t('portrait, fuera de lobby o API ausente ocultan el botón', () => {
-  for (const options of [{ portrait: true }, { state: 'playing' }, { lobbyHidden: true }, { supported: false }]) {
+t('portrait permite fullscreen para entrar en landscape; fuera de lobby o API ausente lo ocultan', () => {
+  if(runtime({portrait:true}).lobbyButton.classList.contains('hidden'))throw new Error('portrait necesita acceso a fullscreen');
+  for (const options of [{ state: 'playing' }, { lobbyHidden: true }, { supported: false }]) {
     const r = runtime(options);
     if (!r.lobbyButton.classList.contains('hidden')) throw new Error('visible con ' + JSON.stringify(options));
   }

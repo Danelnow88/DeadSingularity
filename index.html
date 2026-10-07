@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="css/lobby-f093.css?nv=audio-20261002b" />
     <link rel="stylesheet" href="css/alpha.css?nv=audio-20261002b" />
     <link rel="stylesheet" href="css/lobby-layout.css?nv=lobby-20261003" />
+    <link rel="stylesheet" href="css/mobile.css?nv=mobile-20261004" />
+    <link rel="stylesheet" href="css/system-menu.css?nv=system-20261007" />
     <!-- Capa móvil: detección por capacidad (se carga primero; solo etiqueta <html>). -->
     <script src="js/core/capabilities.js?nv=audio-20261002b"></script>
     <!-- La distribución Canvas2D funciona offline. WebGL legado sólo a pedido. -->
@@ -48,6 +50,35 @@
       <section class="game-box">
         <canvas id="game" width="900" height="520"></canvas>
         <canvas id="specter-overlay" class="espectro-lite-canvas" width="900" height="520"></canvas>
+        <!-- El HUD histórico conserva sus nodos por compatibilidad; esta es su
+             presentación nueva. No duplica estado: systemMenu.js refleja esos
+             mismos valores y dispara las acciones existentes. -->
+        <div id="systemVitals" class="system-vitals" aria-label="Estado vital">
+          <span class="system-vitals-label">VIDA</span>
+          <div class="system-vitals-bar"><i id="systemHpFill"></i><span id="systemHpText">100/100</span></div>
+        </div>
+        <button id="systemMenuToggle" class="system-menu-toggle" type="button" aria-label="Abrir sistema" aria-expanded="false">☰</button>
+        <aside id="systemMenu" class="system-menu" aria-label="Menú de sistema" hidden>
+          <header class="system-menu-head"><div><span>SISTEMA</span><strong>NEON VOID</strong></div><button id="systemMenuClose" type="button" aria-label="Cerrar menú">×</button></header>
+          <section class="system-readout" aria-label="Estado de partida">
+            <div><small>OLEADA</small><strong id="systemWave">—</strong></div>
+            <div><small>PUNTOS</small><strong id="systemScore">0</strong></div>
+            <div><small>FRAGMENTOS</small><strong id="systemShards">0</strong></div>
+          </section>
+          <div class="system-actions">
+            <button type="button" data-system-action="pause">⏸ PAUSA</button>
+            <button type="button" data-system-action="stats">▥ ESTADÍSTICAS</button>
+            <button type="button" data-system-action="hud">◉ HUD</button>
+            <button id="systemSoundBtn" type="button" data-system-action="sound">🔊 SONIDO</button>
+            <button type="button" data-system-action="settings">⚙ AJUSTES</button>
+            <button type="button" data-system-action="fullscreen">⛶ PANTALLA COMPLETA</button>
+          </div>
+          <details class="system-experimental">
+            <summary>MÚSICA EXPERIMENTAL <span>OPCIONAL</span></summary>
+            <p>Conectá una pestaña o ventana externa solo si querés que el entorno reaccione a su ritmo.</p>
+            <div id="systemMusicSlot"></div>
+          </details>
+        </aside>
         <div id="waveBanner" class="wave-banner hidden"></div>
 
         <div id="startScreen" class="overlay lobby-screen main-lobby-screen">
@@ -243,6 +274,7 @@
         <div id="mobileOptions" class="mobile-options hidden" aria-label="Panel de opciones">
           <button id="mPauseBtn" class="opt-btn" type="button">⏸ Pausa</button>
           <button id="mStatsBtn" class="opt-btn" type="button">Estadísticas</button>
+          <button id="mHudBtn" class="opt-btn" type="button">Mostrar / ocultar HUD</button>
           <button id="mSoundBtn" class="opt-btn" type="button" aria-pressed="true">🔊 Sonido: ON</button>
           <button id="mSettingsBtn" class="opt-btn" type="button">⚙ Ajustes</button>
           <button id="mFullscreenBtn" class="opt-btn" type="button">⛶ Fullscreen</button>
@@ -344,7 +376,7 @@
     <script src="js/data/balance.js?nv=audio-20261002b"></script>
     <script src="js/core/settings.js?nv=audio-20261002b"></script>
     <script src="js/core/utils.js?nv=audio-20261002b"></script>
-    <script src="js/core/viewport.js?nv=audio-20261002b"></script>
+    <script src="js/core/viewport.js?nv=mobile-20261004"></script>
     <script src="js/core/inputIntent.js?nv=audio-20261002b"></script>
     <script src="js/data/consumables.js?nv=audio-20261002b"></script>
     <script src="js/audio/voices.js?nv=groove-20261003"></script>
@@ -402,11 +434,12 @@
     <script src="js/engine/flame.js?nv=audio-20261002b"></script>
     <script src="js/engine/weapons.js?nv=audio-20261002b"></script>
     <script src="js/engine/special.js?nv=audio-20261002b"></script>
-    <script src="js/game.js?nv=audio-20261002b"></script>
+    <script src="js/game.js?nv=mobile-20261004"></script>
     <script src="js/ui/onboarding.js?nv=audio-20261002b"></script>
     <script src="js/ui/gamepadControls.js?nv=audio-20261002b"></script>
     <script src="js/ui/alpha.js?nv=lobby-20261003"></script>
+    <script src="js/ui/systemMenu.js?nv=system-20261007"></script>
     <!-- Último: necesita NV.input (expuesto por game.js) y NV.viewport. -->
-    <script src="js/ui/mobileControls.js?nv=audio-20261002b"></script>
+    <script src="js/ui/mobileControls.js?nv=mobile-20261004"></script>
   </body>
 </html>

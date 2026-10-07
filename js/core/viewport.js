@@ -234,7 +234,10 @@
         viewport.offsetY = Math.max(0, (cssH - worldMetrics.viewH * viewport.displayScale) / 2);
       }
       if (viewport.isMobile) {
-        viewport.dpr = Math.min((w && w.devicePixelRatio) || 1, MOBILE_DPR_CAP);
+        // Presupuesto de backing store, no escala de gameplay: tablets/zoom alto
+        // no deben multiplicar varios millones de píxeles por frame.
+        const pixelBudgetDpr=Math.sqrt(2000000/Math.max(1,cssW*cssH));
+        viewport.dpr = Math.min((w && w.devicePixelRatio) || 1, MOBILE_DPR_CAP,Math.max(1,pixelBudgetDpr));
       } else {
         viewport.dpr = 1;// escritorio idéntico al comportamiento original
       }

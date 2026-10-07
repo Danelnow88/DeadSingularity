@@ -41,6 +41,19 @@
   const isMobile = !!(NV.capabilities && NV.capabilities.isMobile);
   if (!isMobile) return; // escritorio: inerte, no toca DOM ni input
 
+  // Pestañas sobre el lobby existente, no una segunda pantalla ni datos duplicados.
+  if(startMobileLobby()) { /* Inicializa una sola vez desde este módulo. */ }
+  function startMobileLobby(){
+    const lobby=d.getElementById('startScreen');
+    const masthead=lobby&&typeof lobby.querySelector==='function'&&lobby.querySelector('.lobby-masthead');
+    if(!masthead)return false;
+    const nav=d.createElement('nav');nav.className='mobile-lobby-tabs';nav.setAttribute('role','tablist');nav.setAttribute('aria-label','Lobby');
+    const tabs=[['pilot','JUGAR'],['modes','MODOS'],['info','PILOTO']];
+    for(const [id,label] of tabs){const b=d.createElement('button');b.type='button';b.textContent=label;b.setAttribute('role','tab');b.setAttribute('aria-selected',String(id==='pilot'));
+      b.addEventListener('click',()=>{lobby.setAttribute('data-mobile-tab',id);for(const t of nav.children)t.setAttribute('aria-selected',String(t===b));});nav.appendChild(b);}
+    lobby.setAttribute('data-mobile-tab','pilot');masthead.insertAdjacentElement('afterend',nav);return true;
+  }
+
   const input = NV.input || {};
   const viewport = NV.viewport || {};
 
@@ -101,7 +114,11 @@
         : type === 'pointermove' ? 'touchmove'
         : type === 'pointerup' ? 'touchend'
         : type === 'pointercancel' ? 'touchcancel' : type);
-    el.addEventListener(name, fn, opts || { passive: false });
+    const handler=type==='pointerdown'&&(el===slideBtn||el===specialBtn)?e=>{
+      try{if(el.setPointerCapture&&e.pointerId!=null)el.setPointerCapture(e.pointerId);}catch(_){}
+      fn(e);
+    }:fn;
+    el.addEventListener(name, handler, opts || { passive: false });
   }
 
   // --- Reset total (evita teclas/direcciones "trabadas" al cambiar de app) ---
@@ -156,6 +173,7 @@
     if (activePointer !== null) return; // un solo stick a la vez
     try { e.preventDefault(); } catch (_) { /* defensivo */ }
     activePointer = idOf(e);
+    try { if(zone.setPointerCapture&&e.pointerId!=null)zone.setPointerCapture(e.pointerId); } catch (_) {}
     const c = joystickCenter();
     originX = c.x; originY = c.y;
     if (zone && zone.classList) zone.classList.add('active');
@@ -201,6 +219,9 @@
     bind(slideBtn, 'pointerup', release(() => input.setSlide && input.setSlide(false)));
     bind(slideBtn, 'pointercancel', release(() => input.setSlide && input.setSlide(false)));
   }
+  for(const [button,setter] of [[slideBtn,'setSlide'],[specialBtn,'setSpecial']]){
+    bind(button,'lostpointercapture',()=>{if(input[setter])input[setter](false);});
+  }
   // USAR = F (consumible seleccionado). Acción one-shot en el down.
   if (useBtn) {
     bind(useBtn, 'pointerdown', press(() => { if (typeof input.useSelected === 'function') input.useSelected(); }));
@@ -222,14 +243,20 @@
   function openOptions() { if (mobileOptions) mobileOptions.classList.remove('hidden'); }
   if (optionsBtn) {
     bind(optionsBtn, 'pointerdown', press(() => {
-      if (mobileOptions && mobileOptions.classList.contains('hidden')) openOptions();
+      // El menú de sistema es la autoridad visual nueva y funciona igual con
+      // puntero/touch. Conservamos el panel móvil histórico como fallback.
+      if (NV.systemMenu && typeof NV.systemMenu.toggle === 'function') {
+        NV.systemMenu.toggle();
+      } else if (mobileOptions && mobileOptions.classList.contains('hidden')) openOptions();
       else closeOptions();
     }));
   }
   // Cada botón del panel ejecuta la acción y cierra el panel.
   if (mPauseBtn) bind(mPauseBtn, 'pointerdown', press(() => { if (typeof input.togglePause === 'function') input.togglePause(); closeOptions(); }));
   if (mStatsBtn) bind(mStatsBtn, 'pointerdown', press(() => { if (typeof input.toggleStats === 'function') input.toggleStats(); closeOptions(); }));
-  if (mSoundBtn) bind(mSoundBtn, 'pointerdown', press(() => { if (typeof input.toggleSound === 'function') input.toggleSound(); closeOptions(); }));
+  const mHudBtn=d.getElementById('mHudBtn');
+  if(mHudBtn)bind(mHudBtn,'pointerdown',press(()=>{const toggle=d.getElementById('hudToggle');if(toggle)toggle.click();closeOptions();}));
+  if (mSoundBtn) bind(mSoundBtn, 'pointerdown', press(() => { if (typeof input.toggleSound === 'function') input.toggleSound(); mSoundBtn.textContent=NV.soundOn?'Sonido: ON':'Sonido: OFF';mSoundBtn.setAttribute('aria-pressed',String(!!NV.soundOn));closeOptions(); }));
   if (mSettingsBtn) bind(mSettingsBtn, 'pointerdown', press(() => { if (NV.settingsUI && typeof NV.settingsUI.open === 'function') NV.settingsUI.open(); closeOptions(); }));
   if (mFullscreenBtn) bind(mFullscreenBtn, 'pointerdown', press(() => { if (viewport && typeof viewport.toggleFullscreen === 'function') viewport.toggleFullscreen(); closeOptions(); }));
 
@@ -348,10 +375,11 @@
     shopEl.setAttribute('data-active-tab', 'upgrades'); // default MEJORAS en mobile
     const tabs = [].slice.call(shopTabs.querySelectorAll('.shop-tab'));
     tabs.forEach((tab) => {
+      tab.setAttribute('aria-selected',String(tab.getAttribute('data-tab')==='upgrades'));
       bind(tab, 'pointerdown', press(() => {
         const name = tab.getAttribute('data-tab') || 'upgrades';
         shopEl.setAttribute('data-active-tab', name);
-        tabs.forEach((t) => t.classList.toggle('active', t === tab));
+        tabs.forEach((t) => {t.classList.toggle('active', t === tab);t.setAttribute('aria-selected',String(t===tab));});
       }));
     });
   }
@@ -366,7 +394,7 @@
     const lobbyVisible = !!(startScreen && startScreen.classList && !startScreen.classList.contains('hidden'));
     const supported = !!(viewport && typeof viewport.canFullscreen === 'function' && viewport.canFullscreen());
     const fullscreen = !!(viewport && typeof viewport.readFullscreen === 'function' && viewport.readFullscreen());
-    const show = landscape && lobbyState && lobbyVisible && supported && !fullscreen;
+    const show = lobbyState && lobbyVisible && supported && !fullscreen;
     lobbyFullscreenBtn.classList.toggle('hidden', !show);
     lobbyFullscreenBtn.setAttribute('aria-hidden', show ? 'false' : 'true');
     return show;

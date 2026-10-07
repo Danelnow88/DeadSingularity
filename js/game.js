@@ -3972,7 +3972,7 @@
       ctx.shadowBlur = 0;
       ctx.fillStyle = '#aaa';
       ctx.font = '18px system-ui';
-      ctx.fillText('Pulsa P para continuar', vx + vw / 2, vy + vh / 2 + 24);
+      ctx.fillText(NV.capabilities&&NV.capabilities.isMobile?'Abrí ☰ y tocá Reanudar':'Pulsa P para continuar', vx + vw / 2, vy + vh / 2 + 24);
       ctx.fillStyle = '#666';
       ctx.font = '12px system-ui';
       ctx.fillText('Oleada ' + wave + ' · Puntos ' + score, vx + vw / 2, vy + vh / 2 + 54);

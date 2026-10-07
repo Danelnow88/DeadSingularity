@@ -64,26 +64,12 @@ async function layoutSnapshot() {
 function assertPresentationLayout(layout) {
   const c=layout['#game'],box=layout['.game-box'];
   assert.equal(layout.padding,28);
-  if(!layout.mobile) {
-    assert.equal(c.x,0);assert.equal(c.right,layout.width);assert.equal(c.bottom,layout.height);
-    assert.equal(c.y,box.y);assert.equal(c.width,box.width);assert.equal(c.height,box.height);
-    assert.equal(box.border,'0px');assert.equal(box.radius,'0px');
-    assert.equal(c.y,64);assert.equal(layout.metrics.arenaW,1350);assert.equal(layout.metrics.arenaH,780);
-  }
-  // Comparación con la medición ANTERIOR al pulido, no un valor inventado.
-  const baseline=path.resolve(__dirname,'../previews/perimeter-polish-before/report.json');
-  if(fs.existsSync(baseline)) {
-    const old=JSON.parse(fs.readFileSync(baseline,'utf8')).results.map(r=>r.data)
-      .find(r=>r.width===layout.width&&r.height===layout.height&&r.state===layout.state);
-    if(old) {
-      assert.deepEqual(layout['.hud'],old['.hud'],'el HUD superior cambió');
-      if(layout.mobile) {
-        assert.deepEqual(layout['#game'],old['#game'],'la caja móvil cambió');
-        assert.equal(layout.metrics.arenaW,old.metrics.arenaW,'la arena móvil cambió');
-        assert.equal(layout.metrics.arenaH,old.metrics.arenaH,'la arena móvil cambió');
-      }
-    }
-  }
+  // El HUD histórico ya no ocupa una franja. Canvas y caja usan todo el viewport;
+  // worldMetrics/bounds siguen siendo independientes de esta presentación.
+  assert.equal(c.x,0);assert.equal(c.y,0);assert.equal(c.right,layout.width);assert.equal(c.bottom,layout.height);
+  assert.equal(c.width,box.width);assert.equal(c.height,box.height);
+  assert.equal(box.border,'0px');assert.equal(box.radius,'0px');
+  assert.equal(layout.metrics.arenaW,1350);assert.equal(layout.metrics.arenaH,780);
 }
 async function fixture(wave, hp = 5000, progression = 'legacy', traversal = false, options = {}) {
   return evaluate(`(() => {
@@ -111,6 +97,74 @@ async function fixture(wave, hp = 5000, progression = 'legacy', traversal = fals
   await send('Runtime.enable'); await send('Page.enable'); await send('Network.enable');
   await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
   await navigate();
+  if(process.argv.includes('--mobile-polish')) {
+    const results=[];
+    for(const [width,height] of [[640,360],[844,390],[915,412],[1024,600],[360,800],[412,915]]){
+      await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:true});
+      await send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
+      await navigate('?mobile=1');
+      await until('document.querySelectorAll(".mobile-lobby-tabs button").length===3');
+      for(const tab of [0,1,2]){
+        await evaluate(`document.querySelectorAll('.mobile-lobby-tabs button')[${tab}].click()`);
+        const layout=await evaluate(`({w:innerWidth,h:innerHeight,scroll:document.documentElement.scrollWidth,tab:document.getElementById('startScreen').dataset.mobileTab})`);
+        assert(layout.scroll<=width+1,'overflow lobby '+JSON.stringify(layout));
+        await shot('lobby-'+width+'-'+height+'-'+tab);results.push(layout);
+      }
+      await evaluate('NV.settingsUI.open()');await sleep(100);
+      const settings=await evaluate(`(()=>{const r=document.getElementById('settingsPanelBody').getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom}})()`);
+      assert(settings.x>=-1&&settings.y>=-1&&settings.right<=width+1&&settings.bottom<=height+1,'settings bounds '+JSON.stringify(settings));
+      await shot('settings-'+width+'-'+height);await evaluate('NV.settingsUI.close()');
+      await evaluate('document.querySelectorAll(".mobile-lobby-tabs button")[2].click();document.getElementById("permBtn").click()');
+      await until('!document.getElementById("permShop").classList.contains("hidden")');
+      await sleep(500);
+      const back=await evaluate(`(()=>{const r=document.getElementById('permBack').getBoundingClientRect();return {right:r.right,bottom:r.bottom,top:r.top}})()`);
+      assert(back.right<=width+1&&back.bottom<=height+1&&back.top>=0,'permanent shop return '+JSON.stringify(back));
+      await shot('permanent-'+width+'-'+height);await evaluate('document.getElementById("permBack").click()');
+      assert(await fixture(1,5000,'full-roster'));await evaluate('NV.alpha.resume()');await until('!!NV.getBoss()');
+      await evaluate('NV.getBoss().hp=0');await until('NV.getState()==="shop"');
+      for(const tab of ['upgrades','weapons','consumables']){
+        await evaluate(`document.querySelector('#shopTabs [data-tab=${tab}]').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:2,pointerType:'touch'}))`);
+        const layout=await evaluate(`(()=>{const r=document.querySelector('#shop .shop-deploy').getBoundingClientRect();return {tab:document.getElementById('shop').dataset.activeTab,right:r.right,bottom:r.bottom,top:r.top,scroll:document.documentElement.scrollWidth}})()`);
+        assert.equal(layout.tab,tab);assert(layout.right<=width+1&&layout.bottom<=height+1&&layout.top>=0,'shop deploy visible '+JSON.stringify(layout));
+        await shot('shop-'+width+'-'+height+'-'+tab);results.push(layout);
+      }
+      if(width>height){
+        await evaluate('document.getElementById("skipWave").click()');await until('NV.getState()==="playing"');
+        for(const id of ['touchSlideBtn','touchSpecialBtn','touchWeaponPrev','touchWeaponNext','touchConsumPrev','touchConsumNext','systemMenuToggle']){
+          const rect=await evaluate(`(()=>{const e=document.getElementById('${id}'),r=e.getBoundingClientRect();return {w:r.width,h:r.height,left:r.left,right:r.right,top:r.top,bottom:r.bottom}})()`);
+          assert(rect.w>0&&rect.h>=44&&rect.left>=0&&rect.right<=width+1&&rect.top>=0&&rect.bottom<=height+1,id+' bounds '+JSON.stringify(rect));
+        }
+        const oldWeapon=await evaluate('NV.alpha.snapshot().weapon');
+        await evaluate(`document.getElementById('touchWeaponPrev').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:3,pointerType:'touch'}))`);
+        assert.notEqual(await evaluate('NV.alpha.snapshot().weapon'),oldWeapon,'weapon switch actually works');
+        await evaluate('NV.input.togglePause()');await shot('playing-'+width+'-'+height);
+      }
+    }
+    assert.equal(errors.length,0,JSON.stringify(errors));fs.writeFileSync(path.join(OUT,'report.json'),JSON.stringify({pass:true,results,errors},null,2));ok('mobile: lobby tabs/settings/shop/controls on six viewports');return;
+  }
+  if(process.argv.includes('--system-menu')) {
+    const results=[];
+    for(const [width,height,mobile] of [[1280,800,false],[915,412,true],[360,800,true]]) {
+      await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:mobile?2:1,mobile});
+      await send('Emulation.setTouchEmulationEnabled',{enabled:mobile,maxTouchPoints:mobile?5:1});
+      await navigate((mobile?'?mobile=1&fresh=1':'?fresh=1'));
+      assert(await fixture(1,5000,'full-roster'));
+      await evaluate('NV.alpha.resume()');await until('NV.getState()==="playing"');
+      const before=await evaluate(`(()=>{const q=s=>{const r=document.querySelector(s).getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,w:r.width,h:r.height,display:getComputedStyle(document.querySelector(s)).display}};return {game:q('#game'),box:q('.game-box'),legacy:q('.hud'),vitals:q('#systemVitals'),toggle:q('#systemMenuToggle')}})()`);
+      assert.equal(before.game.x,0);assert.equal(before.game.y,0);assert.equal(before.game.right,width);assert.equal(before.game.bottom,height);
+      assert.equal(before.legacy.display,'none');
+      assert(before.vitals.w>0&&before.vitals.x>=0&&before.vitals.right<=width,'vitals '+JSON.stringify(before));
+      assert(before.toggle.w>=42&&before.toggle.x>=0&&before.toggle.right<=width,'toggle '+JSON.stringify(before));
+      await evaluate('document.getElementById("systemMenuToggle").click()');
+      const panel=await evaluate(`(()=>{const r=document.getElementById('systemMenu').getBoundingClientRect();return {hidden:document.getElementById('systemMenu').hidden,x:r.x,y:r.y,right:r.right,bottom:r.bottom,w:r.width,h:r.height,wave:document.getElementById('systemWave').textContent,sourceWave:document.getElementById('wave').textContent,hp:document.getElementById('systemHpText').textContent,sourceHp:document.getElementById('hpText').textContent}})()`);
+      assert.equal(panel.hidden,false);assert(panel.x>=0&&panel.y>=0&&panel.right<=width+1&&panel.bottom<=height+1,'panel '+JSON.stringify(panel));
+      assert.equal(panel.wave,panel.sourceWave);assert.equal(panel.hp,panel.sourceHp);
+      await evaluate('document.getElementById("systemMenuClose").click()');
+      assert.equal(await evaluate('document.getElementById("systemMenu").hidden'),true);
+      await shot('system-'+width+'-'+height);results.push({width,height,mobile,before,panel});
+    }
+    assert.equal(errors.length,0,JSON.stringify(errors));fs.writeFileSync(path.join(OUT,'report.json'),JSON.stringify({pass:true,results,errors},null,2));ok('sistema: canvas completo, datos preservados y menú responsivo',results);return;
+  }
   if(process.argv.includes('--soundtrack-fix')) {
     await evaluate(`(() => {window.musicProbe=[];const original=NV.soundVoice;NV.soundVoice=s=>{if(s.channel==='music')musicProbe.push({buffer:!!s.buffer,role:s.role});return original(s)};NV.initAudio();})()`);
     await until('NV.soundtrack.getDiagnostics().status==="ready"',20000);

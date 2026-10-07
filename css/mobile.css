@@ -1,0 +1,98 @@
+/* Capa final mobile: mismas entidades/DOM, coordenadas físicas y safe areas.
+   Reemplaza los tamaños históricos del HUD/lobby; desktop no recibe reglas. */
+.nv-mobile body { width:100%; max-width:100%; height:100dvh; }
+.nv-mobile .shell { padding:0; gap:0; align-items:stretch; min-width:0; min-height:0; }
+.nv-mobile .shell > .game-box { width:100%; height:100%; max-height:none; max-width:none; min-height:0; min-width:0; border:0; border-radius:0; aspect-ratio:auto; }
+.nv-mobile .shell > .hud { position:fixed; top:env(safe-area-inset-top,0px); left:env(safe-area-inset-left,0px); right:env(safe-area-inset-right,0px); height:48px; min-height:0; border:0; border-radius:0; padding:2px 8px; background:none; box-shadow:none; z-index:20; pointer-events:none; flex-wrap:nowrap; }
+.nv-mobile .hud .logo,.nv-mobile .hud .rhythm-widget,.nv-mobile .hud .stat-wave,.nv-mobile .hud .stat-score { display:none; }
+.nv-mobile .hud .stats { gap:6px; min-width:0; background:#050b19c9; border-radius:8px; padding:4px; }
+.nv-mobile .hud .hp-bar { width:112px; height:22px; }
+.nv-mobile .hud .hud-btns { margin-left:auto; pointer-events:auto; }
+.nv-mobile .hud .hud-btns > :not(#optionsBtn):not(#fullscreenBtn) { display:none; }
+.nv-mobile .hud #optionsBtn,.nv-mobile .hud #fullscreenBtn { display:flex; width:44px; height:44px; }
+.nv-mobile:not([data-game-state="playing"]):not([data-game-state="wave_end"]) .shell > .hud { display:none; }
+.nv-mobile .overlay { position:fixed; inset:0; width:auto; height:auto; max-height:none; padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px); overflow:auto; overscroll-behavior:contain; justify-content:flex-start; }
+.nv-mobile .overlay :is(.lobby-shell,.shop-screen,.shop-section,.shop-grid) { min-width:0; min-height:0; }
+.nv-mobile #startScreen .lobby-masthead { padding:8px 12px; min-height:48px; flex:0 0 auto; }
+.nv-mobile #startScreen .lobby-masthead h1 { font-size:16px; letter-spacing:1px; }
+.nv-mobile #startScreen .lobby-header-actions { gap:4px; }
+.nv-mobile #startScreen .lobby-header-actions button { min-height:44px; padding:6px 9px; }
+.nv-mobile #startScreen .lobby-shell { width:100%; height:100%; overflow:hidden; display:flex; flex-direction:column; }
+.nv-mobile .mobile-lobby-tabs { display:flex; flex:0 0 auto; gap:4px; padding:4px 12px; background:#080e20; }
+.nv-mobile .mobile-lobby-tabs button { flex:1; min-height:44px; border:1px solid #2f5269; border-radius:8px; color:#c6d8e7; background:#0d1b2c; font:700 12px system-ui; }
+.nv-mobile .mobile-lobby-tabs button[aria-selected="true"] { color:#7cf8ff; border-color:#7cf8ff; background:#143643; }
+.nv-mobile #startScreen .main-lobby-panel { display:block; width:100%; max-width:none; padding:12px; margin:0; flex:1 1 auto; overflow:auto; height:auto; min-height:0; }
+.nv-mobile #startScreen[data-mobile-tab="pilot"] .main-lobby-copy,.nv-mobile #startScreen[data-mobile-tab="pilot"] .lobby-modes,
+.nv-mobile #startScreen[data-mobile-tab="modes"] .lobby-center,.nv-mobile #startScreen[data-mobile-tab="modes"] .main-lobby-copy,
+.nv-mobile #startScreen[data-mobile-tab="info"] .lobby-center,.nv-mobile #startScreen[data-mobile-tab="info"] .lobby-modes { display:none; }
+.nv-mobile #startScreen .lobby-center { width:min(520px,100%); margin:auto; gap:8px; }
+.nv-mobile #startScreen .panel-piloto { padding:10px; gap:6px; }
+.nv-mobile #startScreen .avatar-circle { width:clamp(110px,28vh,210px); }
+.nv-mobile #startScreen .btn-jugar { min-height:44px; padding:10px; }
+.nv-mobile #startScreen .btn-mejoras { min-height:44px; }
+.nv-mobile #startScreen .lobby-footer { display:none; }
+.nv-mobile #startScreen .lobby-diff-btn { min-height:44px; padding:6px 12px; }
+.nv-mobile #startScreen .main-lobby-copy { max-height:none; overflow:visible; }
+.nv-mobile .settings-overlay { padding:8px; padding-top:max(8px,env(safe-area-inset-top,0px)); padding-bottom:max(8px,env(safe-area-inset-bottom,0px)); }
+.nv-mobile .settings-panel { width:100%; max-width:680px; height:100%; max-height:100%; min-height:0; }
+.nv-mobile :is(.settings-tab,.settings-close,.opt-btn,.shop-tab) { min-height:44px; }
+.nv-mobile .mobile-options { z-index:30; top:calc(env(safe-area-inset-top,0px) + 50px); right:calc(env(safe-area-inset-right,0px) + 8px); max-height:calc(100dvh - 65px); max-width:calc(100vw - 16px); overflow:auto; }
+.nv-mobile .mobile-weapon-switch,.nv-mobile .mobile-consumable-switch { width:180px; height:44px; display:flex; gap:2px; }
+.nv-mobile .mobile-weapon-switch { top:calc(env(safe-area-inset-top,0px) + 52px); }
+.nv-mobile .mobile-consumable-switch { top:calc(env(safe-area-inset-top,0px) + 99px); }
+.nv-mobile .mobile-weapon-switch .touch-switch,.nv-mobile .mobile-consumable-switch .touch-switch { display:block; flex:0 0 36px; width:36px; height:44px; font-size:12px; }
+.nv-mobile .switch-indicator { flex:1; min-width:0; height:44px; padding:3px; gap:3px; }
+.nv-mobile .mobile-actions { flex-direction:row; align-items:flex-end; gap:6px; }
+.nv-mobile .touch-btn { min-height:44px; backdrop-filter:none; }
+.nv-mobile .touch-slide,.nv-mobile .touch-use { width:64px; }
+.nv-mobile .touch-special { width:84px; }
+.nv-mobile .joystick-zone { width:170px; height:150px; }
+.nv-mobile .joystick-base { width:96px; height:96px; left:18px; bottom:18px; }
+.nv-mobile:not([data-game-state="playing"]):not([data-game-state="wave_end"]) .mobile-hud { display:none; }
+.nv-mobile #shop,.nv-mobile #permShop { padding:8px; padding-top:max(8px,env(safe-area-inset-top,0px)); padding-bottom:max(8px,env(safe-area-inset-bottom,0px)); overflow:hidden; }
+.nv-mobile :is(#shop,#permShop) .shop-screen { width:100%; height:100%; max-height:none; display:flex; flex-direction:column; gap:6px; padding:0; overflow:hidden; }
+.nv-mobile :is(#shop,#permShop) .shop-grid { display:block; flex:1 1 auto; min-height:0; overflow:auto; }
+.nv-mobile :is(#shop,#permShop) .shop-section { width:100%; height:auto; max-height:none!important; overflow:visible; margin:0; padding:8px; }
+.nv-mobile :is(#shop,#permShop) .offers { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; overflow:visible; max-height:none!important; }
+.nv-mobile :is(#shop,#permShop) .offer { min-height:100px; height:auto; padding:10px; }
+.nv-mobile :is(#shop,#permShop) .offer-desc { font-size:12px; line-height:1.35; white-space:normal; }
+.nv-mobile :is(#shop,#permShop) .shop-deploy { position:static; flex:0 0 auto; align-self:flex-end; width:auto; max-width:100%; min-height:44px; padding:10px 20px; margin:0; font-size:13px; }
+.nv-mobile .alpha-save-quit,.nv-mobile .alpha-save-status { position:static; align-self:flex-start; margin:0; }
+.nv-mobile .alpha-save-quit { min-height:44px; }
+.nv-mobile .alpha-dialog { width:calc(100% - 16px); max-height:calc(100dvh - 16px); padding:12px; overflow:auto; }
+.nv-mobile .alpha-dialog button { min-height:44px; }
+.nv-mobile:not([data-game-state="playing"]):not([data-game-state="wave_end"]) .rotate-overlay { display:none!important; }
+.nv-mobile #characterSelectScreen .lobby-shell { width:100%; max-width:100%; height:auto; min-height:100%; overflow:visible; padding:10px; }
+.nv-mobile .char-grid { grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); width:100%; }
+.nv-mobile #gameOver { overflow:auto; }
+.nv-mobile #permBack { position:absolute; bottom:max(8px,env(safe-area-inset-bottom,0px)); right:8px; min-height:44px; font-size:13px; padding:10px 18px; }
+.nv-mobile #startScreen .orbit-caption { max-width:100%; overflow:hidden; font-size:8px; letter-spacing:1px; }
+.nv-mobile .primary:hover { transform:none; }
+.nv-mobile :is(#shop,#permShop) .shop-screen { padding-bottom:52px; }
+.nv-mobile :is(#shop,#permShop) .shop-deploy { position:absolute; right:max(8px,env(safe-area-inset-right,0px)); bottom:max(8px,env(safe-area-inset-bottom,0px)); max-width:65%; }
+.nv-mobile #shop .alpha-save-quit { position:absolute; left:max(8px,env(safe-area-inset-left,0px)); bottom:max(8px,env(safe-area-inset-bottom,0px)); max-width:32%; font-size:10px; padding:6px; }
+.nv-mobile #shop .alpha-save-status { position:absolute; left:8px; bottom:56px; max-width:50%; background:#080e20; }
+.nv-mobile :is(#shop,#permShop) { position:fixed; inset:0; width:auto; height:auto; margin:0; display:flex; flex-direction:column; padding-bottom:64px; }
+.nv-mobile :is(#shop,#permShop) .shop-terminal-head { flex:0 0 auto; min-width:0; gap:8px; }
+.nv-mobile :is(#shop,#permShop) .shop-terminal-head > div:first-child { min-width:0; flex:1; }
+.nv-mobile :is(#shop,#permShop) .shop-title { font-size:13px; overflow-wrap:anywhere; }
+.nv-mobile :is(#shop,#permShop) .shop-sub { font-size:11px; }
+.nv-mobile :is(#shop,#permShop) .shard-bar { flex:0 0 auto; padding:6px; }
+.nv-mobile :is(#shop,#permShop) .offer { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.nv-mobile :is(#shop,#permShop) .offer-desc { width:100%; max-width:none; overflow:visible; text-overflow:clip; white-space:normal; text-align:center; }
+.nv-mobile :is(#shop,#permShop) .offer-price { position:static; margin-top:auto; align-self:flex-end; }
+@media(orientation:portrait) {
+  .nv-mobile :is(#shop,#permShop) .shop-terminal-head { display:grid; grid-template-columns:minmax(0,1fr) auto; }
+  .nv-mobile :is(#shop,#permShop) .shop-terminal-head > div:first-child { grid-column:1; grid-row:1; }
+  .nv-mobile :is(#shop,#permShop) .shard-bar { grid-column:2; grid-row:1; }
+  .nv-mobile #shop .alpha-prep-trigger { grid-column:1 / -1; min-height:44px; justify-self:stretch; }
+}
+@media(max-height:380px) { .nv-mobile #startScreen .avatar-circle { width:110px; } .nv-mobile .joystick-zone { height:128px; } }
+@media(orientation:landscape) {
+  .nv-mobile #startScreen .lobby-center { display:grid; grid-template-columns:140px minmax(0,1fr); width:min(660px,100%); gap:8px 16px; }
+  .nv-mobile #startScreen .center-heading { display:none; }
+  .nv-mobile #startScreen .lobby-hero { grid-column:1; grid-row:1 / 4; padding:0; height:auto; max-height:none; }
+  .nv-mobile #startScreen .avatar-circle { width:120px; }
+  .nv-mobile #startScreen .btn-jugar,.nv-mobile #startScreen .lobby-difficulty,.nv-mobile #startScreen #lobbyLaunch { grid-column:2; width:100%; }
+  .nv-mobile #startScreen .btn-jugar span { font-size:20px; }
+}
