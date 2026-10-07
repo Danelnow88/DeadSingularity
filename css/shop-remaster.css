@@ -67,8 +67,8 @@
 @media (min-aspect-ratio:4/3) {
   html.nv-mobile #shop.shop-screen { padding:6px 8px 62px; gap:6px; }
   html.nv-mobile #shop .shop-terminal-head { min-height:46px; padding:6px 10px; }
-  html.nv-mobile #shop .shop-title { font-size:15px; letter-spacing:.055em; }
-  html.nv-mobile #shop .shop-sub { color:#c1ccdf; font-size:10px; font-weight:600; }
+  html.nv-mobile #shop .shop-title { font-size:17px; letter-spacing:.045em; }
+  html.nv-mobile #shop .shop-sub { color:#d3dced; font-size:11px; font-weight:700; }
   html.nv-mobile #shop .shard-bar { min-width:66px; padding:4px 8px; font-size:16px; }
   html.nv-mobile #shop .shop-tabs { display:none !important; }
   html.nv-mobile #shop .shop-grid {
@@ -92,11 +92,11 @@
     border-radius:12px;
     overflow:hidden !important;
   }
-  html.nv-mobile #shop .shop-section-title { flex:0 0 auto; margin-bottom:4px; padding:1px 1px 5px; font-size:12px; letter-spacing:.075em; }
+  html.nv-mobile #shop .shop-section-title { flex:0 0 auto; margin-bottom:4px; padding:1px 1px 5px; font-size:14px; letter-spacing:.06em; }
   html.nv-mobile #shop .protocol-loadout,
   html.nv-mobile #shop .shop-weapon-dock,
   html.nv-mobile #shop .shop-upgrade-dock { flex:0 0 auto; margin-bottom:4px; padding:4px; }
-  html.nv-mobile #shop .dock-label { color:#e0e5f3; font-size:9px; font-weight:800; }
+  html.nv-mobile #shop .dock-label { color:#eef3ff; font-size:10px; font-weight:900; }
   html.nv-mobile #shop .inv-hint { display:none; }
   html.nv-mobile #shop :is(.loadout-slot,.inv-slot) { min-width:0; height:34px; }
   html.nv-mobile #shop .offers {
@@ -116,7 +116,7 @@
   html.nv-mobile #shop .offer,
   html.nv-mobile #shop .offers-consumables .offer-consumable {
     display:grid;
-    grid-template-columns:28px minmax(0,1fr);
+    grid-template-columns:32px minmax(0,1fr);
     grid-template-rows:18px 18px 16px;
     column-gap:4px;
     align-items:center;
@@ -130,11 +130,11 @@
   }
   html.nv-mobile #shop .offer:hover,
   html.nv-mobile #shop .offer:focus-visible { transform:scale(.985); }
-  html.nv-mobile #shop .offer .offer-icon { grid-column:1; grid-row:1 / span 2; width:28px; height:28px; margin:0; }
-  html.nv-mobile #shop .offer .offer-name { grid-column:2; grid-row:1; color:#fff; font-size:11px; font-weight:900; line-height:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  html.nv-mobile #shop .offer .offer-desc { grid-column:2; grid-row:2; color:#c1cce0; font-size:9px; font-weight:600; line-height:1.12; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  html.nv-mobile #shop .offer .offer-badge { grid-column:1 / -1; grid-row:3; align-self:end; font-size:8.5px; line-height:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  html.nv-mobile #shop .offer .offer-price { grid-column:2; grid-row:3; justify-self:end; align-self:end; font-size:10px; line-height:1; padding:2px 5px; }
+  html.nv-mobile #shop .offer .offer-icon { grid-column:1; grid-row:1 / span 2; width:32px; height:32px; margin:0; }
+  html.nv-mobile #shop .offer .offer-name { grid-column:2; grid-row:1; color:#fff; font-size:13px; font-weight:900; line-height:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,.7); }
+  html.nv-mobile #shop .offer .offer-desc { grid-column:2; grid-row:2; color:#d4dced; font-size:10px; font-weight:700; line-height:1.08; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  html.nv-mobile #shop .offer .offer-badge { grid-column:1 / -1; grid-row:3; align-self:end; font-size:9.5px; line-height:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  html.nv-mobile #shop .offer .offer-price { grid-column:2; grid-row:3; justify-self:end; align-self:end; font-size:11px; line-height:1; padding:2px 5px; }
   html.nv-mobile #shop .shop-inspector { bottom:7px; width:min(43%,390px); min-height:46px; grid-template-columns:34px minmax(0,1fr) auto; padding:5px 8px; }
   html.nv-mobile #shop .shop-inspector canvas { width:34px; height:34px; }
   html.nv-mobile #shopInspector .shop-inspector-copy > span { font-size:7px; }

@@ -283,39 +283,39 @@ html.nv-mobile.nv-portrait #rotateOverlay {
   }
   html.nv-mobile #startScreen .main-lobby-copy { gap:11px; }
   html.nv-mobile #startScreen .panel-piloto { gap:11px; padding:16px; }
-  html.nv-mobile #startScreen .panel-top { font-size:9px; }
+  html.nv-mobile #startScreen .panel-top { font-size:10px; }
   html.nv-mobile #startScreen .hero-nav { width:36px; height:36px; min-height:36px; }
-  html.nv-mobile #startScreen .hero-info-name > span { font-size:clamp(23px,4.5vh,32px); }
+  html.nv-mobile #startScreen .hero-info-name > span { font-size:clamp(25px,4.8vh,34px); }
   html.nv-mobile #startScreen .hero-info-name small,
-  html.nv-mobile #startScreen .hero-info-stats { font-size:10px; }
+  html.nv-mobile #startScreen .hero-info-stats { font-size:11px; }
   html.nv-mobile #startScreen .hero-info-passive { padding:8px 10px; }
   html.nv-mobile #startScreen .hero-info-passive span,
-  html.nv-mobile #startScreen .hero-info-skill span { font-size:8px; }
+  html.nv-mobile #startScreen .hero-info-skill span { font-size:9px; }
   html.nv-mobile #startScreen .hero-info-passive strong,
-  html.nv-mobile #startScreen .hero-info-skill strong { font-size:11px; }
+  html.nv-mobile #startScreen .hero-info-skill strong { font-size:12px; }
   html.nv-mobile #startScreen .hero-info-skill { padding:8px 10px; gap:9px; }
   html.nv-mobile #startScreen .hero-info-skill small,
-  html.nv-mobile #startScreen .hero-info-identity { font-size:9px; line-height:1.3; }
-  html.nv-mobile #startScreen .pilot-status { font-size:8px; padding:5px; }
-  html.nv-mobile #startScreen .btn-mejoras { min-height:46px; font-size:11px; }
+  html.nv-mobile #startScreen .hero-info-identity { font-size:10px; line-height:1.3; }
+  html.nv-mobile #startScreen .pilot-status { font-size:9px; padding:5px; }
+  html.nv-mobile #startScreen .btn-mejoras { min-height:46px; font-size:12px; }
   html.nv-mobile #startScreen .lobby-center { gap:11px; }
-  html.nv-mobile #startScreen .center-heading > span { font-size:8px; }
-  html.nv-mobile #startScreen .center-heading h2 { font-size:20px; }
+  html.nv-mobile #startScreen .center-heading > span { font-size:9px; }
+  html.nv-mobile #startScreen .center-heading h2 { font-size:22px; }
   html.nv-mobile #startScreen .avatar-circle { width:clamp(145px,30vh,190px); }
   html.nv-mobile #startScreen .btn-jugar { width:min(310px,100%); min-height:58px; }
   html.nv-mobile #startScreen .btn-jugar span { font-size:23px; }
   html.nv-mobile #startScreen .lobby-difficulty,
   html.nv-mobile #startScreen #lobbyLaunch { width:min(330px,100%); }
-  html.nv-mobile #startScreen .lobby-diff-btn { min-height:43px; font-size:10px; }
+  html.nv-mobile #startScreen .lobby-diff-btn { min-height:43px; font-size:11px; }
   html.nv-mobile #startScreen .lobby-modes { gap:11px; }
-  html.nv-mobile #startScreen .mode-label { font-size:8px; }
+  html.nv-mobile #startScreen .mode-label { font-size:9px; }
   html.nv-mobile #startScreen .card-mode { padding:14px; }
-  html.nv-mobile #startScreen .mode-heading { font-size:8px; }
-  html.nv-mobile #startScreen .mode-select > strong { margin:8px 0 5px; font-size:21px; }
-  html.nv-mobile #startScreen .mode-description { font-size:10px; line-height:1.35; }
-  html.nv-mobile #startScreen .progress-caption { margin-top:12px; font-size:8px; }
+  html.nv-mobile #startScreen .mode-heading { font-size:9px; }
+  html.nv-mobile #startScreen .mode-select > strong { margin:8px 0 5px; font-size:23px; }
+  html.nv-mobile #startScreen .mode-description { font-size:11px; line-height:1.35; }
+  html.nv-mobile #startScreen .progress-caption { margin-top:12px; font-size:9px; }
   html.nv-mobile #startScreen .progress-bar { margin-top:8px; }
-  html.nv-mobile #startScreen .mode-footer { margin-top:9px; padding-top:9px; font-size:8px; }
+  html.nv-mobile #startScreen .mode-footer { margin-top:9px; padding-top:9px; font-size:9px; }
   html.nv-mobile #startScreen .infinity-symbol { font-size:38px; }
-  html.nv-mobile #startScreen .infinite-record { margin-top:8px; padding-top:8px; font-size:8px; }
+  html.nv-mobile #startScreen .infinite-record { margin-top:8px; padding-top:8px; font-size:9px; }
 }
