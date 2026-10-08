@@ -24,7 +24,8 @@ t('dock final agrupa equipo a la derecha y deja libre JEFE/DASH', () => {
   if (!html.includes('id="mobileLoadout"')) throw new Error('falta dock compartido');
   if (!finalMobile.includes('right:max(8px,var(--nv-safe-right,env(safe-area-inset-right')) throw new Error('safe area ausente');
   if (!finalMobile.includes('position:static !important; inset:auto !important; transform:none !important;')) throw new Error('switches todavía posicionados en el centro');
-  if (!finalMobile.includes('width:222px; height:52px')) throw new Error('dock compacto ausente');
+  if (!finalMobile.includes('width:180px; height:64px')) throw new Error('columnas alineadas ausentes');
+  if (!finalMobile.includes('display:block; width:84px !important; height:48px')) throw new Error('USAR no conserva un target amplio');
   if (!html.includes('</div>\n        </div>\n        <button id="touchUseBtn"') && !html.includes('</div>\r\n        </div>\r\n        <button id="touchUseBtn"')) throw new Error('USAR debe estar separado del equipo');
   if (!finalMobile.includes('height:84px !important')) throw new Error('acciones no ampliadas');
   if (!finalMobile.includes('width:clamp(210px,27vw,280px)')) throw new Error('agarre amplio ausente');

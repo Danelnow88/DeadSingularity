@@ -48,6 +48,14 @@ verified: confirm the published revision on the actual phone.
 
 ## Verification commands and evidence
 
+Follow-up thumb layout: equipment now occupies 180x64px, in the same two 84px
+columns as DASH/SPECIAL. USAR is 84x48px and directly below the consumable,
+not above DASH. Icons and names stack vertically; complete accessible names,
+tap/swipe selection, held actions and stick input remain unchanged. Touch-device
+QA must verify this layout at all eight existing viewport/safe-inset cases.
+Brave Android background remains an unconfirmed physical-browser issue; no
+further animation rewrite or privacy-setting bypass was added for it.
+
 ```
 npm run quality
 node tools/qa-lobby-runner.cjs

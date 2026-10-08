@@ -6,7 +6,7 @@
     {
       "path": "index.html",
       "size": 36708,
-      "sha256": "e1551c639b07c618a1408f035a3fbf8c463f39c517691d14cf118ffe8a99a5c1"
+      "sha256": "16b80197757d413030df5a78b421aca8ad3e50cac02cbefd99cf92cfa612a847"
     },
     {
       "path": "AVISOS.md",
@@ -460,8 +460,8 @@
     },
     {
       "path": "css/mobile.css",
-      "size": 28999,
-      "sha256": "bb07e6af3051fbc721265447df303cd825fcb435818f21ad8157bdae2f65b6f9"
+      "size": 29100,
+      "sha256": "b10556a0ecdaeda0dbab89517d74126c424190076d882fbf82e4e276b86facdf"
     },
     {
       "path": "css/shop-remaster.css",
