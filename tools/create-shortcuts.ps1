@@ -1,6 +1,28 @@
 param([string]$ProjectRoot = (Split-Path -Parent $PSScriptRoot))
 $ErrorActionPreference = 'Stop'
-$root = (Resolve-Path -LiteralPath $ProjectRoot).Path
+# WScript normaliza rutas 8.3 a nombres largos al guardar un acceso.
+# Normalizar también el destino esperado evita falsos errores en perfiles Windows.
+if (-not ('DeadSingularity.ShortcutPaths' -as [type])) {
+    Add-Type -TypeDefinition @"
+using System;
+using System.Text;
+using System.Runtime.InteropServices;
+namespace DeadSingularity {
+    public static class ShortcutPaths {
+        [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+        private static extern uint GetLongPathName(string shortPath, StringBuilder longPath, uint size);
+        public static string Expand(string path) {
+            var buffer = new StringBuilder(32768);
+            uint length = GetLongPathName(path, buffer, (uint)buffer.Capacity);
+            if (length == 0 || length >= buffer.Capacity)
+                throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+            return buffer.ToString();
+        }
+    }
+}
+"@
+}
+$root = [DeadSingularity.ShortcutPaths]::Expand((Resolve-Path -LiteralPath $ProjectRoot).Path)
 $icon = Join-Path $root 'assets\brand\icon.ico'
 if (-not (Test-Path -LiteralPath $icon -PathType Leaf)) { throw 'Falta assets/brand/icon.ico.' }
 $entries = @(

@@ -14,7 +14,7 @@ for (const name of ['ABRIR_V1.cmd', 'ABRIR_V1_WEB.cmd']) {
   assert(!launcher.includes('JuegoDemo'));
 }
 if (process.platform === 'win32') {
-  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'dsv1-shortcuts-'));
+  const fixture = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'dsv1-shortcuts-')));
   fs.mkdirSync(path.join(fixture, 'assets/brand'), { recursive: true });
   fs.copyFileSync(path.join(root, 'assets/brand/icon.ico'), path.join(fixture, 'assets/brand/icon.ico'));
   for (const name of ['ABRIR_V1.cmd', 'ABRIR_V1_WEB.cmd']) fs.writeFileSync(path.join(fixture, name), '@echo off\r\nexit /b 0\r\n');
