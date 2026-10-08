@@ -116,7 +116,12 @@
   if (w && typeof w.addEventListener === 'function') {
     try { w.addEventListener('orientationchange', orientationHandler); } catch (_) { /* defensivo */ }
     try { w.addEventListener('resize', orientationHandler); } catch (_) { /* defensivo */ }
+    try { w.addEventListener('pageshow', orientationHandler); } catch (_) { /* defensivo */ }
+    if (w.visualViewport && typeof w.visualViewport.addEventListener === 'function') {
+      w.visualViewport.addEventListener('resize', orientationHandler);
+    }
   }
+  if (d && typeof d.addEventListener === 'function') d.addEventListener('visibilitychange', orientationHandler);
   // Garantizar la orientación correcta al cargar (fuerza aplicar la clase antes
   // de que el usuario interactúe).
   NV.capabilities.orientation = applyOrientation();

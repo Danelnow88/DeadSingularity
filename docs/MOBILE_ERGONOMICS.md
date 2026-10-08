@@ -22,11 +22,23 @@ verified: confirm the published revision on the actual phone.
 - Stick: 116px visible base, minimum 210x180px contact zone, floating grab origin.
   Analog intensity feeds `NV.input.setMoveVector`, with 8px dead zone and capped
   normalized diagonal/max speed; directional bridge retained for older runtimes.
-- Weapon/item dock: one 270x52px row above the right actions, outside boss/dash
+- Weapon/item dock: one 222x52px row above the right actions, outside boss/dash
   bars. Tap = next; horizontal swipe left = next, right = previous. Keyboard
   activation still works. Existing cycle APIs are authoritative, no copied inventory.
-- Item count is separate from the name. USAR is a distinct 54x52px target,
+- Item count is separate from the name. USAR is a distinct 60x48px target,
   disabled with no items; it consumes exactly one selected item through the same API.
+- Follow-up: USAR sits between the equipment row and DASH, outside both groups.
+  Right margin is 8px minimum, always respecting safe-area insets.
+- Portrait now requests rotation from initial lobby entry as well as gameplay.
+  Orientation refreshes on pageshow, visibility and visual viewport changes.
+- Background lifecycle is idempotent: repeated resize/mutation notifications no
+  longer cancel frames or reset timing. Timing uses RAF timestamps exclusively.
+  Regression tests reproduce observer starvation and mismatched clock origins;
+  the cause of the physical Brave report is not yet confirmed on that device.
+- Native offscreen QA also reproduced media-query values changing without a
+  change event. One 500ms visibility-scoped recovery timer checks state without
+  redrawing a reduced-motion background; it is cancelled in combat/portrait/
+  hidden pages. There is still only one decorative RAF loop.
 - Capture, cancellation, blur, pause, state change and resize release inputs.
 - Cache keys updated for the affected production CSS/JS; no new binary assets.
 

@@ -23,17 +23,19 @@
     c.beginPath(); c.moveTo(32,5); c.lineTo(32,59); c.moveTo(5,32); c.lineTo(59,32); c.stroke();
     return sprite;
   });
-  var width=1,height=1,dpr=1,stars=[],raf=0,last=0,elapsed=0,frames=0;
-  var active=false,suspended=false,pointerX=0,pointerY=0;
+  var width=1,height=1,dpr=1,stars=[],raf=0,last=null,elapsed=0,frames=0,quality=null;
+  var active=false,suspended=false,pointerX=0,pointerY=0,wake=0,renderedCalm=null;
   function graphics() { return NV.settings && NV.settings.graphics || {}; }
   function reduced() {
     return motion.matches || graphics().particles === false ||
       !!(NV.settings && NV.settings.gameplay && NV.settings.gameplay.reducedEffects);
   }
-  function visible() { return !suspended && !document.hidden && !lobby.classList.contains('hidden') && lobby.getClientRects().length > 0; }
+  function visible() { return !suspended && !document.hidden && !(mobile && NV.capabilities.orientation === 'portrait') && !lobby.classList.contains('hidden') && lobby.getClientRects().length > 0; }
   function resize() {
-    width=Math.max(1,canvas.clientWidth); height=Math.max(1,canvas.clientHeight);
-    dpr=Math.min(window.devicePixelRatio || 1,1.5);
+    var nextWidth=Math.max(1,canvas.clientWidth),nextHeight=Math.max(1,canvas.clientHeight);
+    var nextDpr=Math.min(window.devicePixelRatio || 1,1.5),nextQuality=graphics().quality;
+    if(stars.length && width===nextWidth && height===nextHeight && dpr===nextDpr && quality===nextQuality) return false;
+    width=nextWidth; height=nextHeight; dpr=nextDpr; quality=nextQuality;
     canvas.width=Math.round(width*dpr); canvas.height=Math.round(height*dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
     var seed=94117;
@@ -45,10 +47,12 @@
       radius:.35+random()*.8,phase:random()*Math.PI*2,color:Math.floor(random()*colors.length),
       bright:i%(mobile?14:23)===0,alpha:.28+random()*.6});
     render();
+    return true;
   }
   function render() {
     ctx.clearRect(0,0,width,height);
     var calm=reduced(),time=calm?0:elapsed;
+    renderedCalm=calm;
     for(var i=0;i<stars.length;i++) {
       var s=stars[i];
       // Move towards the camera: perspective expands out of one vanishing point.
@@ -78,24 +82,41 @@
   function tick(now) {
     raf=0;
     if(!active) return;
+    if(!visible()) { stop(); return; }
+    if(reduced()) { stop(); render(); return; }
+    // Keep one clock domain: privacy browsers can offset performance.now().
+    if(last===null || now<last) last=now;
     var interval=graphics().quality === 'performance'?50:1000/30;
     if(now-last>=interval) {
       elapsed+=Math.min((now-last)/1000,.1); last=now; render();
     }
     raf=window.requestAnimationFrame(tick);
   }
-  function stop() { active=false; if(raf) window.cancelAnimationFrame(raf); raf=0; }
+  function stop() { active=false; if(raf) window.cancelAnimationFrame(raf); raf=0; last=null; }
+  function cancelWake() { if(wake) window.clearTimeout(wake); wake=0; }
+  function watchVisibility() {
+    // Some restored/hidden browser surfaces update media matches without a
+    // change event. Cheap recovery only while this lobby is actually visible;
+    // no Canvas redraw, gameplay timer or second RAF loop.
+    if(wake || typeof window.setTimeout!=='function') return;
+    wake=window.setTimeout(function(){wake=0;sync();},500);
+  }
   function sync() {
-    stop(); pointerX=pointerY=0;
-    if(!visible()) return;
-    resize();
-    if(!reduced()) { active=true; last=performance.now(); raf=window.requestAnimationFrame(tick); }
+    if(!visible()) { stop(); cancelWake(); pointerX=pointerY=0; return; }
+    watchVisibility();
+    var changed=resize();
+    if(reduced()) { stop(); if(!changed && renderedCalm!==true) render(); return; }
+    // ResizeObserver/settings notifications must not cancel every pending frame
+    // or restart the animation clock, even while mobile browser chrome changes.
+    if(!active) { active=true; last=null; raf=window.requestAnimationFrame(tick); }
   }
   new MutationObserver(sync).observe(lobby,{attributes:true,attributeFilter:['class','style']});
   if(window.ResizeObserver) new ResizeObserver(sync).observe(canvas.parentElement);
-  else window.addEventListener('resize',sync,{passive:true});
+  window.addEventListener('resize',sync,{passive:true});
+  window.addEventListener('orientationchange',sync,{passive:true});
+  if(window.visualViewport) window.visualViewport.addEventListener('resize',sync,{passive:true});
   document.addEventListener('visibilitychange',sync);
-  window.addEventListener('pagehide',function(){suspended=true;stop();});
+  window.addEventListener('pagehide',function(){suspended=true;stop();cancelWake();});
   window.addEventListener('pageshow',function(){suspended=false;sync();});
   lobby.addEventListener('pointermove',function(event){
     if(!active || event.pointerType==='touch') return;

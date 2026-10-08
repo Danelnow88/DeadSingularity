@@ -29,6 +29,13 @@ app.whenReady().then(async()=>{
     await win.loadURL(target.toString());
     await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'no-preference'}]});
     await delay(800);
+    if(name==='mobile-portrait') {
+      assert(await evaluate('getComputedStyle(document.getElementById("rotateOverlay")).display!=="none"'),'Portrait entry requests rotation');
+      assert(!(await evaluate('NV.lobbyAtmosphere.getSnapshot()')).active,'Portrait background is suspended');
+      fs.writeFileSync(path.join(out,name+'.png'),(await win.webContents.capturePage()).toPNG());
+      reports.push({name,rotationGate:true});
+      continue;
+    }
     await evaluate('NV.setGraphicsOption("particles",true);NV.setGraphicsQuality("high")');
     const before=await evaluate('NV.lobbyAtmosphere.getSnapshot()');await delay(500);
     const after=await evaluate('NV.lobbyAtmosphere.getSnapshot()');
@@ -38,11 +45,12 @@ app.whenReady().then(async()=>{
     const geometry=await evaluate(`(()=>{const lobby=document.getElementById('startScreen'),r=document.getElementById('lobbyPlayBtn').getBoundingClientRect();return {width:innerWidth,height:innerHeight,scrollWidth:lobby.scrollWidth,clientWidth:lobby.clientWidth,play:{x:r.x,y:r.y,w:r.width,h:r.height},state:NV.getState(),overflow:[...lobby.querySelectorAll('*')].filter(e=>{const b=e.getBoundingClientRect();return b.width&&b.right>innerWidth+1}).map(e=>({id:e.id,class:e.className,width:e.getBoundingClientRect().width,right:e.getBoundingClientRect().right})).slice(0,12)};})()`);
     fs.writeFileSync(path.join(out,name+'.png'),(await win.webContents.capturePage()).toPNG());
     await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
-    await delay(100);
+    for(let attempt=0;attempt<30&&(await evaluate('NV.lobbyAtmosphere.getSnapshot()')).active;attempt++) await delay(100);
     assert.equal((await evaluate('NV.lobbyAtmosphere.getSnapshot()')).active,false,'OS reduced motion must stop animation');
     await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'no-preference'}]});
-    await delay(100);
-    assert.equal((await evaluate('NV.lobbyAtmosphere.getSnapshot()')).active,true,'Animation resumes when motion is enabled');
+    for(let attempt=0;attempt<30&&!(await evaluate('NV.lobbyAtmosphere.getSnapshot()')).active;attempt++) await delay(100);
+    const resumedMotion=await evaluate('({snapshot:NV.lobbyAtmosphere.getSnapshot(),media:matchMedia("(prefers-reduced-motion: reduce)").matches,hidden:document.hidden,orientation:NV.capabilities.orientation})');
+    assert.equal(resumedMotion.snapshot.active,true,'Animation resumes when motion is enabled '+JSON.stringify(resumedMotion));
     assert.equal(geometry.state,'menu');assert(geometry.scrollWidth<=geometry.clientWidth+1,'Horizontal overflow '+name+' '+JSON.stringify(geometry));
     assert(await evaluate('getComputedStyle(document.getElementById("rotateOverlay")).display === "none"'),'Lobby must not be covered by rotate prompt');
     assert(await evaluate(`(()=>{const c=document.getElementById('lobbyPreview'),pixels=c.getContext('2d').getImageData(0,0,c.width,c.height).data;for(let i=3;i<pixels.length;i+=4)if(pixels[i])return true;return false;})()`),'Pilot preview must actually render');

@@ -53,6 +53,12 @@ app.whenReady().then(async()=>{
     assert(environment.mobile&&environment.coarse,'Real touch detection must activate mobile');
     assert(after.active&&after.frames>before.frames,'Default mobile background must animate '+JSON.stringify({before,after,environment}));
     assert(after.probe.distance>before.probe.distance*1.08,'Mobile approach must be visibly measurable');
+    await evaluate(`window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true}))`);
+    assert(!(await evaluate('NV.lobbyAtmosphere.getSnapshot()')).active,'Page hide suspends stars');
+    await evaluate(`window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));window.__lobbyResizeStorm=setInterval(()=>{window.dispatchEvent(new Event('resize'));},16)`);
+    const resumed=await evaluate('NV.lobbyAtmosphere.getSnapshot()');await wait(600);
+    const advancing=await evaluate('clearInterval(window.__lobbyResizeStorm);NV.lobbyAtmosphere.getSnapshot()');
+    assert(advancing.active&&advancing.time>resumed.time+.2,'Restored page advances despite repeated resize events');
     await capture(`${name}-lobby${baseline?'-baseline':''}`,width,height);
     if(baseline)await evaluate('document.getElementById("lobbyPlayBtn").click()');
     else {
@@ -117,14 +123,23 @@ app.whenReady().then(async()=>{
     console.log('Portrait touch emulation configured');
     await portrait.loadURL(base);await wait(800);
     assert(await pEval('NV.capabilities.isMobile&&NV.capabilities.orientation==="portrait"'));
-    assert(await pEval('getComputedStyle(document.getElementById("rotateOverlay")).display==="none"'),'Portrait lobby remains usable');
-    assert((await pEval('NV.lobbyAtmosphere.getSnapshot()')).active,'Portrait lobby also advances');
+    assert(await pEval('getComputedStyle(document.getElementById("rotateOverlay")).display!=="none"'),'Initial portrait lobby must request rotation');
+    assert(!(await pEval('NV.lobbyAtmosphere.getSnapshot()')).active,'No animation behind portrait gate');
+    assert(await pEval('document.elementFromPoint(innerWidth/2,innerHeight/2).closest("#rotateOverlay")!==null'),'Portrait gate intercepts touches');
     fs.writeFileSync(path.join(out,'portrait-lobby.png'),(await portrait.webContents.capturePage()).toPNG());
     await pEval('document.getElementById("lobbyPlayBtn").click()');await wait(100);
     assert(await pEval('getComputedStyle(document.getElementById("rotateOverlay")).display!=="none"'),'Portrait gameplay keeps orientation gate');
     assert((await pEval('NV.getInputSnapshot()')).moveX===0,'Rotation releases input');
+    portrait.setContentSize(844,390);
+    await pCommand('Emulation.setDeviceMetricsOverride',{width:844,height:390,deviceScaleFactor:2,mobile:true,screenOrientation:{type:'landscapePrimary',angle:90}});
+    await wait(200);
+    assert(await pEval('NV.capabilities.orientation==="landscape"&&getComputedStyle(document.getElementById("rotateOverlay")).display==="none"'),'Rotation unblocks gameplay without reload');
+    portrait.setContentSize(390,844);
+    await pCommand('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:2,mobile:true,screenOrientation:{type:'portraitPrimary',angle:0}});
+    await pEval('window.dispatchEvent(new PageTransitionEvent("pageshow",{persisted:true}))');await wait(100);
+    assert(await pEval('NV.capabilities.orientation==="portrait"&&getComputedStyle(document.getElementById("rotateOverlay")).display!=="none"'),'Returning without reload restores portrait gate');
     portrait.destroy();
-    console.log('PASS portrait menu, forward background and gameplay orientation gate.');
+    console.log('PASS initial portrait gate, rotation and restored-page gate without reload.');
   }
   assert.deepEqual(errors,[]);
   fs.writeFileSync(path.join(out,portraitOnly?'portrait-report.json':baseline?'baseline.json':'report.json'),JSON.stringify({pass:true,reports,errors,portrait:portraitOnly,limitation:'Chromium touch/device emulation, not physical Android/iOS'},null,2));

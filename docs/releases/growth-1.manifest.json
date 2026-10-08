@@ -5,8 +5,8 @@
   "files": [
     {
       "path": "index.html",
-      "size": 36696,
-      "sha256": "a96c19c668ec1b7b620152d01093cb322d6db4dcad96bbd2b6f06f0022836c89"
+      "size": 36711,
+      "sha256": "1d8cfdea6f95e3fce57cb4827d979133ecbacdc8f8a6c7e3de3d1dc3892c228d"
     },
     {
       "path": "AVISOS.md",
@@ -45,8 +45,8 @@
     },
     {
       "path": "js/core/capabilities.js",
-      "size": 5644,
-      "sha256": "261b799ad231cd8a4c3ce90370ed471580b015d2f52cf4117e8fc0c85764471c"
+      "size": 6014,
+      "sha256": "48f0ba3a27a45352765631e54f7eb12b391608a6466be2fd0faf12ef71f08904"
     },
     {
       "path": "js/core/content.js",
@@ -415,8 +415,8 @@
     },
     {
       "path": "js/ui/lobbyAtmosphere.js",
-      "size": 6203,
-      "sha256": "77df615d610dfce2fce80278593d138abf504c7dcc9a3324549b2c3c04e059df"
+      "size": 7702,
+      "sha256": "68f71a3ab197caf80b3c694429a33b076352eb41a750bdc420eb7269e09a7cee"
     },
     {
       "path": "js/ui/mobileControls.js",
@@ -445,8 +445,8 @@
     },
     {
       "path": "css/lobby-cosmos.css",
-      "size": 3492,
-      "sha256": "1c62aa54fb45dcce876834dc11d25f2070fa191086f18ec63676fc8dfe5a2c19"
+      "size": 3375,
+      "sha256": "7c98a9dda5a98257e1ab9b64c4c11e68c42de4d1b4341114f28c89a5b84e8137"
     },
     {
       "path": "css/lobby-f093.css",
@@ -460,8 +460,8 @@
     },
     {
       "path": "css/mobile.css",
-      "size": 28872,
-      "sha256": "cf24289248ad9ceb79693c54dac6d8acc532f8e8032cdda49884fc11cad328d3"
+      "size": 28986,
+      "sha256": "8ca98684143aec1d1fa5eb9723dd021a4279b23ba2e3f69758fe6f5e6ea3a057"
     },
     {
       "path": "css/shop-remaster.css",

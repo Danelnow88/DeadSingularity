@@ -35,8 +35,7 @@
 @media(prefers-reduced-motion:reduce) {
   #startScreen .btn-jugar:hover { transform:none; }
 }
-/* The menu can be browsed vertically; the existing gameplay rotation gate stays. */
-html.nv-mobile.nv-portrait:has(#startScreen:not(.hidden)) #rotateOverlay { display:none!important; }
+/* Portrait is covered by the rotation gate, including the lobby. */
 @media(orientation:portrait) {
   html.nv-mobile.nv-portrait #startScreen .main-lobby-panel {
     display:grid; grid-template-columns:minmax(0,1fr); width:calc(100% - 32px);
