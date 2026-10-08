@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="css/mobile.css?nv=mobile-controls-20261007h" />
     <link rel="stylesheet" href="css/system-menu.css?nv=icons-ui-20261007" />
     <link rel="stylesheet" href="css/shop-remaster.css?nv=shop-mobile-20261007g" />
+    <link rel="stylesheet" href="css/lobby-cosmos.css?nv=cosmos-20261008" />
     <!-- Capa móvil: detección por capacidad (se carga primero; solo etiqueta <html>). -->
     <script src="js/core/capabilities.js?nv=audio-20261002b"></script>
     <!-- La distribución Canvas2D funciona offline. WebGL legado sólo a pedido. -->
@@ -84,6 +85,7 @@
 
         <div id="startScreen" class="overlay lobby-screen main-lobby-screen">
           <div class="lobby-atmosphere" aria-hidden="true">
+            <canvas id="lobbyCosmos" class="lobby-cosmos" aria-hidden="true"></canvas>
             <div class="lobby-nebula lobby-nebula-a"></div>
             <div class="lobby-nebula lobby-nebula-b"></div>
             <div class="lobby-grid-floor"></div>
@@ -455,6 +457,7 @@
     <script src="js/ui/gamepadControls.js?nv=audio-20261002b"></script>
     <script src="js/ui/alpha.js?nv=shop-footer-20261007g"></script>
     <script src="js/ui/systemMenu.js?nv=system-20261007"></script>
+    <script src="js/ui/lobbyAtmosphere.js?nv=cosmos-20261008"></script>
     <!-- Último: necesita NV.input (expuesto por game.js) y NV.viewport. -->
     <script src="js/ui/mobileControls.js?nv=mobile-controls-20261007h"></script>
   <script src="js/core/bootstrap.js?nv=growth-1"></script>

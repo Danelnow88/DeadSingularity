@@ -1,0 +1,54 @@
+/* Presentation-only cosmos: isolated from gameplay and the pilot library. */
+#startScreen { background:#02040b; isolation:isolate; --text-muted:#a9b8cb; }
+#startScreen .lobby-atmosphere { opacity:1; z-index:0; overflow:hidden; }
+#startScreen .lobby-cosmos { position:absolute; inset:0; display:block; width:100%; height:100%; pointer-events:none; }
+#startScreen .lobby-atmosphere::before,
+#startScreen .lobby-grid-floor,
+#startScreen .lobby-nebula,
+#startScreen .lobby-star { display:none; }
+#startScreen .lobby-atmosphere::after {
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(ellipse at 52% 43%,#193d4c12,transparent 45%),
+    radial-gradient(ellipse at 80% 20%,#7a3e9d17,transparent 40%),
+    linear-gradient(90deg,#02040b20,transparent 40%,#02040b18);
+}
+#startScreen::after { background:radial-gradient(ellipse at 50% 50%,transparent 35%,#02040b65); }
+#startScreen .lobby-masthead,
+#startScreen .lobby-footer { background:#050b16b8; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+#startScreen .panel-piloto,
+#startScreen .card-mode { background:#071020e0; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); box-shadow:0 12px 35px #0005; }
+#startScreen .avatar-circle { background:radial-gradient(circle,#071927bd 0%,#04101a75 55%,transparent 72%); box-shadow:0 0 65px #20d5ed0a; }
+#startScreen .orbit-caption { background:#030a13e6; border-radius:4px; }
+#startScreen .btn-mejoras { background:#071020e8; }
+#startScreen .lobby-diff-btn { background:#040c19e0; }
+#startScreen .alpha-launch .alpha-links .alpha-button { color:#bdcede; }
+#startScreen .lobby-hero-info,
+#startScreen .lobby-modes,
+#startScreen .lobby-center { min-width:0; }
+#startScreen .lobby-header-actions button { min-width:40px; min-height:40px; }
+@media(max-width:980px) {
+  #startScreen .lobby-header-actions { flex-shrink:0; }
+  #startScreen .hero-nav { min-width:44px; min-height:44px; }
+  #startScreen .lobby-diff-btn { min-height:40px; }
+  #startScreen .lobby-footer { line-height:1.7; }
+}
+@media(prefers-reduced-motion:reduce) {
+  #startScreen .btn-jugar:hover { transform:none; }
+}
+/* The menu can be browsed vertically; the existing gameplay rotation gate stays. */
+html.nv-mobile.nv-portrait:has(#startScreen:not(.hidden)) #rotateOverlay { display:none!important; }
+@media(orientation:portrait) {
+  html.nv-mobile.nv-portrait #startScreen .main-lobby-panel {
+    display:grid; grid-template-columns:minmax(0,1fr); width:calc(100% - 32px);
+    max-width:480px; margin:0 auto; padding:22px 0; gap:24px; flex:0 0 auto; overflow:visible;
+  }
+  html.nv-mobile.nv-portrait #startScreen .lobby-center { display:flex; flex-direction:column; align-items:center; grid-column:1; grid-row:1; gap:16px; }
+  html.nv-mobile.nv-portrait #startScreen .main-lobby-copy { grid-row:2; }
+  html.nv-mobile.nv-portrait #startScreen .lobby-modes { grid-row:3; }
+  html.nv-mobile.nv-portrait #startScreen .avatar-circle { width:min(240px,65vw); }
+  html.nv-mobile.nv-portrait #startScreen .lobby-hero { position:relative; inset:auto; transform:none; align-self:center; padding:24px 0; width:240px; min-height:0; height:auto; margin:0; }
+  html.nv-mobile.nv-portrait #startScreen .lobby-masthead { flex-wrap:wrap; gap:8px; padding:12px 16px; }
+  html.nv-mobile.nv-portrait #startScreen .lobby-header-actions { margin-left:auto; }
+  html.nv-mobile.nv-portrait #startScreen .panel-piloto,
+  html.nv-mobile.nv-portrait #startScreen .card-mode { padding:18px; }
+}

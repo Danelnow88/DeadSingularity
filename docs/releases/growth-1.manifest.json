@@ -5,8 +5,8 @@
   "files": [
     {
       "path": "index.html",
-      "size": 36209,
-      "sha256": "bdc3422134854123455d6184ad7adfb39d712345cb799cc00426fb419797d93d"
+      "size": 36445,
+      "sha256": "7527b6e9c5e9f03acbf1f71157753e0c9a948b17c66db609c29c37a129b4a067"
     },
     {
       "path": "AVISOS.md",
@@ -275,8 +275,8 @@
     },
     {
       "path": "js/game.js",
-      "size": 222000,
-      "sha256": "bce03dcf51b7ef1963d3cfd4f99c6faf8bac6c30c95f22c88661d6d92ab0c0b3"
+      "size": 222237,
+      "sha256": "c2f954a19a67da9bbfe39fbd1c5cad02746d0934fcc459d67ce03a2233ffb7a5"
     },
     {
       "path": "js/render/bossDesignLab.js",
@@ -414,6 +414,11 @@
       "sha256": "4bde0708dc016838536306162efafd60ac94f9ce4d79b735c7951b0683b2f0d7"
     },
     {
+      "path": "js/ui/lobbyAtmosphere.js",
+      "size": 5442,
+      "sha256": "645fda3ab7ff35eed0ef401280ef88a6687f72816ed0eb6daf66dcae5eaca83d"
+    },
+    {
       "path": "js/ui/mobileControls.js",
       "size": 26976,
       "sha256": "810cfdcf1cc42fcd3e9a9f9d4fda71c81ac565fbf195004475617af49954357e"
@@ -437,6 +442,11 @@
       "path": "css/alpha.css",
       "size": 8470,
       "sha256": "e4f8b8257549d821d0f58dedf235e7dad79fcf456397dfe12450db44ff3a2db0"
+    },
+    {
+      "path": "css/lobby-cosmos.css",
+      "size": 3492,
+      "sha256": "1c62aa54fb45dcce876834dc11d25f2070fa191086f18ec63676fc8dfe5a2c19"
     },
     {
       "path": "css/lobby-f093.css",

@@ -4410,6 +4410,12 @@
     const portraitMobileBlocked = !!(NV.capabilities && NV.capabilities.isMobile
       && NV.capabilities.orientation === 'portrait');
     if (portraitMobileBlocked) {
+      // El lobby sí puede explorarse en vertical; sólo dibujamos su piloto.
+      // La simulación de la partida y sus timers siguen bloqueados.
+      if (isLobbyPreviewActive()) {
+        frame++;
+        drawLobbyPreview();
+      }
       lastTime = now;
       requestAnimationFrame(loop);
       return;
@@ -4667,4 +4673,3 @@
     },
   });
 })();
-

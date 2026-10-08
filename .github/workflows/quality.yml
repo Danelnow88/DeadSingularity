@@ -20,6 +20,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run quality
+      - name: Validate lobby presentation
+        shell: pwsh
+        run: |
+          $env:ELECTRON_RUN_AS_NODE = $null
+          $check = Start-Process -FilePath 'node_modules/electron/dist/electron.exe' -ArgumentList 'tools/qa-lobby.cjs' -Wait -PassThru -WindowStyle Hidden
+          if ($check.ExitCode -ne 0) { throw "Lobby QA failed: $($check.ExitCode)" }
       - run: npm run build:web
       - run: npm run qa:alpha -- --soak-seconds=10
       - run: npm run build:desktop:dir
@@ -40,6 +46,8 @@ jobs:
           path: |
             local/validation/*.json
             local/validation/*.png
+            local/validation/lobby-cosmos/*.json
+            local/validation/lobby-cosmos/*.png
             local/logs/*.log
           if-no-files-found: warn
           retention-days: 14
