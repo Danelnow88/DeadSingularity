@@ -45,3 +45,9 @@ background appears frozen, investigate visual compositing; if stopped, address
 the reported stop reason; if module missing, inspect deployed script loading.
 For Chrome compare mobile classification, zoom and content/visible heights
 before adding any further device-specific CSS. Shields are not a confirmed cause.
+
+The opt-in panel now has an unmistakable red banner, a 48px minimum white
+COPIAR DIAGNÓSTICO button, instructions and a selectable readonly text area.
+Clipboard denial selects the text for manual copying instead of requiring a photo.
+Confirm the current Pages script cache key is `lobby-diag-20261008h` before
+asking the user to find it: the previous request happened before CI deployed it.
