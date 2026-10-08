@@ -21,11 +21,7 @@ jobs:
       - run: npm ci
       - run: npm run quality
       - name: Validate lobby presentation
-        shell: pwsh
-        run: |
-          $env:ELECTRON_RUN_AS_NODE = $null
-          $check = Start-Process -FilePath 'node_modules/electron/dist/electron.exe' -ArgumentList 'tools/qa-lobby.cjs' -Wait -PassThru -WindowStyle Hidden
-          if ($check.ExitCode -ne 0) { throw "Lobby QA failed: $($check.ExitCode)" }
+        run: node tools/qa-lobby-runner.cjs
       - run: npm run build:web
       - run: npm run qa:alpha -- --soak-seconds=10
       - run: npm run build:desktop:dir
