@@ -4,7 +4,7 @@ function t(name, fn) { try { fn(); pass++; console.log('  ok  ' + name); } catch
 
 function load(initial) {
   const store = {};
-  if (initial) store.neonVoidSettings = JSON.stringify(initial);
+  if (initial) store.deadSingularitySettings = JSON.stringify(initial);
   const sbx = {
     window: { NV: {} }, console, JSON, Object, Array,
     localStorage: {
@@ -32,7 +32,7 @@ t('persistencia round-trip normaliza y recupera settings', () => {
   first.NV.setGraphicsOption('particles', false);
   first.NV.setSfxVolume(0.37);
   first.NV.setFirePolicy('legacy-auto');
-  const saved = JSON.parse(first.store.neonVoidSettings);
+  const saved = JSON.parse(first.store.deadSingularitySettings);
   const second = load(saved);
   if (second.NV.settings.graphics.quality !== 'performance' || second.NV.settings.graphics.particles !== false || second.NV.settings.audio.sfxVolume !== 0.37 || second.NV.settings.controls.firePolicy !== 'legacy-auto') throw new Error('round-trip falló');
 });

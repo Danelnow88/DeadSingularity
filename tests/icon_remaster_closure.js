@@ -4,7 +4,8 @@ let pass = 0, fail = 0;
 function t(d, fn) { try { fn(); pass++; console.log('  ok  ' + d); } catch (e) { fail++; console.log('  FAIL ' + d + ' -> ' + e.message); } }
 
 const ROOT = process.cwd();
-const SKIP_DIRS = new Set(['.git', '.cline', '.clinerules', 'node_modules']);
+// Backups y artefactos conservan historia; el barrido audita archivos activos.
+const SKIP_DIRS = new Set(['.git', '.cline', '.clinerules', 'node_modules', 'local', 'releases']);
 const EXTS = new Set(['.js', '.html', '.css', '.md']);
 const OLD = [
   0x2694, 0x1F680, 0x2764, 0x1F6E1, 0x1F340, 0x1F4A5, 0x1F4A8, 0x1F504, 0x1FA99,

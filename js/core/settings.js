@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const NV = window.NV = window.NV || {};
-  const STORAGE_KEY = 'neonVoidSettings';
+  const STORAGE_KEY = 'deadSingularitySettings';
   const QUALITY = ['auto', 'high', 'performance'];
   const FIRE_POLICY = ['manual', 'legacy-auto'];
   // Categorías de audio con preferencia independiente. Orden = orden de las claves

@@ -14,7 +14,7 @@ const vm = require('vm');
   assert.equal(NV.settings.gameplay.largeText, false);
   assert.equal(NV.setComfortOption('largeText', true), true);
   assert.equal(attrs['data-large-text'], 'true');
-  assert.equal(JSON.parse(store.neonVoidSettings).gameplay.largeText, true);
+  assert.equal(JSON.parse(store.deadSingularitySettings).gameplay.largeText, true);
 }
 
 // Adaptador de mando: deadzone y normalización sin crear un RAF paralelo.
@@ -56,7 +56,7 @@ assert(html.includes('id="gamepadStatus"'));
 assert(html.indexOf('js/ui/onboarding.js') > html.indexOf('js/game.js'));
 assert(html.indexOf('js/ui/gamepadControls.js') > html.indexOf('js/game.js'));
 const tutorial = fs.readFileSync('js/ui/onboarding.js', 'utf8');
-for (const token of ['neonVoidTutorialV1', 'setMoveVector', 'setSlide', 'setFire', 'setSpecial', 'OMITIR']) assert(tutorial.includes(token));
+for (const token of ['deadSingularityTutorialV1', 'setMoveVector', 'setSlide', 'setFire', 'setSpecial', 'OMITIR']) assert(tutorial.includes(token));
 const pad = fs.readFileSync('js/ui/gamepadControls.js', 'utf8');
 for (const token of ['getGamepads', 'setMoveVector', 'setAimWorld', 'setFire', 'cycleWeapon', 'togglePause']) assert(pad.includes(token));
 const game = fs.readFileSync('js/game.js', 'utf8');

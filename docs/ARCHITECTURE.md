@@ -69,7 +69,7 @@ Esta sección prevalece sobre las notas históricas de balance más abajo.
   pasos ni añadir otro loop. Avisos peligrosos permanecen visibles.
 - HP de boss: `(type.hp + 500 + max(0,min(50,wave)-5)*95 + max(0,wave-50)*45) * 1.8 * dificultad`, redondeado.
 - Checkpoint guarda datos permitidos, no objetos vivos, callbacks, posiciones de proyectiles ni temporizadores de ataques. Se reanuda en la oleada siguiente; las compras/preparación ya realizadas se conservan.
-- `neonVoidMeta` y `neonVoidSettings` mantienen compatibilidad. Se añaden `neonVoidExpeditionV1` y `neonVoidCareerV1`. El modo `?fresh=1` no escribe el progreso nuevo.
+- `deadSingularityMeta` y `deadSingularitySettings` mantienen compatibilidad. Se añaden `deadSingularityExpeditionV1` y `deadSingularityCareerV1`. El modo `?fresh=1` no escribe el progreso nuevo.
 - El fin de expedición reutiliza `gameover` con victoria explícita: no introduce un segundo loop ni una escena que pueda seguir recibiendo daño.
 - La evolución de armas vive en `NV.evolvedWeaponImpact`; base y evolución comparten `NV.shoot` y las colisiones existentes.
 - El contenedor opcional `desktop/main.cjs` sirve los mismos archivos por `nvgame://game`, sin Node en renderer, con sandbox/CSP y acceso a archivos limitado. No cambia combate ni guardados web existentes.
@@ -363,7 +363,7 @@ El Spitter NO se convierte en F06 (es Feature 07).
 
 `js/core/settings.js` expone `NV.settings` y las APIs `getSettings`, `setGraphicsQuality`, `setGraphicsOption`, `getGraphicsPolicy` y `onSettingsChange`.
 
-- Persistencia única: `localStorage['neonVoidSettings']`.
+- Persistencia única: `localStorage['deadSingularitySettings']`.
 - Defaults: calidad `high`, partículas activas y VFX intensos activos.
 - El renderer consume una política derivada; nunca lee `localStorage`.
 - `js/ui/settingsPanel.js` presenta el mismo panel en desktop, lobby y móvil.

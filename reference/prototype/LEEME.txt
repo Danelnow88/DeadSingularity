@@ -1,0 +1,13 @@
+NEON VOID — ALPHA 0.10.0-alpha
+
+Abrí index.html con Edge o Chrome actual. No requiere instalación ni conexión.
+
+WASD/flechas: movimiento. Mouse/clic: disparo. Shift: dash. Espacio: especial. 1–6/rueda: armas. Q/E: objeto. F: usar. P: pausa.
+
+Para avanzar una oleada común: sobreviví el tiempo mínimo y eliminá los enemigos restantes. El HUD muestra BAJAS, FALTAN APARECER y segundos; al agotarse el reloj indica LIMPIEZA.
+
+Historia: 20 oleadas, cuatro sectores y diez jefes distintos. Alternás asalto y jefe; al vencer al décimo termina la misión. Otra Historia empieza de cero con tus mejoras permanentes. Los guardados anteriores mantienen su ruta original. Infinito: continuar sin límite. En la tienda la preparación es opcional.
+
+Continuar restaura el último checkpoint entre oleadas. Los datos se guardan localmente. La app Windows y el navegador tienen guardados separados; Récords permite EXPORTAR/IMPORTAR PROGRESO.
+
+Alpha: no tiene integración Steam, multijugador ni logros online. No está firmada digitalmente. No es una publicación comercial aprobada.

@@ -1,192 +1,44 @@
-# NEON VOID
+# DeadSingularity V1
 
-Tráiler dorado DEAD SINGULARITY (03-10): abrir `ABRIR_TRAILER.cmd`.
-La escena autónoma conserva el 3D/caída/apilado y audio de la base original,
-con oro pulido reflectante en caras y volumen, título ajustado al ancho,
-chispazos y fondo oscuro de ruinas. Verificado en Edge y
-Electron; [tratamiento y evidencia](docs/TRAILER_METAL_2026-10-03.md).
+Proyecto actual: C:\Users\party\Desktop\DeadSingularity V1.
+Versión 1.1.0-alpha.1; destino final Steam.
 
-HUD con cortina integrado (03-10): armas/consumibles/hints y combo se muestran
-3s tras cambios o especial, con animación de0.32s. Oleada, boss y dash siguen
-visibles; pausa congela el contador. Windows activo `wvYvXn`, web `bHKgiM`.
-165 suites/0 fallos; Edge y EXE verificados. Cerrá la instancia anterior y abrí
-`JUGAR NEON VOID.cmd`. [Detalles](docs/HUD_AUTO_REVEAL_2026-10-03.md).
+Abrir ABRIR_V1.cmd para escritorio o ABRIR_V1_WEB.cmd para navegador.
+Los respaldos están dentro de local/archivo; no son otro proyecto de trabajo.
+El acceso del escritorio DeadSingularity apunta a esta carpeta.
 
-Lobby integrado (03-10): maqueta aprobada de tres columnas, MEJORAS al ancho del
-panel, piloto real, modos Historia/Infinito, ruta de jefes y checkpoint funcional.
-Responsive de una columna, ajustes y selección conservados. Windows `YXD1IK`,
-web `CjSELh`; abrir `JUGAR NEON VOID.cmd` tras cerrar la instancia anterior.
-[Integración y verificaciones](docs/LOBBY_INTEGRATION_2026-10-03.md).
+Para recuperar en otra PC: instalar Node 22, ejecutar npm ci y abrir los CMD.
+Para recrear accesos: powershell -NoProfile -ExecutionPolicy Bypass -File tools/create-shortcuts.ps1.
 
-Último ajuste visual (03-10): aviso de aparición con triángulo violeta y
-exclamación animados, fondo transparente, según la referencia recibida.
-Integrado en web y Windows; abrí `JUGAR NEON VOID.cmd` para ver la entrega nueva.
-[Cambio y verificaciones](docs/SPAWN_ICON_2026-10-03.md).
+Comandos de desarrollo:
 
-Audio actualizado (03-10): **cosmic trap**, batería coordinada a 144 BPM,
-808 sostenido, caja a medio tiempo, hats con variaciones y UI más presente.
-Conserva el remaster de armas, avisos y mezcla protegida. Web y Electron
-alineados; 163 suites sin fallos. Los cuatro contornos aprobados se conservan.
-Abrí `JUGAR NEON VOID.cmd` (cerrá una instancia vieja antes).
-Para escuchar sonidos individualmente: `ABRIR_AUDIO_LAB.cmd`.
-[Groove nuevo, entregas y escucha pendiente](docs/AUDIO_GROOVE_2026-10-03.md).
-[Remaster anterior](docs/AUDIO_REMASTER_2026-10-02.md).
-Comparativa experimental, sin cambiar el juego: `ABRIR_AUDIO_EXPERIMENTOS.cmd`.
-Tres soundtracks y tres bajas alternativas junto a la referencia real.
-[Cómo escuchar y elegir](docs/AUDIO_EXPERIMENTOS_2026-10-03.md).
-[Historial de pilotos](docs/PILOT_PRODUCTION_2026-10-02.md).
-Los informes visuales anteriores describen pasos históricos, no esta entrega.
+- npm run quality: sintaxis, catálogo, manifiestos, higiene Git y 178 pruebas.
+- npm run build:web: entrega estática bajo subruta de Pages.
+- npm run build:desktop: app Windows e instalador DeadSingularity_V1_Setup_1.1.0-alpha.1.exe.
+- npm run qa:alpha: Chromium/Electron real, guardados, audio, controles y escenarios repetidos.
+- npm run build:android:assets: prepara los mismos recursos para el contenedor Android.
 
-## Alpha 0.10 — 30 de septiembre de 2026
+Electron está fijado a 44.5.0. El renderer tiene sandbox y no accede a Node.
+Las entregas sirven únicamente index.html, js, css, assets y AVISOS.md; no incluyen
+perfiles, respaldos, reference, src ni herramientas de desarrollo.
+check:delivery verifica 97 recursos de esta versión; la referencia congelada
+conserva por separado sus 87 hashes originales.
 
-Historia de 20 oleadas con diez jefes distintos (asalto/jefe alternados) y modo infinito. Los guardados anteriores conservan su ruta de cuatro jefes. Incluye preparación
-entre oleadas, contratos, evoluciones de armas, guardado para continuar, récords
-locales y controles de comodidad. [Cambios, pruebas y pendientes](docs/ALPHA_RELEASE.md).
+Desarrollo e instalador usan el perfil %APPDATA%\DeadSingularityV1. Las pruebas
+usan perfiles aislados. Exportar/importar progreso desde Récords permite trasladarlo.
+El cambio de nombre conserva los guardados anteriores.
 
-Para jugar, abrí `JUGAR NEON VOID.cmd` en esta carpeta, o `index.html` con Edge/Chrome.
-La entrega Windows también se puede abrir desde su `NEON VOID.exe` dentro de `releases`.
-Conservá toda la carpeta de la entrega; el EXE necesita sus archivos acompañantes.
-No hace falta instalar Node ni conectarse a Internet para jugar.
+Estado de los seis hitos: docs/CRECIMIENTO_IMPLEMENTADO.md y GROWTH_PLAN.md.
+Steamworks, APK en dispositivo físico, firma comercial y proveedor de servicios
+requieren completar sus integraciones; esta entrega no los presenta como terminados.
+La firma Windows requiere certificado real y npm run build:desktop:signed.
 
-Pasada local del02-10: bosses recorren la arena con soporte gradual, láseres
-compatibles alternados con ataques, mayor densidad y spawn con X roja/puff.
-[Informe y continuidad](docs/ARENA_ADAPTATION_2026-10-02.md):157 suites sin fallos.
-Los cuatro pilotos ahora dejan una estela estelar únicamente durante el dash,
-sin cambiar su física. [Referencias, pruebas y entregas](docs/DASH_TRAIL_2026-10-02.md).
+La API NV.drawConsumableIcon está en js/render/consumableIcons.js; su fixture es
+previews/consumable-icons-integration-preview.html. Arquitectura: docs/ARCHITECTURE.md.
 
-El rediseño corporal posterior fue rechazado y retirado: los cuatro pilotos
-conservan su aspecto anterior. Web y el lanzador Windows vuelven a esa base;
-158 suites sin fallos. [Recuperación y nueva comparación visual separada](docs/PILOT_ENERGY_REDESIGN_2026-10-02.md).
+Continuidad y respaldos: RETOMAR_V1.md. Publicación autorizada el 08/10/2026.
+Repositorio: https://github.com/Danelnow88/DeadSingularity
+Pages:
+https://danelnow88.github.io/DeadSingularity/.
 
-La comparación ahora estudia el **mismo arte con movimiento estabilizado**, sin
-cambiar el juego. Abrí `dev/pilot-concepts/index.html` con Edge/Chrome; ofrece
-controles por piloto y capturas A/B. [Informe y mediciones](docs/PILOT_STABILITY_LAB_2026-10-02.md).
-
-El mismo laboratorio ahora conserva tu configuración exacta como **base canónica
-protegida**. Elegí un piloto y «Forma base» para probar siluetas sin cambiar su
-animación; «Duplicar preset» habilita sliders únicamente en una copia.
-[Preset, pruebas y separación geométrica](docs/PILOT_CANONICAL_GEOMETRY_LAB_2026-10-02.md).
-
-En la tienda, «Preparar oleada» abre las ayudas opcionales. «Desplegar» sigue
-abajo a la derecha. «Guardar y salir» conserva el último checkpoint; si abrís
-`ABRIR_JUEGO_FRESH.bat`, ese modo de prueba no guarda y el botón dice «Salir sin guardar».
-
-El navegador y la app Windows tienen guardados separados. En **RÉCORDS / INFORME**
-podés exportar e importar permanentes, récords y checkpoint para trasladarlos.
-Exportá antes de importar si querés conservar el progreso del destino.
-
-Para desarrollar/compilar Windows: Node **22.12 o superior**, `npm ci`,
-`npm run runtime:install`, `npm test`, `npm run build:windows`.
-`npm run build:web` genera una carpeta web offline. Cada build usa un destino nuevo.
-
-La alpha no está publicada ni aprobada en Steam. No contiene pagos ni telemetría remota.
-
-Roguelite arcade de supervivencia con estética synthwave/neón. El juego comparte una única implementación de gameplay entre desktop y móvil; la presentación, el viewport y la entrada se adaptan por capacidad y orientación.
-
-## Tecnología
-
-- HTML5, CSS y JavaScript sin framework ni proceso de build.
-- Canvas2D para gameplay y render principal.
-- Web Audio API para música procedural y efectos.
-- Three.js 0.160.0 sólo para el overlay experimental `?legacy3d=1`; no se solicita por defecto ni se incluye su arranque en las entregas offline.
-- Pruebas headless con Node.js.
-
-## Ejecutar localmente
-
-Requisito: Node.js.
-
-```bash
-node tools/serve.js
-```
-
-Abrir `http://localhost:8080/`. También puede abrirse `index.html` directamente, pero el servidor local reproduce mejor el entorno de GitHub Pages y permite probar desde otros dispositivos de la red.
-
-## URLs importantes
-
-- Producción: <https://danelnow88.github.io/JuegoDemo/>
-- Repositorio: <https://github.com/Danelnow88/JuegoDemo.git>
-- Fallback móvil legacy para depuración: `?dynamicView=0`
-- Alias de compatibilidad: `?dynamicView=1` (ya no es necesario)
-
-## Arquitectura resumida
-
-- Los módulos IIFE publican APIs compartidas en `window.NV`.
-- `js/core/viewport.js` es la única fuente de métricas de referencia, vista y arena.
-- `js/game.js` coordina estado, loop, gameplay compartido y transiciones UI.
-- `js/engine/` contiene sistemas de gameplay; `js/render/` contiene renderers; `js/data/` contiene definiciones de contenido y balance.
-- `NV.applyPlayerDamage` es la autoridad de daño al jugador; `NV.getHostileBudget` deriva el presupuesto vivo con topes de 30 hostiles y 7 heavy, boss incluido.
-- Proyectiles hostiles: el cuerpo ROJO (`#ff3b4f`) comunica daño, un acento AMARILLO secundario (`#ffd84a`) indica que puede aturdir y la FORMA comunica la familia de origen/ataque (`projectileStyle`); todo se resuelve en `NV.drawHostileProjectile` sin lookup de enemigos.
-- Teclado y controles táctiles escriben en la misma abstracción lógica `NV.input`.
-- El lobby, Game Over y Settings usan DOM compartido con presentación responsive.
-- `js/core/settings.js` centraliza calidad visual y persistencia sin alterar gameplay.
-
-Detalles: [Arquitectura](docs/ARCHITECTURE.md).
-
-Los cuatro escenarios de la expedición conservan sus cambios en oleadas 1, 6,
-11 y 16. Ahora son regiones cósmicas distintas, sin cuadrícula: nebulosa/luna,
-forja estelar, fractura espacial y singularidad. Hitos y polvo quedan anclados
-al mundo para hacer perceptible la cámara. Arte Canvas2D cacheado, sin nuevas
-dependencias ni cambios de combate. [Informe de escenarios](docs/COSMIC_SCENARIOS_2026-10-01.md).
-
-## Comportamiento móvil
-
-- **Desktop:** referencia/vista `900x520`, arena `1350x780`; cámara sigue con 28 unidades de exterior visual, sin cambiar paredes físicas.
-- **Móvil landscape:** Dynamic World View y Dynamic Arena automáticos. Altura visible `520`, ancho según canvas físico; arena `1.5×` vista en ambos ejes, sin stretch. El campo ya no está limitado por la pantalla.
-- **Móvil portrait:** se conserva el overlay de orientación y el comportamiento legacy de métricas.
-- `?dynamicView=0` fuerza temporalmente contain `900x520` en móvil landscape para diagnóstico.
-- El HUD móvil usa datos DOM arriba, menú único arriba-derecha y selectores de arma/item abajo-centro; el panel Canvas redundante se conserva solo en desktop.
-
-## Ajustes gráficos
-
-El panel compartido **Ajustes** ofrece calidad `Auto`, `Alta` y `Rendimiento`, además de toggles para partículas y VFX intensos de élites. El valor por defecto es **Alta**, equivalente a la calidad visual previa. Los modos alternativos solo reducen coste visual secundario; no cambian enemigos, daño, vida, spawns ni dificultad.
-
-La familia visual élite `RB6 / Entidad Hidra` dispone de un presupuesto LOD estable por proximidad al jugador en `Auto` y `Rendimiento`. Todas las entidades siguen visibles y funcionales.
-
-- **Lenguaje de color hostil:** el peligro entrante usa una familia roja consistente — `#ff6474` (warning/telegrafía), `#ff3b4f` (amenaza activa) y `#ffffff` (impacto). Es solo presentación: no afecta daño, timings ni dificultad.
-
-Contrato completo: [Arquitectura móvil](docs/MOBILE_ARCHITECTURE.md) y [Estados UI](docs/UI_STATES.md).
-
-## Pruebas
-
-```bash
-node --check js/core/viewport.js
-node --check js/game.js
-node tests/mobile_compat.js
-node tests/world_metrics_noop.js
-node tests/dynamic_viewport.js
-node tests/dynamic_arena.js
-npm test
-```
-
-Baseline local de perímetro, 1 de octubre de 2026: 154 suites; cero fallos. Incluye
-19 casos específicos de cámara/arena y 9 de perímetro, además del plan previo. Pruebas y cierre
-de empaquetado: [Testing](docs/TESTING.md). Arquitectura, riesgos y archivos:
-[Camera foundation](docs/CAMERA_FOUNDATION_2026-10-01.md).
-Pulido y sincronización web/Windows: [Perímetro](docs/PERIMETER_POLISH_2026-10-01.md).
-
-## Despliegue
-
-GitHub Pages publica la rama `master`. El flujo normal es validar, hacer staging selectivo, crear un commit nuevo y ejecutar `git push origin master`; nunca se usa force push para un deploy normal.
-
-Procedimiento completo: [Deployment](docs/DEPLOYMENT.md).
-
-## Documentación
-
-- [Punto de entrada para agentes de IA](docs/AI_START_HERE.md)
-- [Arquitectura](docs/ARCHITECTURE.md)
-- [Arquitectura móvil](docs/MOBILE_ARCHITECTURE.md)
-- [Estados UI](docs/UI_STATES.md)
-- [Workflow para agentes de IA](docs/AI_WORKFLOW.md)
-- [Testing](docs/TESTING.md)
-- [Deployment](docs/DEPLOYMENT.md)
-
-## Referencias de herramientas visuales
-
-Los iconos de consumibles se renderizan mediante `js/render/consumableIcons.js` y la API `NV.drawConsumableIcon`. La comprobación visual integrada está en `previews/consumable-icons-integration-preview.html`.
-
-## Limitaciones conocidas
-
-- Una arena móvil más ancha puede reducir la dificultad efectiva y la densidad aparente de spawns.
-- Los patrones de jefes usan mayormente amplitudes absolutas en unidades de mundo.
-- La distribución de pickups y meteoritos puede sentirse distinta en arenas anchas.
-- La suite completa actual no registra fallos; cualquier fallo posterior debe investigarse como posible regresión.
+Código y contenidos propios: UNLICENSED. Ver AVISOS.md y licencias del runtime.

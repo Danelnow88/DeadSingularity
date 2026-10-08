@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Neon Void</title>
-    <link rel="icon" href="assets/brand/neon-void-mark.svg?nv=audio-20261002b" type="image/svg+xml" />
+    <title>DeadSingularity</title>
+    <link rel="icon" href="assets/brand/dead-singularity-mark.svg?nv=audio-20261002b" type="image/svg+xml" />
     <link rel="stylesheet" href="css/styles.css?nv=audio-20261002b" />
     <link rel="stylesheet" href="css/lobby-f093.css?nv=audio-20261002b" />
     <link rel="stylesheet" href="css/alpha.css?nv=audio-20261002b" />
@@ -19,7 +19,7 @@
   <body>
     <main class="shell">
       <header class="hud">
-        <div class="logo"><span>NV</span> NEON VOID</div>
+        <div class="logo"><span>DS</span> DeadSingularity</div>
         <div id="rhythm-widget" class="rhythm-widget" title="Control de música externa (permite capturar audio de una pestaña o ventana)">
           <span class="rw-icon" aria-hidden="true">
             <svg class="mn" viewBox="0 0 32 32" width="20" height="20" focusable="false">
@@ -60,7 +60,7 @@
         </div>
         <button id="systemMenuToggle" class="system-menu-toggle" type="button" aria-label="Abrir sistema" aria-expanded="false">☰</button>
         <aside id="systemMenu" class="system-menu" aria-label="Menú de sistema" hidden>
-          <header class="system-menu-head"><div><span>SISTEMA</span><strong>NEON VOID</strong></div><button id="systemMenuClose" type="button" aria-label="Cerrar menú">×</button></header>
+          <header class="system-menu-head"><div><span>SISTEMA</span><strong>DeadSingularity</strong></div><button id="systemMenuClose" type="button" aria-label="Cerrar menú">×</button></header>
           <section class="system-readout" aria-label="Estado de partida">
             <div><small>OLEADA</small><strong id="systemWave">—</strong></div>
             <div><small>PUNTOS</small><strong id="systemScore">0</strong></div>
@@ -90,7 +90,7 @@
             <span class="lobby-star star-a"></span><span class="lobby-star star-b"></span>
             <span class="lobby-star star-c"></span><span class="lobby-star star-d"></span>
           </div>
-          <header class="lobby-masthead"><div class="lobby-brand"><span class="lobby-brand-mark">NV</span><h1 id="lobbyTitle">NEON VOID<span>.</span></h1></div><div class="lobby-header-actions"><span class="lobby-online">● SISTEMAS EN LÍNEA</span><button id="lobbySettingsBtn" type="button" aria-label="Ajustes">⚙</button><button id="lobbyFullscreenBtn" class="lobby-fullscreen hidden" type="button" aria-hidden="true">⛶ PANTALLA COMPLETA</button></div></header>
+          <header class="lobby-masthead"><div class="lobby-brand"><span class="lobby-brand-mark">DS</span><h1 id="lobbyTitle">DeadSingularity<span>.</span></h1></div><div class="lobby-header-actions"><span class="lobby-online">● SISTEMAS EN LÍNEA</span><button id="lobbySettingsBtn" type="button" aria-label="Ajustes">⚙</button><button id="lobbyFullscreenBtn" class="lobby-fullscreen hidden" type="button" aria-hidden="true">⛶ PANTALLA COMPLETA</button></div></header>
           <section class="main-lobby-panel" aria-labelledby="lobbyTitle">
             <div class="main-lobby-copy">
               <div class="lobby-hero-info panel-piloto" aria-live="polite">
@@ -139,7 +139,7 @@
               <section class="card-mode card-infinito"><button id="lobbyModeEndless" class="mode-select" type="button" data-mode="endless" aria-pressed="false"><span class="mode-heading"><span>02</span><span>SIN LÍMITES</span></span><span class="infinity-symbol" aria-hidden="true">∞</span><strong>INFINITO</strong><span class="mode-description">Supervivencia sin fin</span></button><div class="infinite-record"><span>RÉCORD GLOBAL</span><strong id="lobbyInfiniteRecord">Oleada 0</strong></div></section>
             </div>
           </section>
-          <footer class="lobby-footer"><span>NEON VOID / EXPLORA. RESISTE. EVOLUCIONA.</span><span>PROGRESO LOCAL ACTIVO</span></footer>
+          <footer class="lobby-footer"><span>DeadSingularity / EXPLORA. RESISTE. EVOLUCIONA.</span><span>PROGRESO LOCAL ACTIVO</span></footer>
         </div>
 
         <div id="characterSelectScreen" class="overlay lobby-screen character-select-screen hidden">
@@ -379,7 +379,11 @@
       </div>
     </main>
 
-    <script src="js/core/state.js?nv=audio-20261002b"></script>
+    <script src="js/core/state.js?nv=growth-1"></script>
+    <script src="js/core/content.js?nv=growth-1"></script>
+    <script src="js/data/catalog.js?nv=growth-1"></script>
+    <script src="js/core/runtime.js?nv=growth-1"></script>
+    <script src="js/core/storageMigration.js?nv=growth-1"></script>
     <script src="js/data/gameData.js?nv=audio-20261002b"></script>
     <script src="js/data/bossDesignLab.js?nv=boss-lab-20261007"></script>
     <script src="js/data/balance.js?nv=audio-20261002b"></script>
@@ -388,6 +392,8 @@
     <script src="js/core/viewport.js?nv=mobile-20261004"></script>
     <script src="js/core/inputIntent.js?nv=audio-20261002b"></script>
     <script src="js/data/consumables.js?nv=audio-20261002b"></script>
+    <script src="js/core/extensions.js?nv=growth-1"></script>
+    <script src="js/core/services.js?nv=growth-1"></script>
     <script src="js/audio/voices.js?nv=groove-20261003"></script>
     <script src="js/audio/synth.js?nv=musicfix-20261004"></script>
     <script src="js/audio/soundtrack.js?nv=musicfix-20261004"></script>
@@ -451,5 +457,6 @@
     <script src="js/ui/systemMenu.js?nv=system-20261007"></script>
     <!-- Último: necesita NV.input (expuesto por game.js) y NV.viewport. -->
     <script src="js/ui/mobileControls.js?nv=mobile-controls-20261007h"></script>
+  <script src="js/core/bootstrap.js?nv=growth-1"></script>
   </body>
 </html>

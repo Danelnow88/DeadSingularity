@@ -71,21 +71,22 @@
         const selected = file.files[0]; if (!selected) return;
         if (selected.size > 250000) { status.textContent = 'El archivo es demasiado grande para un guardado.'; return; }
         try {
-          const data = JSON.parse(await selected.text());
-          if (data.kind !== 'neon-void-progress' || data.version !== 1) throw new Error('formato');
+          let data = JSON.parse(await selected.text());
+          if (NV.migration) data = NV.migration.normalizeProgress(data);
+          if (data.kind !== 'dead-singularity-progress' || data.version !== 1) throw new Error('formato');
           if (!window.confirm('¿Reemplazar permanentes, récords y checkpoint con este archivo? Exportá primero si querés conservar el progreso actual.')) return;
           if (!NV.expedition.importProgress(data)) throw new Error('importación');
           location.reload();
         } catch (_) { status.textContent = 'No se pudo importar: archivo incompatible o almacenamiento no disponible. El progreso anterior se conserva si el navegador permite escribirlo.'; }
       });
-      saveControls.append(button('EXPORTAR PROGRESO', () => downloadJson(NV.expedition.exportProgress(), 'NEON_VOID_progreso.json')), button('IMPORTAR PROGRESO', () => file.click()));
+      saveControls.append(button('EXPORTAR PROGRESO', () => downloadJson(NV.expedition.exportProgress(), 'DeadSingularity_progreso.json')), button('IMPORTAR PROGRESO', () => file.click()));
       body.append(saveControls, file, status);
     }
     dialog.showModal(); close.focus();
   }
   function downloadReport() {
     downloadJson({ version: NV.alpha.version, createdAt: new Date().toISOString(), snapshot: NV.alpha.snapshot(), settings: NV.settings,
-      career: NV.expedition.profile(), errors, viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio } }, 'NEON_VOID_informe_alpha.json');
+      career: NV.expedition.profile(), errors, viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio } }, 'DeadSingularity_informe_alpha.json');
   }
   function downloadJson(data, filename) {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });

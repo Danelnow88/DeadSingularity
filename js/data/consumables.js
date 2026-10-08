@@ -5,7 +5,7 @@
   'use strict';
   const NV = window.NV;
 
-  NV.CONSUMABLES = {
+  NV.CONSUMABLES = NV.Content ? Object.fromEntries(NV.Content.read('consumables').map(e => [e.id,e.data])) : {
     potion:    { key: 'potion',    name: 'Poción',     useName: 'POCIÓN',     desc: 'Restaura 40 de vida. Usar con F.',     price: 10, banner: 'Poción guardada (F para usar)',  color: '#22c55e', hp: 40 },
     overdrive: { key: 'overdrive', name: 'Overdrive',  useName: 'OVERDRIVE',  desc: '+18% de velocidad durante 5 s. F para usar.', price: 18, banner: 'Overdrive guardado (F)',         color: '#caa7ff', speedMult: 1.18, duration: 5 },
     shield:    { key: 'shield',    name: 'Escudo',     useName: 'ESCUDO',     desc: 'Invulnerable durante 3 s. F para usar.',  price: 22, banner: 'Escudo guardado (F)',            color: '#ffcf76', duration: 3 },

@@ -1,2 +1,7 @@
-# Fixture histórico comprobado por SHA256: conservar incluso su whitespace.
-tests/fixtures/pilot-native-renderer-2026-10-02.js whitespace=-blank-at-eol
+# Los runtimes activo y congelado conservan bytes exactos también en Windows.
+/reference/** -text
+/index.html -text
+/css/** -text
+/js/** -text
+/assets/** -text
+/AVISOS.md -text

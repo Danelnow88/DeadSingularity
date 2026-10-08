@@ -1,0 +1,15 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const pkg = require('../package.json');
+assert(pkg.scripts.quality.includes('check:syntax'));
+assert(pkg.scripts.quality.includes('check:delivery'));
+assert(pkg.scripts.quality.includes('check:repository'));
+assert(pkg.scripts.quality.includes('npm test'));
+const workflow = fs.readFileSync('.github/workflows/quality.yml', 'utf8');
+for (const command of ['npm ci', 'npm run quality', 'npm run build:web', 'npm run build:desktop:dir', '--delivery-check']) assert(workflow.includes(command), command);
+assert(workflow.includes('contents: read'));
+assert(!/deploy-pages|git push|force-with-lease/.test(workflow));
+const ignore = fs.readFileSync('.gitignore', 'utf8');
+for (const pattern of ['node_modules/', 'local/', 'releases/', '*.lnk', '*.pfx', '.env']) assert(ignore.includes(pattern), pattern);
+console.log('PASS quality: gates, CI sin despliegue y exclusiones locales.');

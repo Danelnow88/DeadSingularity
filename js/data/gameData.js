@@ -36,7 +36,7 @@
   };
 
   // === PERSONAJES ===
-  NV.CHARACTERS = {
+  NV.CHARACTERS = NV.Content ? Object.fromEntries(NV.Content.read('pilots').map(e => [e.id, e.data])) : {
     boti: {
       name: 'BOTI', color: '#7cf8ff', bodyColor: '#4a9eff', eyeColor: '#fff', size: 22,
       // Color dominante REAL del cuerpo en drawPlayer (drips/blob/flow cian).
@@ -102,7 +102,7 @@
 
   // === ARMAS (10) ===
   NV.STARTER_WEAPON_ID = 'pistol';
-  NV.WEAPONS = [
+  NV.WEAPONS = NV.Content ? NV.Content.read('weapons').map(e => e.data) : [
     { id: 'pistol', name: 'Pistola', range: 380, damage: 14, speed: 500, fireRate: 30, color: '#fff', rarity: 'common', pro: 'Versátil y confiable', con: 'Sin especialidad' },
     { id: 'rifle', name: 'Rifle', range: 480, damage: 20, speed: 700, fireRate: 25, pierce: 2, color: '#4ade80', rarity: 'uncommon', pro: 'Preciso y penetrante', con: 'Cadencia media' },
     // 360 conserva el riesgo cercano frente a Pistola (380), pero evita que un
@@ -161,7 +161,7 @@
   };
 
   // === ENEMIGOS BÁSICOS (7 tipos) ===
-  NV.ENEMY_TYPES = [
+  NV.ENEMY_TYPES = NV.Content ? NV.Content.read('enemies').map(e => e.data) : [
     { id: 'drone', name: 'DRON', hp: 25, speed: 75, radius: 11, color: '#f07bad', shape: 'circle', score: 10, xp: 10, behavior: 'chase', knockbackRes: 0, damage: 12, minWave: 1 },
     { id: 'runner', name: 'CORREDOR', hp: 15, speed: 145, radius: 9, color: '#ffcf76', shape: 'triangle', score: 15, xp: 15, behavior: 'flank', knockbackRes: 0.3, damage: 10, minWave: 1 },
     { id: 'tank', name: 'TANQUE', hp: 60, speed: 40, radius: 20, color: '#ef9d49', shape: 'hex', score: 30, xp: 35, behavior: 'chase', knockbackRes: 0.8, damage: 18, minWave: 3, resist: 3 },
@@ -192,7 +192,7 @@
   // === ÉLITES (8 tipos) ===
   // visualId: identidad para el renderer espectral (spectralEnemies2D.js).
   // Si no está presente, cae a 'elite_base' (dorado genérico).
-  NV.ELITE_TYPES = [
+  NV.ELITE_TYPES = NV.Content ? NV.Content.read('elites').map(e => e.data) : [
     { name: 'COMANDANTE', hp: 90, speed: 90, radius: 20, color: '#ff0', shape: 'hex', score: 50, xp: 50, behavior: 'chase', damage: 20, visualId: 'elite_base' },
     { name: 'RÁPIDO', hp: 40, speed: 175, radius: 14, color: '#0ff', shape: 'triangle', score: 30, xp: 30, behavior: 'erratic', damage: 15, visualId: 'elite_velocity' },
     { name: 'BASTIÓN', hp: 160, speed: 35, radius: 30, color: '#f80', shape: 'rock', score: 60, xp: 60, behavior: 'chase', damage: 25, resist: 3, visualId: 'elite_bulwark' },
@@ -209,7 +209,7 @@
   for (const type of NV.ELITE_TYPES) type.hostileClass = 'heavy';
 
   // === BOSSES (10 tipos) ===
-  NV.BOSS_TYPES = [
+  NV.BOSS_TYPES = NV.Content ? NV.Content.read('bosses').map(e => e.data) : [
     { name: 'JEFE', hp: 300, radius: 50, color: '#ff5f9b', speed: 30, pattern: 'chase', attack: 'repeater', shape: 'hex', stunChance: 0 },
     { name: 'TITÁN', hp: 450, radius: 55, color: '#ff8c00', speed: 25, pattern: 'charge', attack: 'heavy', shape: 'hex', stunChance: 0.1 },
     { name: 'SEÑOR DEL VACÍO', hp: 600, radius: 65, color: '#dc143c', speed: 20, pattern: 'summon', attack: 'summon', shape: 'circle', stunChance: 0.15 },

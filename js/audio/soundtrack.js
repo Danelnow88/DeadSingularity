@@ -88,7 +88,7 @@
         }
       }
       status='ready';return true;
-    }).catch(e=>{status='failed';error=e.message;buffer=null;console.warn('NEON VOID soundtrack:',error);return false;});
+    }).catch(e=>{status='failed';error=e.message;buffer=null;console.warn('DeadSingularity soundtrack:',error);return false;});
     return loading;
   }
   function update(env={}){

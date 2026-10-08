@@ -1,5 +1,5 @@
 /* ============================================================
-   NEON VOID - ROGUELITE
+   DeadSingularity - ROGUELITE
    ============================================================ */
 (() => {
   'use strict';
@@ -1348,7 +1348,7 @@
 
   function loadMeta() {
     try {
-      const saved = JSON.parse(localStorage.getItem('neonVoidMeta') || '{}');
+      const saved = JSON.parse(localStorage.getItem('deadSingularityMeta') || '{}');
       metaShards = Number.isFinite(saved.metaShards) ? Math.max(0, Math.min(1e9, saved.metaShards)) : 0;
       permUpgrades = NV.normalizePermUpgrades(saved.permUpgrades);
     } catch (e) { console.warn('[META] Error:', e); }
@@ -1358,11 +1358,11 @@
   let metaFrozen = false;
   function saveMeta() {
     if (metaFrozen) return;
-    try { localStorage.setItem('neonVoidMeta', JSON.stringify({ metaShards, permUpgrades })); } catch (e) { console.warn('[META] Error:', e); }
+    try { localStorage.setItem('deadSingularityMeta', JSON.stringify({ metaShards, permUpgrades })); } catch (e) { console.warn('[META] Error:', e); }
   }
   // Consola: NV.resetMeta() borra el progreso persistente al instante.
   NV.resetMeta = function () {
-    try { localStorage.removeItem('neonVoidMeta'); console.log('[META] Progreso borrado. Recargá para empezar de cero.'); }
+    try { localStorage.removeItem('deadSingularityMeta'); console.log('[META] Progreso borrado. Recargá para empezar de cero.'); }
     catch (e) { console.warn('[META] Error:', e); }
   };
 
@@ -4389,6 +4389,7 @@
   // P2: instrumentación del loop. frameMs = intervalo real entre rAF;
   // updateMs/drawMs = coste de cada fase. El monitor SOLO observa.
   let perfPrevNow = 0, vbEvalTimer = 0;
+  const measurePhases = NV.RuntimeTools ? NV.RuntimeTools.measurePhases(() => performance.now()) : null;
   function applyScreenShake() {
     if (shake > 0 && (state === 'playing' || state === 'player_dying' || state === 'wave_end')) {
       const deathMult = state === 'player_dying' ? 0.7 : 1;
@@ -4403,6 +4404,7 @@
     }
   }
   function loop(now) {
+    if (NV.events) NV.events.beginFrame();
     // Vertical en móvil es una pantalla de orientación, no una partida a medias:
     // no avanzamos simulación, VFX ni timers hasta que vuelva el paisaje.
     const portraitMobileBlocked = !!(NV.capabilities && NV.capabilities.isMobile
@@ -4445,15 +4447,18 @@
       drawLobbyPreview();
     }
     const perfUpdateStart = performance.now();
-    update(dt);
+    // Phase extraction preserves update -> shake -> draw order and timings.
+    let phaseTimes;
+    if (measurePhases) phaseTimes = measurePhases(update, applyScreenShake, draw, dt);
+    else update(dt);
     // Resolver el desplazamiento físico antes de reproyectar cursor y dibujar.
     // Después de draw provocaba un frame de desalineación cursor/retícula.
-    applyScreenShake();
+    if (!measurePhases) applyScreenShake();
     const perfDrawStart = performance.now();
-    draw();
+    if (!measurePhases) draw();
     const perfDrawEnd = performance.now();
     if (NV.performanceMonitor) {
-      NV.performanceMonitor.record(now - perfPrevNow, perfDrawStart - perfUpdateStart, perfDrawEnd - perfDrawStart);
+      NV.performanceMonitor.record(now - perfPrevNow, phaseTimes ? phaseTimes.updateMs : perfDrawStart - perfUpdateStart, phaseTimes ? phaseTimes.drawMs : perfDrawEnd - perfDrawStart);
     }
     // Visual budget: evaluación de baja frecuencia (~2 Hz) con el p95 real.
     vbEvalTimer += now - perfPrevNow;
@@ -4471,6 +4476,7 @@
     }
     updateMetaDiagnostics();
     updateEspectroBridge(dt);
+    if (NV.webgpuPresentation) NV.webgpuPresentation.present(canvas);
 
     requestAnimationFrame(loop);
   }
@@ -4481,6 +4487,7 @@
 
   // === Accesores de estado para módulos externos (audio, render, ui…)
   NV.getFrame = () => frame;
+  NV.getInputSnapshot = () => JSON.parse(JSON.stringify(combatIntent));
   // P2: telemetría de entidades para el monitor (solo lectura, nunca muta).
   if (NV.performanceMonitor) {
     NV.performanceMonitor.setTelemetryProvider(() => {
@@ -4580,7 +4587,7 @@
     sfx.victory(wave, { milestone: true });
   }
   NV.alpha = Object.freeze({
-    version: '0.10.0-alpha',
+    version: '1.1.0-alpha.1',
     snapshot: () => ({ state, paused, showHUD, hudHold, hudReveal, combatLab: combatLabMode, saveDisabled: metaFrozen, wave, score, shards,
       run: expeditionRun ? JSON.parse(JSON.stringify(expeditionRun)) : null,
       mode: expeditionMode, hp: player.hp, maxHp: player.maxHp,

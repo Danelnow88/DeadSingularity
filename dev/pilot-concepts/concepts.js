@@ -147,7 +147,7 @@
     document.getElementById('presetStatus').textContent=presets.save()?'Copia guardada en este navegador':'No se pudo guardar en el navegador; exportá el JSON para conservarla.';
   });
   document.getElementById('exportPresets').addEventListener('click',()=>{
-    const url=URL.createObjectURL(new Blob([JSON.stringify(presets.export(),null,2)],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='NEON_VOID_presets_visuales.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    const url=URL.createObjectURL(new Blob([JSON.stringify(presets.export(),null,2)],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='DeadSingularity_presets_visuales.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   });
   function setShape(id,kind){if(!Object.hasOwn(shapes,id)||!geometry.names[kind])return false;shapes[id]=kind;return true;}
   shapeSelect.addEventListener('change',()=>{setShape(selected.value,shapeSelect.value);paint();});
@@ -155,7 +155,7 @@
   for(const button of document.querySelectorAll('[data-capture]'))button.addEventListener('click',()=>{
     setPaused(true);paint();const slot=button.dataset.capture,url=canvas.toDataURL(),panel=document.getElementById('capture-'+slot);panel.hidden=false;
     panel.querySelector('img').src=url;panel.querySelector('figcaption').textContent=`Captura ${slot.toUpperCase()} · frame ${Math.round(frame)}`;
-    const link=panel.querySelector('a');link.href=url;link.download=`neon-void-pilotos-${slot}-f${Math.round(frame)}.png`;
+    const link=panel.querySelector('a');link.href=url;link.download=`dead-singularity-pilotos-${slot}-f${Math.round(frame)}.png`;
   });
   document.getElementById('measure').addEventListener('click',()=>{
     const lines=measure().map(r=>`${NV.CHARACTERS[r.id].name}: +1f ${Math.round(r.intervals[1].reduction*100)}%, +6f ${Math.round(r.intervals[6].reduction*100)}% menos desplazamiento de vértices`);

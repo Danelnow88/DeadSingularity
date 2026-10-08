@@ -1,29 +1,25 @@
 node_modules/
+local/
+releases/
+previews/*
+!previews/enemy-roster-canonical.html
+!previews/consumable-icons-integration-preview.html
 *.log
+*.tmp
 .DS_Store
 Thumbs.db
-*.tmp
-*.bak
-*.old
-*.orig
 
-# Generated diagnostic/probe output (source diagnostics under tools/ stay tracked)
-tmp_*.txt
-.tmp_*.txt
-*_diff.txt
-probe_out.txt
-*.out
-*.trace
-*.rej
-test_summary.txt
-# Archivos internos/locales de Cline
-.cline/
-.codex-remote-attachments/
+# Accesos Windows generados con rutas absolutas de cada equipo.
+*.lnk
+# Credenciales y certificados nunca se publican.
+.env
+.env.*
+!.env.example
+*.p12
+*.pfx
+*.key
 
-# Entregas generadas y evidencia local de navegador (no son fuente).
-releases/
-previews/alpha-verification/
-previews/alpha-verification-offline/
-# Capturas y reportes locales generados. Las páginas fuente ya versionadas
-# siguen versionadas; los fixtures estables viven en tests/fixtures/.
-previews/
+android/.gradle/
+android/local.properties
+android/**/build/
+android/app/src/main/assets/game/

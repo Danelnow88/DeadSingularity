@@ -47,12 +47,12 @@ assert.equal(bad.player.hp, 1); assert.equal(bad.shards, 0); assert.equal(bad.fu
 assert.equal(NV.normalizePermUpgrades({ hp: -50, damage: Infinity }).hp, 0);
 assert.equal(NV.normalizePermUpgrades({ hp: -50, damage: Infinity }).damage, 0);
 E.complete(run, 20, 1000, true); E.complete(run, 20, 1000, true); assert.equal(E.profile().runs, 1); assert.equal(E.profile().wins, 1);
-store.neonVoidMeta = JSON.stringify({ metaShards: 177, permUpgrades: { hp: 3, damage: 2 } });
+store.deadSingularityMeta = JSON.stringify({ metaShards: 177, permUpgrades: { hp: 3, damage: 2 } });
 const backup = E.exportProgress();
 assert.equal(backup.meta.metaShards, 177); assert.equal(backup.meta.permUpgrades.hp, 3);
-store.neonVoidMeta = '{}'; assert(E.importProgress(backup)); assert.equal(JSON.parse(store.neonVoidMeta).metaShards, 177);
+store.deadSingularityMeta = '{}'; assert(E.importProgress(backup)); assert.equal(JSON.parse(store.deadSingularityMeta).metaShards, 177);
 const previous = JSON.stringify(store);
 assert.equal(E.importProgress({ ...backup, checkpoint: { version: 2 } }), false); assert.equal(JSON.stringify(store), previous);
 assert.equal(E.importProgress({ ...backup, version: 2 }), false); assert.equal(JSON.stringify(store), previous);
-E.clear(); assert.equal(E.load(), null); store.neonVoidExpeditionV1 = 'broken'; assert.equal(E.load(), null);
+E.clear(); assert.equal(E.load(), null); store.deadSingularityExpeditionV1 = 'broken'; assert.equal(E.load(), null);
 console.log('RESULT expedition: checkpoints, progreso, contratos, economía, rutas y perfil OK');

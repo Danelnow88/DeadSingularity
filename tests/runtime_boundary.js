@@ -1,0 +1,24 @@
+// El empaquetado, el servidor y la app aplican la misma frontera de archivos.
+const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs'),os=require('node:os');
+const {gameFile,CSP}=require('../desktop/runtime-policy.cjs');
+const {prepareProfile}=require('../desktop/profile.cjs');
+const root=path.resolve('.');
+for(const url of ['/','/index.html','/js/game.js','/css/styles.css','/assets/brand/icon.ico'])assert(gameFile(root,url),url);
+for(const url of ['/reference/prototype/index.html','/src/play.html','/workbench.html','/package.json','/local/profile/Preferences','/../reference/index.html','/js/../../package.json','/js\\..\\package.json','/js/file\0.js'])assert.equal(gameFile(root,url),null,url);
+assert(CSP.includes("script-src 'self'")&&CSP.includes("object-src 'none'"));
+const pkg=require('../package.json');
+assert.equal(pkg.build.asar,true);
+assert.deepEqual(pkg.build.files,['desktop/*.cjs','package.json']);
+assert(!pkg.build.extraResources.some(entry=>/reference|workbench|src/.test(entry.from)));
+assert.equal(pkg.build.electronVersion,pkg.devDependencies.electron);
+const temp=fs.mkdtempSync(path.join(os.tmpdir(),'dsv1-profile-test-'));
+const previous=path.join(temp,'previous'),target=path.join(temp,'current');
+fs.mkdirSync(path.join(previous,'Local Storage'),{recursive:true});fs.mkdirSync(path.join(previous,'Cache'));
+fs.writeFileSync(path.join(previous,'Local Storage','save'),'original');fs.writeFileSync(path.join(previous,'Cache','stale'),'cache');
+assert(prepareProfile(previous,target));
+assert.equal(fs.readFileSync(path.join(target,'Local Storage','save'),'utf8'),'original');
+assert(!fs.existsSync(path.join(target,'Cache')));
+fs.writeFileSync(path.join(target,'Local Storage','save'),'new');
+assert.equal(prepareProfile(previous,target),false);assert.equal(fs.readFileSync(path.join(target,'Local Storage','save'),'utf8'),'new');
+assert.equal(fs.readFileSync(path.join(previous,'Local Storage','save'),'utf8'),'original');
+console.log('PASS límites de producción, empaquetado y migración sin sobrescribir progreso. Fixture: '+temp);

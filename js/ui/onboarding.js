@@ -4,7 +4,7 @@
   'use strict';
   const NV = window.NV;
   if (!NV || !NV.input || typeof document === 'undefined') return;
-  const KEY = 'neonVoidTutorialV1';
+  const KEY = 'deadSingularityTutorialV1';
   const done = () => { try { return localStorage.getItem(KEY) === 'done'; } catch (_) { return false; } };
   let completed = done(), step = 0, active = false, autoTimer = 0, hudVisible = true;
   const actions = { move: false, dash: false, fire: false, special: false };

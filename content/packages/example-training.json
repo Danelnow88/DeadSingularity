@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": "dead-singularity-alpha-1",
+  "id": "training",
+  "name": "Paquete de práctica",
+  "version": 1,
+  "entries": [
+    {
+      "group": "enemies",
+      "id": "training_drone",
+      "archetype": "drone",
+      "name": "DRON DE PRÁCTICA",
+      "color": "#7cf8ff",
+      "stats": {
+        "hp": 30,
+        "speed": 65,
+        "minWave": 3
+      }
+    },
+    {
+      "group": "weapons",
+      "id": "training_pistol",
+      "archetype": "pistol",
+      "name": "Pistola de práctica",
+      "color": "#7cf8ff",
+      "stats": {
+        "damage": 12,
+        "range": 400,
+        "fireRate": 28
+      }
+    }
+  ]
+}
+

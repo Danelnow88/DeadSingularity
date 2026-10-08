@@ -1,0 +1,1456 @@
+{
+  "source": "reference/prototype",
+  "generatedAt": "2026-10-07T23:52:17.538Z",
+  "counts": {
+    "pilots": 4,
+    "weapons": 10,
+    "commonEnemies": 13,
+    "eliteEnemies": 8,
+    "bosses": 10,
+    "consumables": 7,
+    "permanentUpgrades": 9,
+    "javascriptFiles": 76
+  },
+  "catalogs": {
+    "pilots": {
+      "boti": {
+        "name": "BOTI",
+        "color": "#7cf8ff",
+        "bodyColor": "#4a9eff",
+        "eyeColor": "#fff",
+        "size": 22,
+        "shieldColor": "#00f0ff",
+        "special": "meteor",
+        "maxCd": 14,
+        "passive": "Regenera 1 HP cada 5s",
+        "passiveId": "boti_regen",
+        "skillColor": "#68edff",
+        "skillName": "Lluvia Criocósmica",
+        "skillDesc": "12 cometas de energía fría caen sobre la arena, con daño reducido contra jefes",
+        "card": {
+          "tag": "Equilibrado",
+          "previewClass": "char-preview-boti",
+          "statLine": "HP 120 · SPD 195 · ARM 0",
+          "identity": "Supervivencia estable · gran impacto contra oleadas · recarga larga",
+          "descHtml": "Regenera 1 HP cada 5s. <canvas class=\"char-skill-icon\" data-skill-icon=\"meteor\" aria-label=\"Lluvia Criocósmica\"></canvas> <b>Lluvia Criocósmica</b>: <span class=\"dmg-highlight\">12 cometas fríos devastan enemigos normales</span>, con <span class=\"cd-note\">recarga larga</span>; <span class=\"dmg-highlight\">golpea menos a los jefes</span>."
+        },
+        "stats": {
+          "hp": 120,
+          "speed": 195,
+          "armor": 0,
+          "luck": 0
+        }
+      },
+      "nova": {
+        "name": "NOVA",
+        "color": "#caa7ff",
+        "bodyColor": "#9b59b6",
+        "eyeColor": "#ff0",
+        "size": 18,
+        "shieldColor": "#ff3300",
+        "special": "phase",
+        "maxCd": 7,
+        "passive": "Daño +20%, recibe +20%",
+        "passiveId": "nova_glass_cannon",
+        "takeDmgMult": 1.2,
+        "skillColor": "#ff9d36",
+        "skillName": "Ignición Astral",
+        "skillDesc": "3s invulnerable con aura de plasma que daña a los cercanos; al terminar detona un golpe final con la energía acumulada",
+        "card": {
+          "tag": "Veloz",
+          "previewClass": "char-preview-nova",
+          "statLine": "HP 80 · SPD 225 · ARM 0",
+          "identity": "Daño y movilidad altos · alcance de área · defensa frágil",
+          "descHtml": "+20% daño, +20% daño recibido. <canvas class=\"char-skill-icon\" data-skill-icon=\"phase\" aria-label=\"Ignición Astral\"></canvas> <b>Ignición Astral</b>: <span class=\"def-highlight\">3s invulnerable</span>, <span class=\"cc-highlight\">corona de plasma que daña a los cercanos</span> y <span class=\"dmg-highlight\">detona un golpe final</span>."
+        },
+        "stats": {
+          "hp": 80,
+          "speed": 225,
+          "armor": 0,
+          "luck": 5
+        }
+      },
+      "rook": {
+        "name": "ROOK",
+        "color": "#ffcf76",
+        "bodyColor": "#f39c12",
+        "eyeColor": "#000",
+        "size": 26,
+        "shieldColor": "#eab308",
+        "special": "bulwark",
+        "maxCd": 12,
+        "passive": "-15% daño recibido",
+        "passiveId": "rook_tank",
+        "takeDmgMult": 0.85,
+        "skillColor": "#ffda7d",
+        "skillName": "Bastión Astral",
+        "skillDesc": "3s protegido por paneles de energía; refleja balas al contacto y al activarse aturde y empuja a enemigos cercanos",
+        "card": {
+          "tag": "Tanque",
+          "previewClass": "char-preview-rook",
+          "statLine": "HP 160 · SPD 170 · ARM 5",
+          "identity": "Máxima resistencia · control y reflejo · movilidad reducida",
+          "descHtml": "-15% daño recibido. <canvas class=\"char-skill-icon\" data-skill-icon=\"bulwark\" aria-label=\"Bastión Astral\"></canvas> <b>Bastión Astral</b>: <span class=\"def-highlight\">3s protegido y reflejo al contacto</span>; su aparición <span class=\"cc-highlight\">aturde y empuja</span> a los cercanos."
+        },
+        "stats": {
+          "hp": 160,
+          "speed": 170,
+          "armor": 5,
+          "luck": 0
+        }
+      },
+      "swarm": {
+        "name": "ENJAMBRE",
+        "color": "#8dfaff",
+        "bodyColor": "#00d4aa",
+        "eyeColor": "#fff",
+        "size": 16,
+        "shieldColor": "#ffee77",
+        "special": "hivemind",
+        "maxCd": 10,
+        "passive": "15% esquiva",
+        "passiveId": "swarm_dodge",
+        "dodge": 0.15,
+        "skillColor": "#fff3a3",
+        "skillName": "Núcleos Vivos",
+        "skillDesc": "6 fragmentos de tu energía orbitan durante 5s y disparan al enemigo o jefe más cercano dentro de su alcance",
+        "card": {
+          "tag": "Esquivo",
+          "previewClass": "char-preview-swarm",
+          "statLine": "HP 90 · SPD 210 · ARM 0",
+          "identity": "Evasión y presión autónoma · gran movilidad · poca vida base",
+          "descHtml": "15% esquive. <canvas class=\"char-skill-icon\" data-skill-icon=\"hivemind\" aria-label=\"Núcleos Vivos\"></canvas> <b>Núcleos Vivos</b>: <span class=\"def-highlight\">6 fragmentos de tu energía orbitan durante 5s</span> y <span class=\"cc-highlight\">disparan al enemigo más cercano, incluido el jefe</span>."
+        },
+        "stats": {
+          "hp": 90,
+          "speed": 210,
+          "armor": 0,
+          "luck": 10
+        }
+      }
+    },
+    "weapons": [
+      {
+        "id": "pistol",
+        "name": "Pistola",
+        "range": 380,
+        "damage": 14,
+        "speed": 500,
+        "fireRate": 30,
+        "color": "#fff",
+        "rarity": "common",
+        "pro": "Versátil y confiable",
+        "con": "Sin especialidad"
+      },
+      {
+        "id": "rifle",
+        "name": "Rifle",
+        "range": 480,
+        "damage": 20,
+        "speed": 700,
+        "fireRate": 25,
+        "pierce": 2,
+        "color": "#4ade80",
+        "rarity": "uncommon",
+        "pro": "Preciso y penetrante",
+        "con": "Cadencia media"
+      },
+      {
+        "id": "smg",
+        "name": "Subfusil",
+        "range": 360,
+        "damage": 7,
+        "speed": 450,
+        "fireRate": 12,
+        "color": "#facc15",
+        "rarity": "rare",
+        "pro": "Daño sostenido",
+        "con": "Corto alcance"
+      },
+      {
+        "id": "shotgun",
+        "name": "Escopeta",
+        "range": 250,
+        "damage": 5,
+        "speed": 400,
+        "fireRate": 45,
+        "count": 12,
+        "spread": 0.44,
+        "color": "#f97316",
+        "rarity": "rare",
+        "pro": "Burst cercano y grupos",
+        "con": "Menor contra jefes"
+      },
+      {
+        "id": "sniper",
+        "name": "Francotirador",
+        "range": 700,
+        "damage": 50,
+        "speed": 1200,
+        "fireRate": 70,
+        "pierce": 4,
+        "color": "#ef4444",
+        "rarity": "epic",
+        "pro": "Cazador de élites",
+        "con": "Muy lento"
+      },
+      {
+        "id": "laser",
+        "name": "Láser",
+        "range": 450,
+        "damage": 25,
+        "speed": 900,
+        "fireRate": 20,
+        "pierce": 2,
+        "color": "#f472b6",
+        "rarity": "epic",
+        "pro": "Atraviesa escudos",
+        "con": "Alcance medio"
+      },
+      {
+        "id": "plasma",
+        "name": "Plasma",
+        "range": 520,
+        "damage": 21,
+        "speed": 600,
+        "fireRate": 35,
+        "count": 2,
+        "spread": 0.1,
+        "color": "#a855f7",
+        "rarity": "legendary",
+        "pro": "Explosión en área",
+        "con": "Cadencia lenta"
+      },
+      {
+        "id": "flamethrower",
+        "name": "Lanzallamas",
+        "range": 170,
+        "damage": 6,
+        "speed": 260,
+        "fireRate": 14,
+        "color": "#fb923c",
+        "rarity": "epic",
+        "pro": "Control de zona",
+        "con": "Muy corto alcance"
+      },
+      {
+        "id": "bow",
+        "name": "Arco",
+        "range": 540,
+        "damage": 19,
+        "speed": 800,
+        "fireRate": 36,
+        "color": "#22c55e",
+        "rarity": "rare",
+        "pro": "Rebota entre blancos",
+        "con": "Pierde daño al rebotar"
+      },
+      {
+        "id": "railgun",
+        "name": "Cañón de Riel",
+        "range": 800,
+        "damage": 70,
+        "speed": 1500,
+        "fireRate": 84,
+        "pierce": 8,
+        "color": "#06b6d4",
+        "rarity": "legendary",
+        "pro": "Perfora filas enteras",
+        "con": "Cadencia mínima"
+      }
+    ],
+    "commonEnemies": [
+      {
+        "id": "drone",
+        "name": "DRON",
+        "hp": 25,
+        "speed": 75,
+        "radius": 11,
+        "color": "#f07bad",
+        "shape": "circle",
+        "score": 10,
+        "xp": 10,
+        "behavior": "chase",
+        "knockbackRes": 0,
+        "damage": 12,
+        "minWave": 1,
+        "hostileClass": "light"
+      },
+      {
+        "id": "runner",
+        "name": "CORREDOR",
+        "hp": 15,
+        "speed": 145,
+        "radius": 9,
+        "color": "#ffcf76",
+        "shape": "triangle",
+        "score": 15,
+        "xp": 15,
+        "behavior": "flank",
+        "knockbackRes": 0.3,
+        "damage": 10,
+        "minWave": 1,
+        "hostileClass": "light"
+      },
+      {
+        "id": "tank",
+        "name": "TANQUE",
+        "hp": 60,
+        "speed": 40,
+        "radius": 20,
+        "color": "#ef9d49",
+        "shape": "hex",
+        "score": 30,
+        "xp": 35,
+        "behavior": "chase",
+        "knockbackRes": 0.8,
+        "damage": 18,
+        "minWave": 3,
+        "resist": 3,
+        "hostileClass": "light"
+      },
+      {
+        "id": "shielder",
+        "name": "ESCUDO",
+        "hp": 35,
+        "speed": 65,
+        "radius": 14,
+        "color": "#caa7ff",
+        "shape": "diamond",
+        "score": 25,
+        "xp": 30,
+        "behavior": "shield",
+        "knockbackRes": 0.6,
+        "damage": 8,
+        "minWave": 6,
+        "shield": true,
+        "hostileClass": "light"
+      },
+      {
+        "id": "swarmlet",
+        "name": "ENJAMBITO",
+        "hp": 10,
+        "speed": 115,
+        "radius": 7,
+        "color": "#22d3ee",
+        "shape": "atom",
+        "score": 8,
+        "xp": 8,
+        "behavior": "swarm",
+        "knockbackRes": 0.1,
+        "damage": 8,
+        "minWave": 9,
+        "hostileClass": "light"
+      },
+      {
+        "id": "spitter",
+        "name": "ESCOPURAS",
+        "hp": 22,
+        "speed": 50,
+        "radius": 13,
+        "color": "#6dc4c0",
+        "shape": "rock",
+        "score": 18,
+        "xp": 25,
+        "behavior": "ranged",
+        "knockbackRes": 0.4,
+        "damage": 15,
+        "minWave": 12,
+        "stunChance": 0.5,
+        "stunDuration": 1.25,
+        "hostileClass": "light"
+      },
+      {
+        "id": "wisp",
+        "name": "ESPÍRITU",
+        "hp": 12,
+        "speed": 160,
+        "radius": 6,
+        "color": "#4ade80",
+        "shape": "dot",
+        "score": 6,
+        "xp": 6,
+        "behavior": "erratic",
+        "knockbackRes": 0.2,
+        "damage": 6,
+        "minWave": 15,
+        "hostileClass": "light"
+      },
+      {
+        "id": "kamikaze",
+        "name": "KAMIKAZE",
+        "hp": 20,
+        "speed": 125,
+        "radius": 10,
+        "color": "#ff5f3d",
+        "shape": "triangle",
+        "score": 22,
+        "xp": 22,
+        "behavior": "kami",
+        "knockbackRes": 0.2,
+        "damage": 14,
+        "minWave": 10,
+        "hostileClass": "light"
+      },
+      {
+        "id": "specter_grunt",
+        "name": "ESPECTRO PEÓN",
+        "hp": 20,
+        "speed": 85,
+        "radius": 10,
+        "color": "#d8f6ff",
+        "shape": "circle",
+        "score": 12,
+        "xp": 12,
+        "behavior": "chase",
+        "knockbackRes": 0.1,
+        "damage": 10,
+        "minWave": 3,
+        "weight": 0.15,
+        "hostileClass": "medium"
+      },
+      {
+        "id": "specter_archer",
+        "name": "ESPECTRO ARQUERO",
+        "hp": 18,
+        "speed": 60,
+        "radius": 12,
+        "color": "#ffb24a",
+        "shape": "triangle",
+        "score": 18,
+        "xp": 18,
+        "behavior": "ranged",
+        "knockbackRes": 0.2,
+        "damage": 9,
+        "minWave": 3,
+        "weight": 0.12,
+        "hostileClass": "medium"
+      },
+      {
+        "id": "specter_guard",
+        "name": "ESPECTRO GUARDIA",
+        "hp": 55,
+        "speed": 45,
+        "radius": 18,
+        "color": "#67f8c8",
+        "shape": "hex",
+        "score": 28,
+        "xp": 32,
+        "behavior": "shield",
+        "knockbackRes": 0.7,
+        "damage": 12,
+        "minWave": 5,
+        "weight": 0.1,
+        "shield": true,
+        "resist": 2,
+        "hostileClass": "medium"
+      },
+      {
+        "id": "specter_lite",
+        "name": "ESPECTRO LÚTIL",
+        "hp": 18,
+        "speed": 100,
+        "radius": 12,
+        "color": "#ff6a24",
+        "shape": "specter",
+        "score": 30,
+        "xp": 35,
+        "behavior": "erratic",
+        "knockbackRes": 0.1,
+        "damage": 8,
+        "minWave": 16,
+        "weight": 0.08,
+        "specterVariant": "lite",
+        "hostileClass": "medium"
+      },
+      {
+        "id": "specter_core",
+        "name": "ESPECTRO NÚCLEO",
+        "hp": 28,
+        "speed": 55,
+        "radius": 16,
+        "color": "#ff2244",
+        "shape": "specter",
+        "score": 50,
+        "xp": 55,
+        "behavior": "ranged",
+        "knockbackRes": 0.3,
+        "damage": 12,
+        "minWave": 20,
+        "weight": 0.06,
+        "specterVariant": "core",
+        "hostileClass": "medium"
+      }
+    ],
+    "eliteEnemies": [
+      {
+        "name": "COMANDANTE",
+        "hp": 90,
+        "speed": 90,
+        "radius": 20,
+        "color": "#ff0",
+        "shape": "hex",
+        "score": 50,
+        "xp": 50,
+        "behavior": "chase",
+        "damage": 20,
+        "visualId": "elite_base",
+        "hostileClass": "heavy"
+      },
+      {
+        "name": "RÁPIDO",
+        "hp": 40,
+        "speed": 175,
+        "radius": 14,
+        "color": "#0ff",
+        "shape": "triangle",
+        "score": 30,
+        "xp": 30,
+        "behavior": "erratic",
+        "damage": 15,
+        "visualId": "elite_velocity",
+        "hostileClass": "heavy"
+      },
+      {
+        "name": "BASTIÓN",
+        "hp": 160,
+        "speed": 35,
+        "radius": 30,
+        "color": "#f80",
+        "shape": "rock",
+        "score": 60,
+        "xp": 60,
+        "behavior": "chase",
+        "damage": 25,
+        "resist": 3,
+        "visualId": "elite_bulwark",
+        "hostileClass": "heavy"
+      },
+      {
+        "name": "ASESINO",
+        "hp": 55,
+        "speed": 165,
+        "radius": 12,
+        "color": "#f0f",
+        "shape": "diamond",
+        "score": 40,
+        "xp": 40,
+        "behavior": "chase",
+        "damage": 30,
+        "visualId": "elite_predator",
+        "hostileClass": "heavy"
+      },
+      {
+        "name": "FANTASMA",
+        "hp": 65,
+        "speed": 145,
+        "radius": 16,
+        "color": "#e0ffff",
+        "shape": "circle",
+        "score": 45,
+        "xp": 45,
+        "behavior": "erratic",
+        "damage": 25,
+        "visualId": "elite_phantom",
+        "hostileClass": "heavy"
+      },
+      {
+        "name": "GOLIATH",
+        "hp": 210,
+        "speed": 25,
+        "radius": 36,
+        "color": "#ff1493",
+        "shape": "rock",
+        "score": 100,
+        "xp": 100,
+        "behavior": "chase",
+        "damage": 35,
+        "stunChance": 0.35,
+        "stunDuration": 1,
+        "resist": 3,
+        "visualId": "elite_titan",
+        "hostileClass": "heavy"
+      },
+      {
+        "name": "CENTELLA",
+        "hp": 40,
+        "speed": 220,
+        "radius": 10,
+        "color": "#00ff88",
+        "shape": "dot",
+        "score": 35,
+        "xp": 35,
+        "behavior": "chase",
+        "damage": 18,
+        "visualId": "elite_swift",
+        "hostileClass": "heavy"
+      },
+      {
+        "id": "specter_elite_void",
+        "name": "ESPECTRO VACÍO",
+        "hp": 95,
+        "speed": 70,
+        "radius": 18,
+        "color": "#9b4dff",
+        "shape": "circle",
+        "score": 95,
+        "xp": 95,
+        "behavior": "ranged",
+        "damage": 24,
+        "minWave": 16,
+        "weight": 0.03,
+        "visualId": "elite_specter_void",
+        "spectralElite": true,
+        "knockbackRes": 0.4,
+        "stunChance": 0.35,
+        "stunDuration": 1.75,
+        "hostileClass": "heavy"
+      }
+    ],
+    "bosses": [
+      {
+        "name": "JEFE",
+        "hp": 300,
+        "radius": 50,
+        "color": "#ff5f9b",
+        "speed": 30,
+        "pattern": "chase",
+        "attack": "repeater",
+        "shape": "hex",
+        "stunChance": 0,
+        "hostileClass": "heavy"
+      },
+      {
+        "name": "TITÁN",
+        "hp": 450,
+        "radius": 55,
+        "color": "#ff8c00",
+        "speed": 25,
+        "pattern": "charge",
+        "attack": "heavy",
+        "shape": "hex",
+        "stunChance": 0.1,
+        "hostileClass": "heavy"
+      },
+      {
+        "name": "SEÑOR DEL VACÍO",
+        "hp": 600,
+        "radius": 65,
+        "color": "#dc143c",
+        "speed": 20,
+        "pattern": "summon",
+        "attack": "summon",
+        "shape": "circle",
+        "stunChance": 0.15,
+        "hostileClass": "heavy"
+      },
+      {
+        "name": "GUARDIÁN",
+        "hp": 350,
+        "radius": 45,
+        "color": "#00bfff",
+        "speed": 35,
+        "pattern": "circle",
+        "attack": "spread",
+        "shape": "hex",
+        "stunChance": 0.05,
+        "hostileClass": "heavy"
+      },
+      {
+        "name": "DESTRUCTOR",
+        "hp": 500,
+        "radius": 60,
+        "color": "#ff0000",
+        "speed": 28,
+        "pattern": "burst",
+        "attack": "beam",
+        "shape": "rock",
+        "stunChance": 0.25,
+        "hostileClass": "heavy"
+      },
+      {
+        "name": "NÉMESIS",
+        "hp": 400,
+        "radius": 48,
+        "color": "#8b00ff",
+        "speed": 40,
+        "pattern": "teleport",
+        "attack": "volley",
+        "shape": "diamond",
+        "stunChance": 0.08,
+        "hostileClass": "heavy"
+      },
+      {
+        "name": "COLOSO",
+        "hp": 700,
+        "radius": 70,
+        "color": "#ff4500",
+        "speed": 18,
+        "pattern": "slow_charge",
+        "attack": "bomb",
+        "shape": "rock",
+        "stunChance": 0.2,
+        "hostileClass": "heavy"
+      },
+      {
+        "name": "FANTASMA",
+        "hp": 280,
+        "radius": 40,
+        "color": "#e0ffff",
+        "speed": 45,
+        "pattern": "phase",
+        "attack": "orbs",
+        "shape": "circle",
+        "stunChance": 0.12,
+        "hostileClass": "heavy"
+      },
+      {
+        "name": "MUTANTE",
+        "hp": 380,
+        "radius": 52,
+        "color": "#32cd32",
+        "speed": 32,
+        "pattern": "split",
+        "attack": "split",
+        "shape": "hex",
+        "stunChance": 0.1,
+        "hostileClass": "heavy"
+      },
+      {
+        "name": "APOCALIPSIS",
+        "hp": 800,
+        "radius": 75,
+        "color": "#ff1493",
+        "speed": 22,
+        "pattern": "rage",
+        "attack": "rage",
+        "shape": "rock",
+        "stunChance": 0.18,
+        "hostileClass": "heavy"
+      }
+    ],
+    "consumables": {
+      "potion": {
+        "key": "potion",
+        "name": "Poción",
+        "useName": "POCIÓN",
+        "desc": "Restaura 40 de vida. Usar con F.",
+        "price": 10,
+        "banner": "Poción guardada (F para usar)",
+        "color": "#22c55e",
+        "hp": 40
+      },
+      "overdrive": {
+        "key": "overdrive",
+        "name": "Overdrive",
+        "useName": "OVERDRIVE",
+        "desc": "+18% de velocidad durante 5 s. F para usar.",
+        "price": 18,
+        "banner": "Overdrive guardado (F)",
+        "color": "#caa7ff",
+        "speedMult": 1.18,
+        "duration": 5
+      },
+      "shield": {
+        "key": "shield",
+        "name": "Escudo",
+        "useName": "ESCUDO",
+        "desc": "Invulnerable durante 3 s. F para usar.",
+        "price": 22,
+        "banner": "Escudo guardado (F)",
+        "color": "#ffcf76",
+        "duration": 3
+      },
+      "bomb": {
+        "key": "bomb",
+        "name": "Bomba",
+        "useName": "BOMBA",
+        "desc": "Daño en área: 25% comunes, 50% élites, 8% jefe.",
+        "price": 34,
+        "banner": "Bomba guardada (F)",
+        "color": "#ff5f9b"
+      },
+      "freeze": {
+        "key": "freeze",
+        "name": "Congelante",
+        "useName": "CONGELANTE",
+        "desc": "Ralentiza 50% durante 4 s. No afecta jefes.",
+        "price": 26,
+        "banner": "Congelante guardado (F)",
+        "color": "#67e8f9",
+        "duration": 4
+      },
+      "magnet": {
+        "key": "magnet",
+        "name": "Imán",
+        "useName": "IMÁN",
+        "desc": "Atrae shards y armas cercanas. F para usar.",
+        "price": 20,
+        "banner": "Imán guardado (F)",
+        "color": "#7cf8ff"
+      },
+      "bounty": {
+        "key": "bounty",
+        "name": "Recompensa",
+        "useName": "RECOMPENSA",
+        "desc": "Durante 10 s: cada baja da +1 shard y x2 score.",
+        "price": 30,
+        "banner": "Recompensa guardada (F)",
+        "color": "#ffd700",
+        "duration": 10
+      }
+    },
+    "permanentUpgrades": [
+      {
+        "key": "damage",
+        "name": "Daño",
+        "base": 40,
+        "desc": "+2 daño por nivel"
+      },
+      {
+        "key": "speed",
+        "name": "Movilidad",
+        "base": 50,
+        "desc": "+2% velocidad y +2,5% control por nivel"
+      },
+      {
+        "key": "hp",
+        "name": "Vida",
+        "base": 30,
+        "desc": "+20 HP máx por nivel"
+      },
+      {
+        "key": "armor",
+        "name": "Armadura",
+        "base": 35,
+        "desc": "+1 armadura por nivel"
+      },
+      {
+        "key": "luck",
+        "name": "Suerte",
+        "base": 20,
+        "desc": "+10 suerte · reduce el crítico enemigo"
+      },
+      {
+        "key": "crit",
+        "name": "Crítico",
+        "base": 45,
+        "desc": "+0,5% prob. de crítico propio por nivel"
+      },
+      {
+        "key": "dodge",
+        "name": "Esquiva",
+        "base": 40,
+        "desc": "+0,4% de esquivar golpes por nivel"
+      },
+      {
+        "key": "regen",
+        "name": "Regeneración",
+        "base": 38,
+        "desc": "+0,2 HP/s fuera de peligro por nivel"
+      },
+      {
+        "key": "greed",
+        "name": "Codicia",
+        "base": 42,
+        "desc": "+3% chance de drop de shards por nivel"
+      }
+    ],
+    "balance": {
+      "MAX_HOSTILES": 30,
+      "MAX_HEAVY_HOSTILES": 7,
+      "LATE_BATCH_CAP": 5,
+      "LATE_REFILL_FLOOR": 0.35,
+      "SOFT_DENSITY_EARLY_BASE": 18,
+      "SOFT_DENSITY_EARLY_END": 5,
+      "SOFT_DENSITY_EARLY_RATE": 0.5,
+      "SOFT_DENSITY_MID_END": 15,
+      "SOFT_DENSITY_MID_RATE": 0.4,
+      "SOFT_DENSITY_LATE_END": 25,
+      "SOFT_DENSITY_LATE_RATE": 0.2,
+      "SOFT_DENSITY_CAP": 26,
+      "SOFT_DENSITY_DIFF_SCALE": 14,
+      "SOFT_DENSITY_MIN": 16,
+      "SOFT_DENSITY_MAX": 28,
+      "SOFT_HEAVY_TARGET": 4,
+      "TACTICAL_BOOST_START": 14,
+      "TACTICAL_BOOST_MAX": 2,
+      "TACTICAL_BOOST_RATE": 0.05,
+      "MAX_SPEAKER_MINES": 6,
+      "SPEAKER_MINE_INITIAL_COUNT": 5,
+      "SPEAKER_MINE_DETONATE_TIME": 0.12,
+      "SPEAKER_MINE_VISUAL_RADIUS": 16,
+      "SPEAKER_MINE_TRIGGER_RADIUS": 14,
+      "SPEAKER_MINE_DAMAGE_BASE": 38,
+      "SPEAKER_MINE_DAMAGE_PER_WAVE": 0.5,
+      "SPEAKER_MINE_DAMAGE_CAP": 52,
+      "SPEAKER_MINE_PLAYER_MIN_DIST": 175,
+      "SPEAKER_MINE_SEPARATION": 105,
+      "SPEAKER_MINE_ARENA_MARGIN": 42,
+      "SPEAKER_MINE_PLACEMENT_ATTEMPTS": 24,
+      "SPEAKER_MINE_INITIAL_CADENCE": 0.28,
+      "SPEAKER_MINE_REFILL_CADENCE": 2.4,
+      "SPEAKER_MINE_TELEGRAPH_DURATION": 0.9,
+      "SPEAKER_MINE_REFILL_CADENCE_P3_1": 2.6,
+      "SPEAKER_MINE_REFILL_CADENCE_WAVE_THRESHOLD": 8,
+      "SPEAKER_MINE_TACTICAL_CHANCE": 0.7,
+      "SPEAKER_MINE_PLAYER_PREDICTION": 0.65,
+      "MINEFIELD_SPEED_NORMAL": 1.22,
+      "MINEFIELD_SPEED_FAST": 1.12,
+      "MINEFIELD_SPEED_ELITE": 1.1,
+      "MINEFIELD_SPEED_CAP": 260,
+      "MAX_ENEMIES": 30,
+      "MAX_BULLETS": 200,
+      "MAX_PARTICLES": 200,
+      "MAGNET_CAP": 50,
+      "WAVE_END_SHARD_CAP": 15,
+      "VOID_BOMB_ELITE_DAMAGE_MULT": 0.5,
+      "VOID_BOMB_BOSS_DAMAGE_MULT": 0.08,
+      "SHOTGUN_PELLET_COUNT": 12,
+      "SHOTGUN_SPREAD": 0.9,
+      "SHOTGUN_COMPACT_SPREAD": 0.018,
+      "SHOTGUN_BLOOM_START": 65,
+      "SHOTGUN_UNIQUE_TARGET_CAP": 5,
+      "SHOTGUN_BOSS_PELLET_CAP": 8,
+      "SNIPER_ELITE_DAMAGE_MULT": 1.5,
+      "FLAME_TICK_RATE": 6,
+      "FLAME_BURN_DPS": 2,
+      "FLAME_BURN_DURATION": 0.6,
+      "MOVE_ACCEL_TIME": 0.13,
+      "MOVE_DECEL_TIME": 0.1,
+      "MOVE_TURN_TIME": 0.085,
+      "MOVE_REVERSE_TIME": 0.11,
+      "DASH_STAMINA_MAX": 100,
+      "DASH_STAMINA_COST": 50,
+      "DASH_DURATION": 0.15,
+      "DASH_SPEED": 560,
+      "DASH_RECHARGE_DELAY": 0.9,
+      "DASH_REGEN_PER_SECOND": 34.48275862068966,
+      "MAX_PLAYER_BULLETS": 150,
+      "MAX_ENEMY_BULLETS": 120,
+      "PERM_MOVE_SPEED_PER_LEVEL": 0.02,
+      "PERM_MOVE_CONTROL_PER_LEVEL": 0.025,
+      "MAX_AGILITY": 2,
+      "AGILITY_PER_UPGRADE": 0.2,
+      "MAX_PERM_LEVEL": 10,
+      "CRIT_PERM_CHANCE": 0.005,
+      "DODGE_PERM_CHANCE": 0.004,
+      "REGEN_PERM_HPSEC": 0.2,
+      "GREED_PERM_DROP": 0.03,
+      "MAX_WEAPON_FUSION": 3,
+      "WEAPON_FUSION_DMG": 0.2,
+      "WEAPON_FUSE_PRICE": 15,
+      "WEAPON_SELL_PRICES": {
+        "common": 6,
+        "uncommon": 9,
+        "rare": 12,
+        "epic": 16,
+        "legendary": 20
+      },
+      "FIRE_FPS": 60,
+      "MIN_FIRE_INTERVAL": 0.06666666666666667,
+      "WAVE_CADENCE_SCALE": 0.01,
+      "WEAPON_LEVEL_CADENCE_SCALE": 0.004,
+      "SHIELD_COOLDOWN": 0.9,
+      "METEOR_BOSS_DMG_MULT": 0.3,
+      "DRONE_BOSS_DMG_MULT": 0.35,
+      "PHASE_AURA_DPS": 40,
+      "PHASE_AURA_RADIUS": 70,
+      "PHASE_AURA_BOSS_MULT": 0.3,
+      "PHASE_DETONATION_MULT": 0.5,
+      "WEAPON_KILLS_PER_LEVEL": 6,
+      "WEAPON_PROGRESS_SCALE": 0.06,
+      "WEAPON_PROGRESS_CAP": 3,
+      "WEAPON_MAX_LEVEL": 100,
+      "PLAYER_STUN_DEFAULT_DURATION": 0.5,
+      "PLAYER_STUN_REAPPLY_LOCKOUT": 1.5,
+      "PLAYER_STUN_POST_RECOVERY_GRACE": 0.35,
+      "WAVE_TIME_EARLY_BASE": 15,
+      "WAVE_TIME_EARLY_END": 5,
+      "WAVE_TIME_EARLY_RATE": 0.75,
+      "WAVE_TIME_MID_END": 15,
+      "WAVE_TIME_MID_RATE": 0.8,
+      "WAVE_TIME_LATE_RATE": 0.6,
+      "WAVE_TIME_CAP": 35,
+      "WAVE_EVENT_DURATION_MULT": 1.15,
+      "WAVE_EVENT_TIME_CAP": 40.25,
+      "WAVE_EVENT_SPAWN_COMPENSATION": 0.5,
+      "HOOK_UNLOCK_WAVE": 15,
+      "HOOK_WINDUP_TIME": 0.55,
+      "HOOK_PROJECTILE_SPEED": 560,
+      "HOOK_PROJECTILE_MAX_RANGE": 430,
+      "HOOK_PULL_DURATION": 0.5,
+      "HOOK_PULL_EXTERNAL_SPEED": 255,
+      "HOOK_TETHER_MAX_RANGE": 470,
+      "HOOK_GLOBAL_LOCKOUT_POST_RELEASE": 0.85,
+      "HOOK_DIRECT_DAMAGE": 0,
+      "HOOK_SOURCE_PRESENCE_FROM_WAVE": 15,
+      "HOOK_SOURCE_PRESENCE_MULT": 2.5
+    },
+    "difficulty": {
+      "easy": {
+        "id": "easy",
+        "label": "Facil",
+        "hpMult": 0.8,
+        "dmgMult": 0.75,
+        "spawnMult": 0.85
+      },
+      "normal": {
+        "id": "normal",
+        "label": "Normal",
+        "hpMult": 1,
+        "dmgMult": 1,
+        "spawnMult": 1
+      },
+      "hard": {
+        "id": "hard",
+        "label": "Dificil",
+        "hpMult": 1.2,
+        "dmgMult": 1.25,
+        "spawnMult": 1.15
+      }
+    }
+  },
+  "files": [
+    {
+      "path": "assets/audio/main-theme-data.js",
+      "bytes": 5832088,
+      "sha256": "dde63bbd558aeb6799020b2cf552312b7283c5465ffa31fe22e8b27a6d9c7f39"
+    },
+    {
+      "path": "assets/brand/neon-void-mark.svg",
+      "bytes": 1606,
+      "sha256": "fb15b680bdbaa3c393a9957fe082bbf2eef77f4575e07db36095db863fb24fc3"
+    },
+    {
+      "path": "AVISOS.md",
+      "bytes": 1308,
+      "sha256": "22e5fbdf23fe401fdcaef7c36a642482a037f514b7d822a61fb86a464b33a965"
+    },
+    {
+      "path": "css/alpha.css",
+      "bytes": 8470,
+      "sha256": "e4f8b8257549d821d0f58dedf235e7dad79fcf456397dfe12450db44ff3a2db0"
+    },
+    {
+      "path": "css/lobby-f093.css",
+      "bytes": 24192,
+      "sha256": "018e4d96a115720939be65e52c4a3b8dca0f7ce203958317295740cbc1139555"
+    },
+    {
+      "path": "css/lobby-layout.css",
+      "bytes": 15650,
+      "sha256": "b3efc51717f7f4a0cdffc1a031fc69bcf88cc77aad18a11ed314dcada08daff3"
+    },
+    {
+      "path": "css/mobile.css",
+      "bytes": 24329,
+      "sha256": "085349467f27d73bae83f8115dfe5801d0a37c88c0d5a193f2c88d8b5127b0ef"
+    },
+    {
+      "path": "css/shop-remaster.css",
+      "bytes": 28816,
+      "sha256": "ba508472c8c237d8792e7929029766ba0594bf1b461daf4567e3c557f3a01350"
+    },
+    {
+      "path": "css/styles.css",
+      "bytes": 93810,
+      "sha256": "746d532c2bf6f0617f770d3bd61c78aa94b301716179dc99046ba52ed60435ea"
+    },
+    {
+      "path": "css/system-menu.css",
+      "bytes": 6418,
+      "sha256": "145f37b6c873311b381ac4937e12ddc0e61daae9094b252e76ec51eeb27b56ad"
+    },
+    {
+      "path": "index.html",
+      "bytes": 35753,
+      "sha256": "a9cc5b3d7af5bb823af162cc795b95b4ba5dd91a9ce22c48d7d4a5a090d77042"
+    },
+    {
+      "path": "js/audio/soundtrack.js",
+      "bytes": 8393,
+      "sha256": "025015d438b5350309a14afe2e8655322468c5e1b499f26406ea0a8b412214f7"
+    },
+    {
+      "path": "js/audio/synth.js",
+      "bytes": 55115,
+      "sha256": "641d294eb4718bc0cf13eb6b87b90fa92e521ae6e373bf4f39859c0070473e8d"
+    },
+    {
+      "path": "js/audio/uiAudio.js",
+      "bytes": 2834,
+      "sha256": "264f38d87bd1bc1bc65c6bd7a4968908abb9d7f437bf7b1fe7868ed9d60035a9"
+    },
+    {
+      "path": "js/audio/voices.js",
+      "bytes": 5328,
+      "sha256": "62ff090b1078d54f98756f8d1ffe29b12dbcbe5dea543fb340a38d70a7dc132a"
+    },
+    {
+      "path": "js/audio/weaponSfx.js",
+      "bytes": 5080,
+      "sha256": "116de3d1d568c7affd3684cf455fb645b95ede6c2e959f54fa4a211c6f404414"
+    },
+    {
+      "path": "js/core/capabilities.js",
+      "bytes": 5644,
+      "sha256": "261b799ad231cd8a4c3ce90370ed471580b015d2f52cf4117e8fc0c85764471c"
+    },
+    {
+      "path": "js/core/inputIntent.js",
+      "bytes": 2086,
+      "sha256": "ad2d026ff31cace68d6f55ef55deaceb35db26ee3cbf77cafd37bed11a177ec0"
+    },
+    {
+      "path": "js/core/settings.js",
+      "bytes": 9026,
+      "sha256": "4236acba51c245ab89ab8632f743683677f4fdcfa91021352a96a54c6aecea16"
+    },
+    {
+      "path": "js/core/state.js",
+      "bytes": 264,
+      "sha256": "ecaef464a375df66ad5c9ca440509c4d1af80edb5e4490782cfba3813bda87e7"
+    },
+    {
+      "path": "js/core/utils.js",
+      "bytes": 3638,
+      "sha256": "fc9b04ae4aff118aa5a010d98e85aa474a951be7d1f5e78ad7db52e51bb325c5"
+    },
+    {
+      "path": "js/core/viewport.js",
+      "bytes": 17842,
+      "sha256": "88c5c9f432b74b07c2bcd75ef79aff4bf7576392f88fc09b016d71a5db81d6d6"
+    },
+    {
+      "path": "js/data/balance.js",
+      "bytes": 24892,
+      "sha256": "176ab7799ec749803c7c879b48a5ffc74e7eecac5813fe3cd8f29cb9929c9951"
+    },
+    {
+      "path": "js/data/bossDesignLab.js",
+      "bytes": 4706,
+      "sha256": "08a4a8322b67b7b5128bb759502caa78abf5c91c07a457fcdea7e8662d6fd2de"
+    },
+    {
+      "path": "js/data/consumables.js",
+      "bytes": 2737,
+      "sha256": "4237e476812f9265f5a4bb339ce0bafaeaac7b005bb8e119f0ed2a7fae8fca2d"
+    },
+    {
+      "path": "js/data/gameData.js",
+      "bytes": 20957,
+      "sha256": "ebf921518619339a1c8d96478e08c83f8060fd802b78fd4bd4d78a3dc718124f"
+    },
+    {
+      "path": "js/data/pilotAnimationBaseline.js",
+      "bytes": 3288,
+      "sha256": "faa798198f06cc8e249e403226717753fa68896e8042e7591c163c58c5bd9a70"
+    },
+    {
+      "path": "js/engine/boss.js",
+      "bytes": 23031,
+      "sha256": "dea3e32ded38c0de43f3548d83822ab7f7bf7fa5b90b7d6f4118cda48fd3a803"
+    },
+    {
+      "path": "js/engine/bossEncounters.js",
+      "bytes": 23628,
+      "sha256": "bb5c60bd3821e57422ed90aa3577e0cba71de68fa0df20d3884ff4df31d4f434"
+    },
+    {
+      "path": "js/engine/bullets.js",
+      "bytes": 20731,
+      "sha256": "a5cdc1e9e90a30d0b63a12ea71084ea17665a0e80c59fe07e16ff8efcb887ce3"
+    },
+    {
+      "path": "js/engine/cameraSafety.js",
+      "bytes": 3697,
+      "sha256": "361a16e81e2db39d6d2e6685ba14c6fa1e43d3f7faedc985ad48e11626435ed8"
+    },
+    {
+      "path": "js/engine/combat.js",
+      "bytes": 5265,
+      "sha256": "2c5437d23a5d3b6606268aea69561b4dc4511644ac4e4d8de82d03c96707e260"
+    },
+    {
+      "path": "js/engine/consumables.js",
+      "bytes": 5252,
+      "sha256": "597ce5695efde7c31bbb45aa7c8c341d783b09b29f013f5b7fe6e4ac94835658"
+    },
+    {
+      "path": "js/engine/drones.js",
+      "bytes": 2483,
+      "sha256": "d088d1bc6a283cda2458f4139b0163a7f3a06bb2f987f5343e7960a6becc8db9"
+    },
+    {
+      "path": "js/engine/enemies.js",
+      "bytes": 147124,
+      "sha256": "d54ba9157f1d8a9dfea81a1b13dee0886e6749b16f23b2c8ecf18036f098ccca"
+    },
+    {
+      "path": "js/engine/enemyArrival.js",
+      "bytes": 3917,
+      "sha256": "b5e0f1836ccf3208bf24b4cf7f35cb5c2bad4c2d2d848dc04916bcd482876363"
+    },
+    {
+      "path": "js/engine/enemySpawnRegistry.js",
+      "bytes": 1677,
+      "sha256": "254a40ad3095083ae3b6878196ab05b1fc64e2f3278c55bdb54986fe778f9526"
+    },
+    {
+      "path": "js/engine/enemyState.js",
+      "bytes": 5911,
+      "sha256": "d5b54029b460874a8ffdac26d4d621a3826231ef76ec560f6ecec2748306b317"
+    },
+    {
+      "path": "js/engine/expedition.js",
+      "bytes": 12370,
+      "sha256": "400cfeee92312471c7bc034fda63ee1c8ea8171cc3b7735c7a2eeab67b58c650"
+    },
+    {
+      "path": "js/engine/flame.js",
+      "bytes": 7276,
+      "sha256": "56d77a682b3172a88f16291d6c1c50b7db02c8f8ce9c46f59a9644e08a787f27"
+    },
+    {
+      "path": "js/engine/fx.js",
+      "bytes": 15933,
+      "sha256": "56a251f7a2bc9ee607dc8d5598c61d88a97b5a45e8f5224ef86c61133d2274fc"
+    },
+    {
+      "path": "js/engine/hazards.js",
+      "bytes": 27751,
+      "sha256": "e929885682eac702656ad09cb9a8a51d4c64c74dca8013b7e9a02a1f56843cd1"
+    },
+    {
+      "path": "js/engine/hostileBudget.js",
+      "bytes": 2530,
+      "sha256": "1844f4dcbd4d531a145e2628469f963a7452273d5748e2a647518c8cee26bb23"
+    },
+    {
+      "path": "js/engine/metaDiagnostics.js",
+      "bytes": 1191,
+      "sha256": "536efc60d6ca8b72c850982875b3729778c9ba54616fa89f39cfc602d368aec6"
+    },
+    {
+      "path": "js/engine/meteors.js",
+      "bytes": 2506,
+      "sha256": "d12258a3346af60cd8e27b039930422d4d54c52e9926973addb7645b0d727ebd"
+    },
+    {
+      "path": "js/engine/movement.js",
+      "bytes": 8400,
+      "sha256": "1b4848a39ae4180e9124043a8e17cc2d05b92e8f4179e22900e62b8ac4ee4c1c"
+    },
+    {
+      "path": "js/engine/performanceMonitor.js",
+      "bytes": 5254,
+      "sha256": "42d46db5018ea1c762160f23be9dbfa03e72e2e7bc1f00c12d4fc3f23d5c1a37"
+    },
+    {
+      "path": "js/engine/pickups.js",
+      "bytes": 11580,
+      "sha256": "f62c8f2d9c801680c8b78690a0f867efd90e69ab6ee849d2e17040746be1ce90"
+    },
+    {
+      "path": "js/engine/playerStun.js",
+      "bytes": 2369,
+      "sha256": "4bad4a8579cba94ed116ada23bbb9bd8d67fd9311df6f9c86d6c25b374a2950e"
+    },
+    {
+      "path": "js/engine/playtestTelemetry.js",
+      "bytes": 12695,
+      "sha256": "60a542c0a9919321372e966ce0bef075ba5ad797972071b296e1fdf52491916c"
+    },
+    {
+      "path": "js/engine/rhythm.js",
+      "bytes": 35216,
+      "sha256": "2d10f024f0fa3eda13d98107bd98e267e1550e38b0a65a661f04eaecaf9f0753"
+    },
+    {
+      "path": "js/engine/sectorEncounters.js",
+      "bytes": 11044,
+      "sha256": "251c167094368e74e9aa774b6e106d0894e7e4788c20c8a3246ab4b0ab533463"
+    },
+    {
+      "path": "js/engine/special.js",
+      "bytes": 5798,
+      "sha256": "546fd28663a3d54bb21c547d2e44579fa17e9acbd2757774fecb66d2790c37de"
+    },
+    {
+      "path": "js/engine/wavePressure.js",
+      "bytes": 3022,
+      "sha256": "2cd6e1de288a0eaf1259b55e0c417eff98feb24c25ed701fb140f5a9fa6ce9f1"
+    },
+    {
+      "path": "js/engine/weapons.js",
+      "bytes": 12533,
+      "sha256": "53959d79e7cebc152e2596e353ad495b6800e0b6836b8742da7549138c19ef73"
+    },
+    {
+      "path": "js/engine/weather.js",
+      "bytes": 5940,
+      "sha256": "07a2177a09b9eaeed554fd3ec3271ec1d7e7952415cbb09b58105fb8d4de8a9f"
+    },
+    {
+      "path": "js/game.js",
+      "bytes": 225017,
+      "sha256": "8f011ed9b054b7125e87ced68e6bbc1818f9132c83b7719535e1c7db7ece0ec2"
+    },
+    {
+      "path": "js/render/bossDesignLab.js",
+      "bytes": 16736,
+      "sha256": "8e2f0fb47a88abb39dca60e94121daf19b55fa3b9e633b8ca652c2af48704299"
+    },
+    {
+      "path": "js/render/bosses.js",
+      "bytes": 2154,
+      "sha256": "3b7f240e2f2aa4e8e3adfcf88cbea2108630c020102efcd6ffd575eb05e946d2"
+    },
+    {
+      "path": "js/render/canvas.js",
+      "bytes": 5426,
+      "sha256": "262790be63d5e88f41f965a63bdac0d265b3d9bbb3a4b06e1394b157b181a803"
+    },
+    {
+      "path": "js/render/consumableEffects.js",
+      "bytes": 45916,
+      "sha256": "2936ff7a85b740b4670a4cd0ca52bba723c67244024cf6cd063e24e3d6b6ecc3"
+    },
+    {
+      "path": "js/render/consumableIcons.js",
+      "bytes": 8564,
+      "sha256": "824b77adfc783e2cb8fa8e00a8e4ea4b1c89b5b88a5e88941fa56aed5b2b2fe9"
+    },
+    {
+      "path": "js/render/enemies.js",
+      "bytes": 54598,
+      "sha256": "890c4783bad94b664c0ef222eac66649ee7f2387295bbe5d18936225712e08fd"
+    },
+    {
+      "path": "js/render/espectroLite.js",
+      "bytes": 21040,
+      "sha256": "86115edb53feff652cef59ed1815f52b1525daddc5c25c0e3558cc2f8dda62f7"
+    },
+    {
+      "path": "js/render/hazards.js",
+      "bytes": 14120,
+      "sha256": "ef48c902082b7d72ac19dac771b8bd251e1ff4da6b5aa89e741c8cd7107a40e7"
+    },
+    {
+      "path": "js/render/hud.js",
+      "bytes": 25407,
+      "sha256": "a86ffdd17185e7efc024ca3bf9ab68a17cde44815dfcaf2b5f462150c703baec"
+    },
+    {
+      "path": "js/render/metaReadability.js",
+      "bytes": 11377,
+      "sha256": "d17c13f7a99a40ad725da71ddbc6faa85968d00f3494ddb3fd614d9cb16188f4"
+    },
+    {
+      "path": "js/render/metaSkillIcons.js",
+      "bytes": 10980,
+      "sha256": "f68925f981755911a5fbd47480789246a56ed273ac93dc6cf845c149c3292e8e"
+    },
+    {
+      "path": "js/render/pilotAppearance.js",
+      "bytes": 2874,
+      "sha256": "d3024f93dce47d607af4fb1ca0fc2b580fed102419893de53887e37bda325199"
+    },
+    {
+      "path": "js/render/pilotGeometry.js",
+      "bytes": 2814,
+      "sha256": "b7540dcafbe20e0cf4e6ed907515eeded9479b8548be6ff84ddca88a3af4aac2"
+    },
+    {
+      "path": "js/render/player.js",
+      "bytes": 19359,
+      "sha256": "3c49f6ef1ee651150fdf977cf68047a529c2eb26c9d6d2100d5133b00b0bf67d"
+    },
+    {
+      "path": "js/render/projectiles.js",
+      "bytes": 23299,
+      "sha256": "6c339b747cd9a9c3b976d1a958134ed271eb7ebb71cc636328bfd0373b0d3734"
+    },
+    {
+      "path": "js/render/sectors.js",
+      "bytes": 17595,
+      "sha256": "f79ec4e3dcd36ae8b8a2ed08097cc3bd29b449c515a2d0d6b26e824bd49c732b"
+    },
+    {
+      "path": "js/render/specialEffects.js",
+      "bytes": 14776,
+      "sha256": "b4db90bb75305d84d83b1a4e222ba5bc05d6c165dec9774fa9171f8bfac65125"
+    },
+    {
+      "path": "js/render/spectralEnemies2D.js",
+      "bytes": 131040,
+      "sha256": "ab32894f3cec64d166d56867e1dc8909274ca8a4e5b50c0131a78ddcd0108a65"
+    },
+    {
+      "path": "js/render/visualBudget.js",
+      "bytes": 5628,
+      "sha256": "78c06e89cb50e5ce07896435ac40ec9403974f94f7cbea1e23dd9d3c0d4edb8b"
+    },
+    {
+      "path": "js/render/weaponIcons.js",
+      "bytes": 11894,
+      "sha256": "393d0e5dc7f3afe87c1aa5e3d15f54f47828902c382830aaf5ea82668ad7ffb2"
+    },
+    {
+      "path": "js/ui/alpha.js",
+      "bytes": 18135,
+      "sha256": "9d5efd1d5a2f2d89c9906c99072c17c81bec31184ec0338c97830f1b3675c09d"
+    },
+    {
+      "path": "js/ui/characters.js",
+      "bytes": 1557,
+      "sha256": "bcbb62c7a1d7c2dd2defbc338b2dc68d36183103ceb811afe17de3793d04b32f"
+    },
+    {
+      "path": "js/ui/characterThoughts.js",
+      "bytes": 4527,
+      "sha256": "fd27e8c29e02f7c9900d936438b05687f1fc57056b83dd43c586bb79f7c40681"
+    },
+    {
+      "path": "js/ui/dom.js",
+      "bytes": 3707,
+      "sha256": "defca80e14ce4268d76224b236722b541e139f1222977e3b8153c3a7ee014782"
+    },
+    {
+      "path": "js/ui/gamepadControls.js",
+      "bytes": 2855,
+      "sha256": "4bde0708dc016838536306162efafd60ac94f9ce4d79b735c7951b0683b2f0d7"
+    },
+    {
+      "path": "js/ui/mobileControls.js",
+      "bytes": 26976,
+      "sha256": "810cfdcf1cc42fcd3e9a9f9d4fda71c81ac565fbf195004475617af49954357e"
+    },
+    {
+      "path": "js/ui/onboarding.js",
+      "bytes": 4089,
+      "sha256": "ad04f421c252c1bea0392918d654a870b6c5d5bd95daadb15c3e8299fda4774e"
+    },
+    {
+      "path": "js/ui/settingsPanel.js",
+      "bytes": 9934,
+      "sha256": "3a4147ee5ed638a3aa3a53509ac86f0a06014fb1a16ea912539cfb0c134cfe99"
+    },
+    {
+      "path": "js/ui/systemMenu.js",
+      "bytes": 4234,
+      "sha256": "35ed36fe8db7941e4249ffd870c4ad1f21084ad0e56ebabcd269130c92118719"
+    },
+    {
+      "path": "LEEME.txt",
+      "bytes": 1097,
+      "sha256": "1cee74a1dab1b601a9555f118341e1495120adef7145e7343d88e9b367272d0a"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 13678,
+      "sha256": "94a6ebf5220dc5749ac57b8550b6a73dcd92adc3d6edb793beb97969442a3043"
+    }
+  ]
+}

@@ -15,7 +15,7 @@ const CATEGORY_KEYS = ['masterVolume', 'musicVolume', 'weaponsVolume', 'uiVolume
 
 function makeSandbox(initial) {
   const store = {};
-  if (initial) store.neonVoidSettings = JSON.stringify(initial);
+  if (initial) store.deadSingularitySettings = JSON.stringify(initial);
   const setValues = [];
   const gainApi = () => ({
     value: 0,
@@ -127,7 +127,7 @@ t('persistencia: round-trip de todas las categorías', () => {
   NV.setMasterVolume(want.masterVolume); NV.setMusicVolume(want.musicVolume); NV.setWeaponsVolume(want.weaponsVolume);
   NV.setUiVolume(want.uiVolume); NV.setPlayerVolume(want.playerVolume); NV.setEnemiesVolume(want.enemiesVolume);
   NV.setAmbientVolume(want.ambientVolume);
-  const saved = JSON.parse(first._store.neonVoidSettings);
+  const saved = JSON.parse(first._store.deadSingularitySettings);
   const a = load(saved).window.NV.settings.audio;
   for (const k of CATEGORY_KEYS) {
     if (a[k] !== want[k]) throw new Error(k + ' no sobrevivió a la recarga: ' + a[k]);
@@ -197,7 +197,7 @@ t('master y mute: desmutear restaura masterVolume (no 1) y el mute no se persist
   if (NV.settings.audio.masterVolume !== 0.4) throw new Error('el mute alteró la preferencia de master');
   NV.setSoundEnabled(true);
   if (!NV.soundOn || targets[targets.length - 1] !== 0.4) throw new Error('unmute no restauró masterVolume: ' + targets[targets.length - 1]);
-  const saved = JSON.parse(sb._store.neonVoidSettings);
+  const saved = JSON.parse(sb._store.deadSingularitySettings);
   for (const key of ['enabled', 'muted', 'soundOn']) {
     if (key in saved.audio) throw new Error('el mute no debe persistirse (' + key + ')');
   }

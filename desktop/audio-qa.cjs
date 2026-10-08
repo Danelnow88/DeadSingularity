@@ -1,6 +1,6 @@
 // La misma suite usa Web Audio real en Edge y en el EXE. Perfil QA, sin saves reales.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
-module.exports=async function(evaluate,saveClip){
+module.exports=async function(evaluate,saveClip,sourceRoot=path.resolve(__dirname,'..')){
   const wait=ms=>new Promise(r=>setTimeout(r,ms));
   await evaluate(`NV.initAudio();NV.setSoundEnabled(true);if(NV.getState()==='playing')NV.input.togglePause();`);
   await wait(900);
@@ -10,7 +10,7 @@ module.exports=async function(evaluate,saveClip){
   assert.equal(await evaluate('NV.getAudioVoiceStats().active'),0,'mute limpia voces reales');
   await evaluate('NV.setSoundEnabled(true);NV.audio.weaponStart("flamethrower");NV.audio.update({state:"playing",paused:true})');
   assert.equal(await evaluate('NV.audio.getWeaponSfxStats().continuous.flamethrower'),false);
-  const sources=['voices','synth','weaponSfx'].map(f=>fs.readFileSync(path.join(__dirname,'../js/audio',f+'.js'),'utf8')).join('\n');
+  const sources=['voices','synth','weaponSfx'].map(f=>fs.readFileSync(path.join(sourceRoot,'js/audio',f+'.js'),'utf8')).join('\n');
   const results=[];
   for(const scenario of ['weapons','density','ui','menu','shop','threshold','foundry','fracture','void-heart','boss','muted']){
     const seconds=scenario==='weapons'?21:['threshold','foundry','fracture','void-heart','boss'].includes(scenario)?32:8;

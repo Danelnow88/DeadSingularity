@@ -1,0 +1,11 @@
+plugins { id 'com.android.application' }
+android {
+ namespace 'com.deadsingularity.v1'
+ compileSdk 36
+ buildFeatures { buildConfig true }
+ defaultConfig { applicationId 'com.deadsingularity.v1'; minSdk 24; targetSdk 36; versionCode 1; versionName '1.1.0-alpha.1' }
+ compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+ buildTypes { release { minifyEnabled false } }
+}
+dependencies { implementation 'androidx.webkit:webkit:1.15.0' }
+

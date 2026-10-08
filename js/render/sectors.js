@@ -7,7 +7,7 @@
   const NV = window.NV;
   const TAU = Math.PI * 2;
 
-  const PROFILES = Object.freeze([
+  const PROFILES = NV.Content ? Object.freeze(NV.Content.read('sectors').map(e => Object.freeze(e.data))) : Object.freeze([
     Object.freeze({ id: 'threshold', name: 'UMBRAL', background: '#020714', accent: '#63e8ff', secondary: '#8095ff', motif: 'nebula-and-moon' }),
     Object.freeze({ id: 'foundry', name: 'FUNDICIÓN', background: '#08070b', accent: '#ff9a4d', secondary: '#ff405d', motif: 'stellar-forge-and-debris' }),
     Object.freeze({ id: 'fracture', name: 'FRACTURA', background: '#07051a', accent: '#b989ff', secondary: '#4ce7ff', motif: 'rift-and-shattered-mass' }),

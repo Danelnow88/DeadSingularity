@@ -14,7 +14,7 @@ t('valores exactos del runtime, frame fraccional y contratos de fuentes reales',
   assert.equal(P.canonical.capture.frame,captured.frame);assert.equal(P.canonical.capture.paused,captured.paused);
   const c=P.canonical.rendererContract;
   const hash=file=>crypto.createHash('sha256').update(fs.readFileSync(file,'utf8').replace(/\r\n/g,'\n')).digest('hex');
-  assert.equal(hash('tests/fixtures/pilot-native-renderer-2026-10-02.js'),c.sha256LF);assert.equal(hash(c.dataFile),c.dataSha256LF);
+  assert.equal(hash('tests/fixtures/pilot-native-renderer-2026-10-02.js'),c.sha256LF);assert.equal(hash("reference/prototype/"+c.dataFile),c.dataSha256LF); // Capture belongs to the frozen source; growth_content checks live data parity.
 });
 t('base recursivamente congelada; sliders, snapshots y saves no la sobrescriben',()=>{
   const {P}=environment(),before=plain(P.canonical);
@@ -37,7 +37,7 @@ t('duplicar, editar, guardar y recargar copia; recuperar canónico intacto',()=>
 t('storage bloqueado no destruye base; entradas canónicas o inválidas no se importan',()=>{
   const {P}=environment(new Map(),true),id=P.duplicate('Sin storage');assert(id);assert.equal(P.save(),false);
   assert(P.load(P.canonical.id));assert.deepEqual(plain(P.parameters()),captured.settings);
-  const storage=new Map([['neonVoidPilotLabCopiesV1',JSON.stringify([
+  const storage=new Map([['deadSingularityPilotLabCopiesV1',JSON.stringify([
     {id:'CANONICAL_ANIMATION_BASELINE',name:'trampa',settings:captured.settings},
     {id:'copy-7',name:'válida',settings:captured.settings},
     {id:'copy-8',name:'inválida',settings:{}},
@@ -87,3 +87,4 @@ t('laboratorio no carga juego ni motor ni módulos en producción',()=>{
   assert(!html.includes('js/game.js'));assert(!html.includes('js/engine/'));assert(!game.includes('pilot-concepts'));
 });
 console.log('RESULT pilot_canonical_lab: pass='+pass+' fail='+fail);process.exit(fail?1:0);
+

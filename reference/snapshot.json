@@ -1,0 +1,12 @@
+{
+  "purpose": "Frozen playable prototype; not rewritten V1 gameplay",
+  "sourceProject": "JuegoDemo",
+  "sourceCommit": "b0fe67c",
+  "gameplayCommit": "0999595",
+  "webBuild": "HOIEdm",
+  "windowsBuild": "Iw4Xar",
+  "payload": "prototype",
+  "inventory": "prototype/manifest.json",
+  "runtime": "Electron 44.5.0",
+  "rewrittenGameplay": false
+}

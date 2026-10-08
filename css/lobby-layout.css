@@ -138,3 +138,7 @@
   #startScreen .lobby-masthead { padding:12px 20px; } #startScreen .btn-jugar { min-height:56px; }
 }
 @media(prefers-reduced-motion:reduce) { #startScreen button,#startScreen .tooltip-historia { transition:none; } }
+
+/* DeadSingularity wordmark remains readable on small screens. */
+#startScreen .lobby-brand { min-width:0; }
+#startScreen .lobby-masthead h1 { font-size:clamp(14px,2.1vw,23px); letter-spacing:clamp(.5px,.18vw,3px); overflow-wrap:anywhere; }

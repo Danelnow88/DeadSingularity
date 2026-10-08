@@ -15,7 +15,7 @@
   'use strict';
   const NV = window.NV;
 
-  const RHYTHM_STORAGE_KEY = 'neonVoidRhythm';
+  const RHYTHM_STORAGE_KEY = 'deadSingularityRhythm';
 
   // Diagnóstico A/B de coste visual, solo en memoria y solo de render.
   // No cambia captura, análisis, audio, simulación ni preferencia persistida.
@@ -102,7 +102,7 @@
   NV.rhythm = freshState();
   NV.rhythmFreshState = freshState; // expuesto para tests/diagnóstico (estado limpio por perfil)
 
-  // ---------- persistencia (mismo patrón que neonVoidMeta) ----------
+  // ---------- persistencia (mismo patrón que deadSingularityMeta) ----------
   function savePref() {
     try { localStorage.setItem(RHYTHM_STORAGE_KEY, JSON.stringify({ enabled: !!NV.rhythm.enabled, source: NV.rhythm.source })); }
     catch (e) { if (console && console.warn) console.warn('[RHYTHM] No se pudo persistir:', e); }

@@ -1,0 +1,45 @@
+name: V1 quality
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          clean: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run quality
+      - run: npm run build:web
+      - run: npm run qa:alpha -- --soak-seconds=10
+      - run: npm run build:desktop:dir
+      - name: Validate packaged game
+        shell: pwsh
+        run: |
+          $build = Get-ChildItem releases -Directory -Filter 'DeadSingularity-V1-desktop-*' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          $exe = Join-Path $build.FullName 'win-unpacked\DeadSingularity.exe'
+          $env:ELECTRON_RUN_AS_NODE = $null
+          $check = Start-Process -FilePath $exe -ArgumentList '--delivery-check' -Wait -PassThru -WindowStyle Hidden
+          if ($check.ExitCode -ne 0) { throw "Packaged QA failed: $($check.ExitCode)" }
+
+      - name: Save validation evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: deadsingularity-validation
+          path: |
+            local/validation/*.json
+            local/validation/*.png
+            local/logs/*.log
+          if-no-files-found: warn
+          retention-days: 14

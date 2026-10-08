@@ -1,0 +1,994 @@
+{
+  "schemaVersion": 1,
+  "id": "dead-singularity-alpha-1",
+  "pilots": [
+    {
+      "id": "boti",
+      "data": {
+        "name": "BOTI",
+        "color": "#7cf8ff",
+        "bodyColor": "#4a9eff",
+        "eyeColor": "#fff",
+        "size": 22,
+        "shieldColor": "#00f0ff",
+        "special": "meteor",
+        "maxCd": 14,
+        "passive": "Regenera 1 HP cada 5s",
+        "passiveId": "boti_regen",
+        "skillColor": "#68edff",
+        "skillName": "Lluvia Criocósmica",
+        "skillDesc": "12 cometas de energía fría caen sobre la arena, con daño reducido contra jefes",
+        "card": {
+          "tag": "Equilibrado",
+          "previewClass": "char-preview-boti",
+          "statLine": "HP 120 · SPD 195 · ARM 0",
+          "identity": "Supervivencia estable · gran impacto contra oleadas · recarga larga",
+          "descHtml": "Regenera 1 HP cada 5s. <canvas class=\"char-skill-icon\" data-skill-icon=\"meteor\" aria-label=\"Lluvia Criocósmica\"></canvas> <b>Lluvia Criocósmica</b>: <span class=\"dmg-highlight\">12 cometas fríos devastan enemigos normales</span>, con <span class=\"cd-note\">recarga larga</span>; <span class=\"dmg-highlight\">golpea menos a los jefes</span>."
+        },
+        "stats": {
+          "hp": 120,
+          "speed": 195,
+          "armor": 0,
+          "luck": 0
+        }
+      }
+    },
+    {
+      "id": "nova",
+      "data": {
+        "name": "NOVA",
+        "color": "#caa7ff",
+        "bodyColor": "#9b59b6",
+        "eyeColor": "#ff0",
+        "size": 18,
+        "shieldColor": "#ff3300",
+        "special": "phase",
+        "maxCd": 7,
+        "passive": "Daño +20%, recibe +20%",
+        "passiveId": "nova_glass_cannon",
+        "takeDmgMult": 1.2,
+        "skillColor": "#ff9d36",
+        "skillName": "Ignición Astral",
+        "skillDesc": "3s invulnerable con aura de plasma que daña a los cercanos; al terminar detona un golpe final con la energía acumulada",
+        "card": {
+          "tag": "Veloz",
+          "previewClass": "char-preview-nova",
+          "statLine": "HP 80 · SPD 225 · ARM 0",
+          "identity": "Daño y movilidad altos · alcance de área · defensa frágil",
+          "descHtml": "+20% daño, +20% daño recibido. <canvas class=\"char-skill-icon\" data-skill-icon=\"phase\" aria-label=\"Ignición Astral\"></canvas> <b>Ignición Astral</b>: <span class=\"def-highlight\">3s invulnerable</span>, <span class=\"cc-highlight\">corona de plasma que daña a los cercanos</span> y <span class=\"dmg-highlight\">detona un golpe final</span>."
+        },
+        "stats": {
+          "hp": 80,
+          "speed": 225,
+          "armor": 0,
+          "luck": 5
+        }
+      }
+    },
+    {
+      "id": "rook",
+      "data": {
+        "name": "ROOK",
+        "color": "#ffcf76",
+        "bodyColor": "#f39c12",
+        "eyeColor": "#000",
+        "size": 26,
+        "shieldColor": "#eab308",
+        "special": "bulwark",
+        "maxCd": 12,
+        "passive": "-15% daño recibido",
+        "passiveId": "rook_tank",
+        "takeDmgMult": 0.85,
+        "skillColor": "#ffda7d",
+        "skillName": "Bastión Astral",
+        "skillDesc": "3s protegido por paneles de energía; refleja balas al contacto y al activarse aturde y empuja a enemigos cercanos",
+        "card": {
+          "tag": "Tanque",
+          "previewClass": "char-preview-rook",
+          "statLine": "HP 160 · SPD 170 · ARM 5",
+          "identity": "Máxima resistencia · control y reflejo · movilidad reducida",
+          "descHtml": "-15% daño recibido. <canvas class=\"char-skill-icon\" data-skill-icon=\"bulwark\" aria-label=\"Bastión Astral\"></canvas> <b>Bastión Astral</b>: <span class=\"def-highlight\">3s protegido y reflejo al contacto</span>; su aparición <span class=\"cc-highlight\">aturde y empuja</span> a los cercanos."
+        },
+        "stats": {
+          "hp": 160,
+          "speed": 170,
+          "armor": 5,
+          "luck": 0
+        }
+      }
+    },
+    {
+      "id": "swarm",
+      "data": {
+        "name": "ENJAMBRE",
+        "color": "#8dfaff",
+        "bodyColor": "#00d4aa",
+        "eyeColor": "#fff",
+        "size": 16,
+        "shieldColor": "#ffee77",
+        "special": "hivemind",
+        "maxCd": 10,
+        "passive": "15% esquiva",
+        "passiveId": "swarm_dodge",
+        "dodge": 0.15,
+        "skillColor": "#fff3a3",
+        "skillName": "Núcleos Vivos",
+        "skillDesc": "6 fragmentos de tu energía orbitan durante 5s y disparan al enemigo o jefe más cercano dentro de su alcance",
+        "card": {
+          "tag": "Esquivo",
+          "previewClass": "char-preview-swarm",
+          "statLine": "HP 90 · SPD 210 · ARM 0",
+          "identity": "Evasión y presión autónoma · gran movilidad · poca vida base",
+          "descHtml": "15% esquive. <canvas class=\"char-skill-icon\" data-skill-icon=\"hivemind\" aria-label=\"Núcleos Vivos\"></canvas> <b>Núcleos Vivos</b>: <span class=\"def-highlight\">6 fragmentos de tu energía orbitan durante 5s</span> y <span class=\"cc-highlight\">disparan al enemigo más cercano, incluido el jefe</span>."
+        },
+        "stats": {
+          "hp": 90,
+          "speed": 210,
+          "armor": 0,
+          "luck": 10
+        }
+      }
+    }
+  ],
+  "weapons": [
+    {
+      "id": "pistol",
+      "data": {
+        "id": "pistol",
+        "name": "Pistola",
+        "range": 380,
+        "damage": 14,
+        "speed": 500,
+        "fireRate": 30,
+        "color": "#fff",
+        "rarity": "common",
+        "pro": "Versátil y confiable",
+        "con": "Sin especialidad"
+      }
+    },
+    {
+      "id": "rifle",
+      "data": {
+        "id": "rifle",
+        "name": "Rifle",
+        "range": 480,
+        "damage": 20,
+        "speed": 700,
+        "fireRate": 25,
+        "pierce": 2,
+        "color": "#4ade80",
+        "rarity": "uncommon",
+        "pro": "Preciso y penetrante",
+        "con": "Cadencia media"
+      }
+    },
+    {
+      "id": "smg",
+      "data": {
+        "id": "smg",
+        "name": "Subfusil",
+        "range": 360,
+        "damage": 7,
+        "speed": 450,
+        "fireRate": 12,
+        "color": "#facc15",
+        "rarity": "rare",
+        "pro": "Daño sostenido",
+        "con": "Corto alcance"
+      }
+    },
+    {
+      "id": "shotgun",
+      "data": {
+        "id": "shotgun",
+        "name": "Escopeta",
+        "range": 250,
+        "damage": 5,
+        "speed": 400,
+        "fireRate": 45,
+        "count": 12,
+        "spread": 0.44,
+        "color": "#f97316",
+        "rarity": "rare",
+        "pro": "Burst cercano y grupos",
+        "con": "Menor contra jefes"
+      }
+    },
+    {
+      "id": "sniper",
+      "data": {
+        "id": "sniper",
+        "name": "Francotirador",
+        "range": 700,
+        "damage": 50,
+        "speed": 1200,
+        "fireRate": 70,
+        "pierce": 4,
+        "color": "#ef4444",
+        "rarity": "epic",
+        "pro": "Cazador de élites",
+        "con": "Muy lento"
+      }
+    },
+    {
+      "id": "laser",
+      "data": {
+        "id": "laser",
+        "name": "Láser",
+        "range": 450,
+        "damage": 25,
+        "speed": 900,
+        "fireRate": 20,
+        "pierce": 2,
+        "color": "#f472b6",
+        "rarity": "epic",
+        "pro": "Atraviesa escudos",
+        "con": "Alcance medio"
+      }
+    },
+    {
+      "id": "plasma",
+      "data": {
+        "id": "plasma",
+        "name": "Plasma",
+        "range": 520,
+        "damage": 21,
+        "speed": 600,
+        "fireRate": 35,
+        "count": 2,
+        "spread": 0.1,
+        "color": "#a855f7",
+        "rarity": "legendary",
+        "pro": "Explosión en área",
+        "con": "Cadencia lenta"
+      }
+    },
+    {
+      "id": "flamethrower",
+      "data": {
+        "id": "flamethrower",
+        "name": "Lanzallamas",
+        "range": 170,
+        "damage": 6,
+        "speed": 260,
+        "fireRate": 14,
+        "color": "#fb923c",
+        "rarity": "epic",
+        "pro": "Control de zona",
+        "con": "Muy corto alcance"
+      }
+    },
+    {
+      "id": "bow",
+      "data": {
+        "id": "bow",
+        "name": "Arco",
+        "range": 540,
+        "damage": 19,
+        "speed": 800,
+        "fireRate": 36,
+        "color": "#22c55e",
+        "rarity": "rare",
+        "pro": "Rebota entre blancos",
+        "con": "Pierde daño al rebotar"
+      }
+    },
+    {
+      "id": "railgun",
+      "data": {
+        "id": "railgun",
+        "name": "Cañón de Riel",
+        "range": 800,
+        "damage": 70,
+        "speed": 1500,
+        "fireRate": 84,
+        "pierce": 8,
+        "color": "#06b6d4",
+        "rarity": "legendary",
+        "pro": "Perfora filas enteras",
+        "con": "Cadencia mínima"
+      }
+    }
+  ],
+  "enemies": [
+    {
+      "id": "drone",
+      "data": {
+        "id": "drone",
+        "name": "DRON",
+        "hp": 25,
+        "speed": 75,
+        "radius": 11,
+        "color": "#f07bad",
+        "shape": "circle",
+        "score": 10,
+        "xp": 10,
+        "behavior": "chase",
+        "knockbackRes": 0,
+        "damage": 12,
+        "minWave": 1,
+        "hostileClass": "light"
+      }
+    },
+    {
+      "id": "runner",
+      "data": {
+        "id": "runner",
+        "name": "CORREDOR",
+        "hp": 15,
+        "speed": 145,
+        "radius": 9,
+        "color": "#ffcf76",
+        "shape": "triangle",
+        "score": 15,
+        "xp": 15,
+        "behavior": "flank",
+        "knockbackRes": 0.3,
+        "damage": 10,
+        "minWave": 1,
+        "hostileClass": "light"
+      }
+    },
+    {
+      "id": "tank",
+      "data": {
+        "id": "tank",
+        "name": "TANQUE",
+        "hp": 60,
+        "speed": 40,
+        "radius": 20,
+        "color": "#ef9d49",
+        "shape": "hex",
+        "score": 30,
+        "xp": 35,
+        "behavior": "chase",
+        "knockbackRes": 0.8,
+        "damage": 18,
+        "minWave": 3,
+        "resist": 3,
+        "hostileClass": "light"
+      }
+    },
+    {
+      "id": "shielder",
+      "data": {
+        "id": "shielder",
+        "name": "ESCUDO",
+        "hp": 35,
+        "speed": 65,
+        "radius": 14,
+        "color": "#caa7ff",
+        "shape": "diamond",
+        "score": 25,
+        "xp": 30,
+        "behavior": "shield",
+        "knockbackRes": 0.6,
+        "damage": 8,
+        "minWave": 6,
+        "shield": true,
+        "hostileClass": "light"
+      }
+    },
+    {
+      "id": "swarmlet",
+      "data": {
+        "id": "swarmlet",
+        "name": "ENJAMBITO",
+        "hp": 10,
+        "speed": 115,
+        "radius": 7,
+        "color": "#22d3ee",
+        "shape": "atom",
+        "score": 8,
+        "xp": 8,
+        "behavior": "swarm",
+        "knockbackRes": 0.1,
+        "damage": 8,
+        "minWave": 9,
+        "hostileClass": "light"
+      }
+    },
+    {
+      "id": "spitter",
+      "data": {
+        "id": "spitter",
+        "name": "ESCOPURAS",
+        "hp": 22,
+        "speed": 50,
+        "radius": 13,
+        "color": "#6dc4c0",
+        "shape": "rock",
+        "score": 18,
+        "xp": 25,
+        "behavior": "ranged",
+        "knockbackRes": 0.4,
+        "damage": 15,
+        "minWave": 12,
+        "stunChance": 0.5,
+        "stunDuration": 1.25,
+        "hostileClass": "light"
+      }
+    },
+    {
+      "id": "wisp",
+      "data": {
+        "id": "wisp",
+        "name": "ESPÍRITU",
+        "hp": 12,
+        "speed": 160,
+        "radius": 6,
+        "color": "#4ade80",
+        "shape": "dot",
+        "score": 6,
+        "xp": 6,
+        "behavior": "erratic",
+        "knockbackRes": 0.2,
+        "damage": 6,
+        "minWave": 15,
+        "hostileClass": "light"
+      }
+    },
+    {
+      "id": "kamikaze",
+      "data": {
+        "id": "kamikaze",
+        "name": "KAMIKAZE",
+        "hp": 20,
+        "speed": 125,
+        "radius": 10,
+        "color": "#ff5f3d",
+        "shape": "triangle",
+        "score": 22,
+        "xp": 22,
+        "behavior": "kami",
+        "knockbackRes": 0.2,
+        "damage": 14,
+        "minWave": 10,
+        "hostileClass": "light"
+      }
+    },
+    {
+      "id": "specter_grunt",
+      "data": {
+        "id": "specter_grunt",
+        "name": "ESPECTRO PEÓN",
+        "hp": 20,
+        "speed": 85,
+        "radius": 10,
+        "color": "#d8f6ff",
+        "shape": "circle",
+        "score": 12,
+        "xp": 12,
+        "behavior": "chase",
+        "knockbackRes": 0.1,
+        "damage": 10,
+        "minWave": 3,
+        "weight": 0.15,
+        "hostileClass": "medium"
+      }
+    },
+    {
+      "id": "specter_archer",
+      "data": {
+        "id": "specter_archer",
+        "name": "ESPECTRO ARQUERO",
+        "hp": 18,
+        "speed": 60,
+        "radius": 12,
+        "color": "#ffb24a",
+        "shape": "triangle",
+        "score": 18,
+        "xp": 18,
+        "behavior": "ranged",
+        "knockbackRes": 0.2,
+        "damage": 9,
+        "minWave": 3,
+        "weight": 0.12,
+        "hostileClass": "medium"
+      }
+    },
+    {
+      "id": "specter_guard",
+      "data": {
+        "id": "specter_guard",
+        "name": "ESPECTRO GUARDIA",
+        "hp": 55,
+        "speed": 45,
+        "radius": 18,
+        "color": "#67f8c8",
+        "shape": "hex",
+        "score": 28,
+        "xp": 32,
+        "behavior": "shield",
+        "knockbackRes": 0.7,
+        "damage": 12,
+        "minWave": 5,
+        "weight": 0.1,
+        "shield": true,
+        "resist": 2,
+        "hostileClass": "medium"
+      }
+    },
+    {
+      "id": "specter_lite",
+      "data": {
+        "id": "specter_lite",
+        "name": "ESPECTRO LÚTIL",
+        "hp": 18,
+        "speed": 100,
+        "radius": 12,
+        "color": "#ff6a24",
+        "shape": "specter",
+        "score": 30,
+        "xp": 35,
+        "behavior": "erratic",
+        "knockbackRes": 0.1,
+        "damage": 8,
+        "minWave": 16,
+        "weight": 0.08,
+        "specterVariant": "lite",
+        "hostileClass": "medium"
+      }
+    },
+    {
+      "id": "specter_core",
+      "data": {
+        "id": "specter_core",
+        "name": "ESPECTRO NÚCLEO",
+        "hp": 28,
+        "speed": 55,
+        "radius": 16,
+        "color": "#ff2244",
+        "shape": "specter",
+        "score": 50,
+        "xp": 55,
+        "behavior": "ranged",
+        "knockbackRes": 0.3,
+        "damage": 12,
+        "minWave": 20,
+        "weight": 0.06,
+        "specterVariant": "core",
+        "hostileClass": "medium"
+      }
+    }
+  ],
+  "elites": [
+    {
+      "id": "elite_base",
+      "data": {
+        "name": "COMANDANTE",
+        "hp": 90,
+        "speed": 90,
+        "radius": 20,
+        "color": "#ff0",
+        "shape": "hex",
+        "score": 50,
+        "xp": 50,
+        "behavior": "chase",
+        "damage": 20,
+        "visualId": "elite_base",
+        "hostileClass": "heavy"
+      }
+    },
+    {
+      "id": "elite_velocity",
+      "data": {
+        "name": "RÁPIDO",
+        "hp": 40,
+        "speed": 175,
+        "radius": 14,
+        "color": "#0ff",
+        "shape": "triangle",
+        "score": 30,
+        "xp": 30,
+        "behavior": "erratic",
+        "damage": 15,
+        "visualId": "elite_velocity",
+        "hostileClass": "heavy"
+      }
+    },
+    {
+      "id": "elite_bulwark",
+      "data": {
+        "name": "BASTIÓN",
+        "hp": 160,
+        "speed": 35,
+        "radius": 30,
+        "color": "#f80",
+        "shape": "rock",
+        "score": 60,
+        "xp": 60,
+        "behavior": "chase",
+        "damage": 25,
+        "resist": 3,
+        "visualId": "elite_bulwark",
+        "hostileClass": "heavy"
+      }
+    },
+    {
+      "id": "elite_predator",
+      "data": {
+        "name": "ASESINO",
+        "hp": 55,
+        "speed": 165,
+        "radius": 12,
+        "color": "#f0f",
+        "shape": "diamond",
+        "score": 40,
+        "xp": 40,
+        "behavior": "chase",
+        "damage": 30,
+        "visualId": "elite_predator",
+        "hostileClass": "heavy"
+      }
+    },
+    {
+      "id": "elite_phantom",
+      "data": {
+        "name": "FANTASMA",
+        "hp": 65,
+        "speed": 145,
+        "radius": 16,
+        "color": "#e0ffff",
+        "shape": "circle",
+        "score": 45,
+        "xp": 45,
+        "behavior": "erratic",
+        "damage": 25,
+        "visualId": "elite_phantom",
+        "hostileClass": "heavy"
+      }
+    },
+    {
+      "id": "elite_titan",
+      "data": {
+        "name": "GOLIATH",
+        "hp": 210,
+        "speed": 25,
+        "radius": 36,
+        "color": "#ff1493",
+        "shape": "rock",
+        "score": 100,
+        "xp": 100,
+        "behavior": "chase",
+        "damage": 35,
+        "stunChance": 0.35,
+        "stunDuration": 1,
+        "resist": 3,
+        "visualId": "elite_titan",
+        "hostileClass": "heavy"
+      }
+    },
+    {
+      "id": "elite_swift",
+      "data": {
+        "name": "CENTELLA",
+        "hp": 40,
+        "speed": 220,
+        "radius": 10,
+        "color": "#00ff88",
+        "shape": "dot",
+        "score": 35,
+        "xp": 35,
+        "behavior": "chase",
+        "damage": 18,
+        "visualId": "elite_swift",
+        "hostileClass": "heavy"
+      }
+    },
+    {
+      "id": "specter_elite_void",
+      "data": {
+        "id": "specter_elite_void",
+        "name": "ESPECTRO VACÍO",
+        "hp": 95,
+        "speed": 70,
+        "radius": 18,
+        "color": "#9b4dff",
+        "shape": "circle",
+        "score": 95,
+        "xp": 95,
+        "behavior": "ranged",
+        "damage": 24,
+        "minWave": 16,
+        "weight": 0.03,
+        "visualId": "elite_specter_void",
+        "spectralElite": true,
+        "knockbackRes": 0.4,
+        "stunChance": 0.35,
+        "stunDuration": 1.75,
+        "hostileClass": "heavy"
+      }
+    }
+  ],
+  "bosses": [
+    {
+      "id": "boss-0",
+      "data": {
+        "name": "JEFE",
+        "hp": 300,
+        "radius": 50,
+        "color": "#ff5f9b",
+        "speed": 30,
+        "pattern": "chase",
+        "attack": "repeater",
+        "shape": "hex",
+        "stunChance": 0,
+        "hostileClass": "heavy"
+      }
+    },
+    {
+      "id": "boss-1",
+      "data": {
+        "name": "TITÁN",
+        "hp": 450,
+        "radius": 55,
+        "color": "#ff8c00",
+        "speed": 25,
+        "pattern": "charge",
+        "attack": "heavy",
+        "shape": "hex",
+        "stunChance": 0.1,
+        "hostileClass": "heavy"
+      }
+    },
+    {
+      "id": "boss-2",
+      "data": {
+        "name": "SEÑOR DEL VACÍO",
+        "hp": 600,
+        "radius": 65,
+        "color": "#dc143c",
+        "speed": 20,
+        "pattern": "summon",
+        "attack": "summon",
+        "shape": "circle",
+        "stunChance": 0.15,
+        "hostileClass": "heavy"
+      }
+    },
+    {
+      "id": "boss-3",
+      "data": {
+        "name": "GUARDIÁN",
+        "hp": 350,
+        "radius": 45,
+        "color": "#00bfff",
+        "speed": 35,
+        "pattern": "circle",
+        "attack": "spread",
+        "shape": "hex",
+        "stunChance": 0.05,
+        "hostileClass": "heavy"
+      }
+    },
+    {
+      "id": "boss-4",
+      "data": {
+        "name": "DESTRUCTOR",
+        "hp": 500,
+        "radius": 60,
+        "color": "#ff0000",
+        "speed": 28,
+        "pattern": "burst",
+        "attack": "beam",
+        "shape": "rock",
+        "stunChance": 0.25,
+        "hostileClass": "heavy"
+      }
+    },
+    {
+      "id": "boss-5",
+      "data": {
+        "name": "NÉMESIS",
+        "hp": 400,
+        "radius": 48,
+        "color": "#8b00ff",
+        "speed": 40,
+        "pattern": "teleport",
+        "attack": "volley",
+        "shape": "diamond",
+        "stunChance": 0.08,
+        "hostileClass": "heavy"
+      }
+    },
+    {
+      "id": "boss-6",
+      "data": {
+        "name": "COLOSO",
+        "hp": 700,
+        "radius": 70,
+        "color": "#ff4500",
+        "speed": 18,
+        "pattern": "slow_charge",
+        "attack": "bomb",
+        "shape": "rock",
+        "stunChance": 0.2,
+        "hostileClass": "heavy"
+      }
+    },
+    {
+      "id": "boss-7",
+      "data": {
+        "name": "FANTASMA",
+        "hp": 280,
+        "radius": 40,
+        "color": "#e0ffff",
+        "speed": 45,
+        "pattern": "phase",
+        "attack": "orbs",
+        "shape": "circle",
+        "stunChance": 0.12,
+        "hostileClass": "heavy"
+      }
+    },
+    {
+      "id": "boss-8",
+      "data": {
+        "name": "MUTANTE",
+        "hp": 380,
+        "radius": 52,
+        "color": "#32cd32",
+        "speed": 32,
+        "pattern": "split",
+        "attack": "split",
+        "shape": "hex",
+        "stunChance": 0.1,
+        "hostileClass": "heavy"
+      }
+    },
+    {
+      "id": "boss-9",
+      "data": {
+        "name": "APOCALIPSIS",
+        "hp": 800,
+        "radius": 75,
+        "color": "#ff1493",
+        "speed": 22,
+        "pattern": "rage",
+        "attack": "rage",
+        "shape": "rock",
+        "stunChance": 0.18,
+        "hostileClass": "heavy"
+      }
+    }
+  ],
+  "sectors": [
+    {
+      "id": "threshold",
+      "data": {
+        "id": "threshold",
+        "name": "UMBRAL",
+        "background": "#020714",
+        "accent": "#63e8ff",
+        "secondary": "#8095ff",
+        "motif": "nebula-and-moon"
+      }
+    },
+    {
+      "id": "foundry",
+      "data": {
+        "id": "foundry",
+        "name": "FUNDICIÓN",
+        "background": "#08070b",
+        "accent": "#ff9a4d",
+        "secondary": "#ff405d",
+        "motif": "stellar-forge-and-debris"
+      }
+    },
+    {
+      "id": "fracture",
+      "data": {
+        "id": "fracture",
+        "name": "FRACTURA",
+        "background": "#07051a",
+        "accent": "#b989ff",
+        "secondary": "#4ce7ff",
+        "motif": "rift-and-shattered-mass"
+      }
+    },
+    {
+      "id": "void-heart",
+      "data": {
+        "id": "void-heart",
+        "name": "CORAZÓN DEL VACÍO",
+        "background": "#08030f",
+        "accent": "#ff4fa8",
+        "secondary": "#9d63ff",
+        "motif": "singularity-and-accretion"
+      }
+    }
+  ],
+  "consumables": [
+    {
+      "id": "potion",
+      "data": {
+        "key": "potion",
+        "name": "Poción",
+        "useName": "POCIÓN",
+        "desc": "Restaura 40 de vida. Usar con F.",
+        "price": 10,
+        "banner": "Poción guardada (F para usar)",
+        "color": "#22c55e",
+        "hp": 40
+      }
+    },
+    {
+      "id": "overdrive",
+      "data": {
+        "key": "overdrive",
+        "name": "Overdrive",
+        "useName": "OVERDRIVE",
+        "desc": "+18% de velocidad durante 5 s. F para usar.",
+        "price": 18,
+        "banner": "Overdrive guardado (F)",
+        "color": "#caa7ff",
+        "speedMult": 1.18,
+        "duration": 5
+      }
+    },
+    {
+      "id": "shield",
+      "data": {
+        "key": "shield",
+        "name": "Escudo",
+        "useName": "ESCUDO",
+        "desc": "Invulnerable durante 3 s. F para usar.",
+        "price": 22,
+        "banner": "Escudo guardado (F)",
+        "color": "#ffcf76",
+        "duration": 3
+      }
+    },
+    {
+      "id": "bomb",
+      "data": {
+        "key": "bomb",
+        "name": "Bomba",
+        "useName": "BOMBA",
+        "desc": "Daño en área: 25% comunes, 50% élites, 8% jefe.",
+        "price": 34,
+        "banner": "Bomba guardada (F)",
+        "color": "#ff5f9b"
+      }
+    },
+    {
+      "id": "freeze",
+      "data": {
+        "key": "freeze",
+        "name": "Congelante",
+        "useName": "CONGELANTE",
+        "desc": "Ralentiza 50% durante 4 s. No afecta jefes.",
+        "price": 26,
+        "banner": "Congelante guardado (F)",
+        "color": "#67e8f9",
+        "duration": 4
+      }
+    },
+    {
+      "id": "magnet",
+      "data": {
+        "key": "magnet",
+        "name": "Imán",
+        "useName": "IMÁN",
+        "desc": "Atrae shards y armas cercanas. F para usar.",
+        "price": 20,
+        "banner": "Imán guardado (F)",
+        "color": "#7cf8ff"
+      }
+    },
+    {
+      "id": "bounty",
+      "data": {
+        "key": "bounty",
+        "name": "Recompensa",
+        "useName": "RECOMPENSA",
+        "desc": "Durante 10 s: cada baja da +1 shard y x2 score.",
+        "price": 30,
+        "banner": "Recompensa guardada (F)",
+        "color": "#ffd700",
+        "duration": 10
+      }
+    }
+  ]
+}

@@ -6,7 +6,7 @@
   try{const saved=JSON.parse(localStorage.getItem(storageKey)||'null');if(saved&&E.music.some(p=>p.id===saved.music)&&E.deaths.some(p=>p.id===saved.death))choice={music:saved.music,death:saved.death};}catch(_){}
   N.getState=()=> 'playing';N.getWave=()=>1;N.getBoss=()=>null;
   const init=()=>{N.initAudio();N.applyMasterVolume(+$('volume').value);};
-  function exportChoice(){return {version:1,lab:'neon-void-audio-experiments-20261003',musicRevision:E.musicRevision,music:choice.music,enemyDeath:choice.death};}
+  function exportChoice(){return {version:1,lab:'dead-singularity-audio-experiments-20261003',musicRevision:E.musicRevision,music:choice.music,enemyDeath:choice.death};}
   function render(){
     $('from').disabled=choice.music==='current';
     for(const type of ['music','death'])for(const b of $(type+'-cards').children){const checked=b.dataset.id===choice[type];b.setAttribute('aria-checked',String(checked));b.tabIndex=checked?0:-1;}

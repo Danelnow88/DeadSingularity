@@ -20,7 +20,7 @@ t('saveMeta respeta metaFrozen', () => {
 
 t('NV.resetMeta borra localStorage', () => {
   if (!g.includes("NV.resetMeta = function")) throw new Error('resetMeta ausente');
-  if (!g.includes("localStorage.removeItem('neonVoidMeta')")) throw new Error('no borra la clave');
+  if (!g.includes("localStorage.removeItem('deadSingularityMeta')")) throw new Error('no borra la clave');
 });
 
 t('tope de consumibles: cap 3 por visita, reset al preparar contenido del shop', () => {

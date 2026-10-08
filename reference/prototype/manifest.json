@@ -1,0 +1,442 @@
+{
+  "version": "0.10.0-alpha",
+  "platform": "web",
+  "createdAt": "2026-10-07T21:56:39.002Z",
+  "files": [
+    {
+      "path": "assets/audio/main-theme-data.js",
+      "size": 5832088,
+      "sha256": "dde63bbd558aeb6799020b2cf552312b7283c5465ffa31fe22e8b27a6d9c7f39"
+    },
+    {
+      "path": "assets/brand/neon-void-mark.svg",
+      "size": 1606,
+      "sha256": "fb15b680bdbaa3c393a9957fe082bbf2eef77f4575e07db36095db863fb24fc3"
+    },
+    {
+      "path": "AVISOS.md",
+      "size": 1308,
+      "sha256": "22e5fbdf23fe401fdcaef7c36a642482a037f514b7d822a61fb86a464b33a965"
+    },
+    {
+      "path": "css/alpha.css",
+      "size": 8470,
+      "sha256": "e4f8b8257549d821d0f58dedf235e7dad79fcf456397dfe12450db44ff3a2db0"
+    },
+    {
+      "path": "css/lobby-f093.css",
+      "size": 24192,
+      "sha256": "018e4d96a115720939be65e52c4a3b8dca0f7ce203958317295740cbc1139555"
+    },
+    {
+      "path": "css/lobby-layout.css",
+      "size": 15650,
+      "sha256": "b3efc51717f7f4a0cdffc1a031fc69bcf88cc77aad18a11ed314dcada08daff3"
+    },
+    {
+      "path": "css/mobile.css",
+      "size": 24329,
+      "sha256": "085349467f27d73bae83f8115dfe5801d0a37c88c0d5a193f2c88d8b5127b0ef"
+    },
+    {
+      "path": "css/shop-remaster.css",
+      "size": 28816,
+      "sha256": "ba508472c8c237d8792e7929029766ba0594bf1b461daf4567e3c557f3a01350"
+    },
+    {
+      "path": "css/styles.css",
+      "size": 93810,
+      "sha256": "746d532c2bf6f0617f770d3bd61c78aa94b301716179dc99046ba52ed60435ea"
+    },
+    {
+      "path": "css/system-menu.css",
+      "size": 6418,
+      "sha256": "145f37b6c873311b381ac4937e12ddc0e61daae9094b252e76ec51eeb27b56ad"
+    },
+    {
+      "path": "index.html",
+      "size": 35753,
+      "sha256": "a9cc5b3d7af5bb823af162cc795b95b4ba5dd91a9ce22c48d7d4a5a090d77042"
+    },
+    {
+      "path": "js/audio/soundtrack.js",
+      "size": 8393,
+      "sha256": "025015d438b5350309a14afe2e8655322468c5e1b499f26406ea0a8b412214f7"
+    },
+    {
+      "path": "js/audio/synth.js",
+      "size": 55115,
+      "sha256": "641d294eb4718bc0cf13eb6b87b90fa92e521ae6e373bf4f39859c0070473e8d"
+    },
+    {
+      "path": "js/audio/uiAudio.js",
+      "size": 2834,
+      "sha256": "264f38d87bd1bc1bc65c6bd7a4968908abb9d7f437bf7b1fe7868ed9d60035a9"
+    },
+    {
+      "path": "js/audio/voices.js",
+      "size": 5328,
+      "sha256": "62ff090b1078d54f98756f8d1ffe29b12dbcbe5dea543fb340a38d70a7dc132a"
+    },
+    {
+      "path": "js/audio/weaponSfx.js",
+      "size": 5080,
+      "sha256": "116de3d1d568c7affd3684cf455fb645b95ede6c2e959f54fa4a211c6f404414"
+    },
+    {
+      "path": "js/core/capabilities.js",
+      "size": 5644,
+      "sha256": "261b799ad231cd8a4c3ce90370ed471580b015d2f52cf4117e8fc0c85764471c"
+    },
+    {
+      "path": "js/core/inputIntent.js",
+      "size": 2086,
+      "sha256": "ad2d026ff31cace68d6f55ef55deaceb35db26ee3cbf77cafd37bed11a177ec0"
+    },
+    {
+      "path": "js/core/settings.js",
+      "size": 9026,
+      "sha256": "4236acba51c245ab89ab8632f743683677f4fdcfa91021352a96a54c6aecea16"
+    },
+    {
+      "path": "js/core/state.js",
+      "size": 264,
+      "sha256": "ecaef464a375df66ad5c9ca440509c4d1af80edb5e4490782cfba3813bda87e7"
+    },
+    {
+      "path": "js/core/utils.js",
+      "size": 3638,
+      "sha256": "fc9b04ae4aff118aa5a010d98e85aa474a951be7d1f5e78ad7db52e51bb325c5"
+    },
+    {
+      "path": "js/core/viewport.js",
+      "size": 17842,
+      "sha256": "88c5c9f432b74b07c2bcd75ef79aff4bf7576392f88fc09b016d71a5db81d6d6"
+    },
+    {
+      "path": "js/data/balance.js",
+      "size": 24892,
+      "sha256": "176ab7799ec749803c7c879b48a5ffc74e7eecac5813fe3cd8f29cb9929c9951"
+    },
+    {
+      "path": "js/data/bossDesignLab.js",
+      "size": 4706,
+      "sha256": "08a4a8322b67b7b5128bb759502caa78abf5c91c07a457fcdea7e8662d6fd2de"
+    },
+    {
+      "path": "js/data/consumables.js",
+      "size": 2737,
+      "sha256": "4237e476812f9265f5a4bb339ce0bafaeaac7b005bb8e119f0ed2a7fae8fca2d"
+    },
+    {
+      "path": "js/data/gameData.js",
+      "size": 20957,
+      "sha256": "ebf921518619339a1c8d96478e08c83f8060fd802b78fd4bd4d78a3dc718124f"
+    },
+    {
+      "path": "js/data/pilotAnimationBaseline.js",
+      "size": 3288,
+      "sha256": "faa798198f06cc8e249e403226717753fa68896e8042e7591c163c58c5bd9a70"
+    },
+    {
+      "path": "js/engine/boss.js",
+      "size": 23031,
+      "sha256": "dea3e32ded38c0de43f3548d83822ab7f7bf7fa5b90b7d6f4118cda48fd3a803"
+    },
+    {
+      "path": "js/engine/bossEncounters.js",
+      "size": 23628,
+      "sha256": "bb5c60bd3821e57422ed90aa3577e0cba71de68fa0df20d3884ff4df31d4f434"
+    },
+    {
+      "path": "js/engine/bullets.js",
+      "size": 20731,
+      "sha256": "a5cdc1e9e90a30d0b63a12ea71084ea17665a0e80c59fe07e16ff8efcb887ce3"
+    },
+    {
+      "path": "js/engine/cameraSafety.js",
+      "size": 3697,
+      "sha256": "361a16e81e2db39d6d2e6685ba14c6fa1e43d3f7faedc985ad48e11626435ed8"
+    },
+    {
+      "path": "js/engine/combat.js",
+      "size": 5265,
+      "sha256": "2c5437d23a5d3b6606268aea69561b4dc4511644ac4e4d8de82d03c96707e260"
+    },
+    {
+      "path": "js/engine/consumables.js",
+      "size": 5252,
+      "sha256": "597ce5695efde7c31bbb45aa7c8c341d783b09b29f013f5b7fe6e4ac94835658"
+    },
+    {
+      "path": "js/engine/drones.js",
+      "size": 2483,
+      "sha256": "d088d1bc6a283cda2458f4139b0163a7f3a06bb2f987f5343e7960a6becc8db9"
+    },
+    {
+      "path": "js/engine/enemies.js",
+      "size": 147124,
+      "sha256": "d54ba9157f1d8a9dfea81a1b13dee0886e6749b16f23b2c8ecf18036f098ccca"
+    },
+    {
+      "path": "js/engine/enemyArrival.js",
+      "size": 3917,
+      "sha256": "b5e0f1836ccf3208bf24b4cf7f35cb5c2bad4c2d2d848dc04916bcd482876363"
+    },
+    {
+      "path": "js/engine/enemySpawnRegistry.js",
+      "size": 1677,
+      "sha256": "254a40ad3095083ae3b6878196ab05b1fc64e2f3278c55bdb54986fe778f9526"
+    },
+    {
+      "path": "js/engine/enemyState.js",
+      "size": 5911,
+      "sha256": "d5b54029b460874a8ffdac26d4d621a3826231ef76ec560f6ecec2748306b317"
+    },
+    {
+      "path": "js/engine/expedition.js",
+      "size": 12370,
+      "sha256": "400cfeee92312471c7bc034fda63ee1c8ea8171cc3b7735c7a2eeab67b58c650"
+    },
+    {
+      "path": "js/engine/flame.js",
+      "size": 7276,
+      "sha256": "56d77a682b3172a88f16291d6c1c50b7db02c8f8ce9c46f59a9644e08a787f27"
+    },
+    {
+      "path": "js/engine/fx.js",
+      "size": 15933,
+      "sha256": "56a251f7a2bc9ee607dc8d5598c61d88a97b5a45e8f5224ef86c61133d2274fc"
+    },
+    {
+      "path": "js/engine/hazards.js",
+      "size": 27751,
+      "sha256": "e929885682eac702656ad09cb9a8a51d4c64c74dca8013b7e9a02a1f56843cd1"
+    },
+    {
+      "path": "js/engine/hostileBudget.js",
+      "size": 2530,
+      "sha256": "1844f4dcbd4d531a145e2628469f963a7452273d5748e2a647518c8cee26bb23"
+    },
+    {
+      "path": "js/engine/metaDiagnostics.js",
+      "size": 1191,
+      "sha256": "536efc60d6ca8b72c850982875b3729778c9ba54616fa89f39cfc602d368aec6"
+    },
+    {
+      "path": "js/engine/meteors.js",
+      "size": 2506,
+      "sha256": "d12258a3346af60cd8e27b039930422d4d54c52e9926973addb7645b0d727ebd"
+    },
+    {
+      "path": "js/engine/movement.js",
+      "size": 8400,
+      "sha256": "1b4848a39ae4180e9124043a8e17cc2d05b92e8f4179e22900e62b8ac4ee4c1c"
+    },
+    {
+      "path": "js/engine/performanceMonitor.js",
+      "size": 5254,
+      "sha256": "42d46db5018ea1c762160f23be9dbfa03e72e2e7bc1f00c12d4fc3f23d5c1a37"
+    },
+    {
+      "path": "js/engine/pickups.js",
+      "size": 11580,
+      "sha256": "f62c8f2d9c801680c8b78690a0f867efd90e69ab6ee849d2e17040746be1ce90"
+    },
+    {
+      "path": "js/engine/playerStun.js",
+      "size": 2369,
+      "sha256": "4bad4a8579cba94ed116ada23bbb9bd8d67fd9311df6f9c86d6c25b374a2950e"
+    },
+    {
+      "path": "js/engine/playtestTelemetry.js",
+      "size": 12695,
+      "sha256": "60a542c0a9919321372e966ce0bef075ba5ad797972071b296e1fdf52491916c"
+    },
+    {
+      "path": "js/engine/rhythm.js",
+      "size": 35216,
+      "sha256": "2d10f024f0fa3eda13d98107bd98e267e1550e38b0a65a661f04eaecaf9f0753"
+    },
+    {
+      "path": "js/engine/sectorEncounters.js",
+      "size": 11044,
+      "sha256": "251c167094368e74e9aa774b6e106d0894e7e4788c20c8a3246ab4b0ab533463"
+    },
+    {
+      "path": "js/engine/special.js",
+      "size": 5798,
+      "sha256": "546fd28663a3d54bb21c547d2e44579fa17e9acbd2757774fecb66d2790c37de"
+    },
+    {
+      "path": "js/engine/wavePressure.js",
+      "size": 3022,
+      "sha256": "2cd6e1de288a0eaf1259b55e0c417eff98feb24c25ed701fb140f5a9fa6ce9f1"
+    },
+    {
+      "path": "js/engine/weapons.js",
+      "size": 12533,
+      "sha256": "53959d79e7cebc152e2596e353ad495b6800e0b6836b8742da7549138c19ef73"
+    },
+    {
+      "path": "js/engine/weather.js",
+      "size": 5940,
+      "sha256": "07a2177a09b9eaeed554fd3ec3271ec1d7e7952415cbb09b58105fb8d4de8a9f"
+    },
+    {
+      "path": "js/game.js",
+      "size": 225017,
+      "sha256": "8f011ed9b054b7125e87ced68e6bbc1818f9132c83b7719535e1c7db7ece0ec2"
+    },
+    {
+      "path": "js/render/bossDesignLab.js",
+      "size": 16736,
+      "sha256": "8e2f0fb47a88abb39dca60e94121daf19b55fa3b9e633b8ca652c2af48704299"
+    },
+    {
+      "path": "js/render/bosses.js",
+      "size": 2154,
+      "sha256": "3b7f240e2f2aa4e8e3adfcf88cbea2108630c020102efcd6ffd575eb05e946d2"
+    },
+    {
+      "path": "js/render/canvas.js",
+      "size": 5426,
+      "sha256": "262790be63d5e88f41f965a63bdac0d265b3d9bbb3a4b06e1394b157b181a803"
+    },
+    {
+      "path": "js/render/consumableEffects.js",
+      "size": 45916,
+      "sha256": "2936ff7a85b740b4670a4cd0ca52bba723c67244024cf6cd063e24e3d6b6ecc3"
+    },
+    {
+      "path": "js/render/consumableIcons.js",
+      "size": 8564,
+      "sha256": "824b77adfc783e2cb8fa8e00a8e4ea4b1c89b5b88a5e88941fa56aed5b2b2fe9"
+    },
+    {
+      "path": "js/render/enemies.js",
+      "size": 54598,
+      "sha256": "890c4783bad94b664c0ef222eac66649ee7f2387295bbe5d18936225712e08fd"
+    },
+    {
+      "path": "js/render/espectroLite.js",
+      "size": 21040,
+      "sha256": "86115edb53feff652cef59ed1815f52b1525daddc5c25c0e3558cc2f8dda62f7"
+    },
+    {
+      "path": "js/render/hazards.js",
+      "size": 14120,
+      "sha256": "ef48c902082b7d72ac19dac771b8bd251e1ff4da6b5aa89e741c8cd7107a40e7"
+    },
+    {
+      "path": "js/render/hud.js",
+      "size": 25407,
+      "sha256": "a86ffdd17185e7efc024ca3bf9ab68a17cde44815dfcaf2b5f462150c703baec"
+    },
+    {
+      "path": "js/render/metaReadability.js",
+      "size": 11377,
+      "sha256": "d17c13f7a99a40ad725da71ddbc6faa85968d00f3494ddb3fd614d9cb16188f4"
+    },
+    {
+      "path": "js/render/metaSkillIcons.js",
+      "size": 10980,
+      "sha256": "f68925f981755911a5fbd47480789246a56ed273ac93dc6cf845c149c3292e8e"
+    },
+    {
+      "path": "js/render/pilotAppearance.js",
+      "size": 2874,
+      "sha256": "d3024f93dce47d607af4fb1ca0fc2b580fed102419893de53887e37bda325199"
+    },
+    {
+      "path": "js/render/pilotGeometry.js",
+      "size": 2814,
+      "sha256": "b7540dcafbe20e0cf4e6ed907515eeded9479b8548be6ff84ddca88a3af4aac2"
+    },
+    {
+      "path": "js/render/player.js",
+      "size": 19359,
+      "sha256": "3c49f6ef1ee651150fdf977cf68047a529c2eb26c9d6d2100d5133b00b0bf67d"
+    },
+    {
+      "path": "js/render/projectiles.js",
+      "size": 23299,
+      "sha256": "6c339b747cd9a9c3b976d1a958134ed271eb7ebb71cc636328bfd0373b0d3734"
+    },
+    {
+      "path": "js/render/sectors.js",
+      "size": 17595,
+      "sha256": "f79ec4e3dcd36ae8b8a2ed08097cc3bd29b449c515a2d0d6b26e824bd49c732b"
+    },
+    {
+      "path": "js/render/specialEffects.js",
+      "size": 14776,
+      "sha256": "b4db90bb75305d84d83b1a4e222ba5bc05d6c165dec9774fa9171f8bfac65125"
+    },
+    {
+      "path": "js/render/spectralEnemies2D.js",
+      "size": 131040,
+      "sha256": "ab32894f3cec64d166d56867e1dc8909274ca8a4e5b50c0131a78ddcd0108a65"
+    },
+    {
+      "path": "js/render/visualBudget.js",
+      "size": 5628,
+      "sha256": "78c06e89cb50e5ce07896435ac40ec9403974f94f7cbea1e23dd9d3c0d4edb8b"
+    },
+    {
+      "path": "js/render/weaponIcons.js",
+      "size": 11894,
+      "sha256": "393d0e5dc7f3afe87c1aa5e3d15f54f47828902c382830aaf5ea82668ad7ffb2"
+    },
+    {
+      "path": "js/ui/alpha.js",
+      "size": 18135,
+      "sha256": "9d5efd1d5a2f2d89c9906c99072c17c81bec31184ec0338c97830f1b3675c09d"
+    },
+    {
+      "path": "js/ui/characters.js",
+      "size": 1557,
+      "sha256": "bcbb62c7a1d7c2dd2defbc338b2dc68d36183103ceb811afe17de3793d04b32f"
+    },
+    {
+      "path": "js/ui/characterThoughts.js",
+      "size": 4527,
+      "sha256": "fd27e8c29e02f7c9900d936438b05687f1fc57056b83dd43c586bb79f7c40681"
+    },
+    {
+      "path": "js/ui/dom.js",
+      "size": 3707,
+      "sha256": "defca80e14ce4268d76224b236722b541e139f1222977e3b8153c3a7ee014782"
+    },
+    {
+      "path": "js/ui/gamepadControls.js",
+      "size": 2855,
+      "sha256": "4bde0708dc016838536306162efafd60ac94f9ce4d79b735c7951b0683b2f0d7"
+    },
+    {
+      "path": "js/ui/mobileControls.js",
+      "size": 26976,
+      "sha256": "810cfdcf1cc42fcd3e9a9f9d4fda71c81ac565fbf195004475617af49954357e"
+    },
+    {
+      "path": "js/ui/onboarding.js",
+      "size": 4089,
+      "sha256": "ad04f421c252c1bea0392918d654a870b6c5d5bd95daadb15c3e8299fda4774e"
+    },
+    {
+      "path": "js/ui/settingsPanel.js",
+      "size": 9934,
+      "sha256": "3a4147ee5ed638a3aa3a53509ac86f0a06014fb1a16ea912539cfb0c134cfe99"
+    },
+    {
+      "path": "js/ui/systemMenu.js",
+      "size": 4234,
+      "sha256": "35ed36fe8db7941e4249ffd870c4ad1f21084ad0e56ebabcd269130c92118719"
+    },
+    {
+      "path": "LEEME.txt",
+      "size": 1097,
+      "sha256": "1cee74a1dab1b601a9555f118341e1495120adef7145e7343d88e9b367272d0a"
+    }
+  ]
+}

@@ -3,7 +3,7 @@
   const clone=x=>JSON.parse(JSON.stringify(x));
   function freeze(x){for(const v of Object.values(x))if(v&&typeof v==='object')freeze(v);return Object.freeze(x);}
   const canonical=window.NV.PILOT_ANIMATION_BASELINE;
-  const KEY='neonVoidPilotLabCopiesV1',ids=Object.keys(canonical.settings),ranges={speed:[0,1],amplitude:[0,1.5],stability:[0,1],micro:[0,1],detailSpeed:[0,1]};
+  const KEY='deadSingularityPilotLabCopiesV1',ids=Object.keys(canonical.settings),ranges={speed:[0,1],amplitude:[0,1.5],stability:[0,1],micro:[0,1],detailSpeed:[0,1]};
   let copies=[],active=null,sequence=0;
   function validSettings(settings){return !!settings&&ids.every(id=>settings[id]&&Object.entries(ranges).every(([key,[lo,hi]])=>typeof settings[id][key]==='number'&&Number.isFinite(settings[id][key])&&settings[id][key]>=lo&&settings[id][key]<=hi));}
   try{

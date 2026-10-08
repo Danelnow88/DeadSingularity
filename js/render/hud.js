@@ -1,4 +1,4 @@
-﻿// ===== RENDER: HUD en canvas (cooldown especial, panel de arma, stats) =====
+// ===== RENDER: HUD en canvas (cooldown especial, panel de arma, stats) =====
 // Funciones de dibujo PUROS. game.js aporta ctx y los valores de su closure al llamarlas.
 (() => {
   'use strict';

@@ -1,27 +1,114 @@
 {
-  "name": "neon-void",
-  "version": "0.10.0-alpha",
+  "name": "deadsingularity",
+  "productName": "DeadSingularity",
+  "version": "1.1.0-alpha.1",
   "private": true,
-  "description": "Roguelite arcade offline de expediciones y supervivencia",
-  "productName": "NEON VOID",
   "license": "UNLICENSED",
+  "description": "DeadSingularity: arcade para Windows, web y Android",
   "main": "desktop/main.cjs",
-  "engines": { "node": ">=22.12.0" },
   "scripts": {
+    "check:syntax": "node tools/check-syntax.cjs",
+    "check:repository": "node tools/check-repository.cjs",
+    "quality": "npm run check:syntax && npm run check:content && npm run check:delivery && npm run check:repository && npm test",
     "test": "node tests/run_all.js",
-    "start": "node tools/serve.js",
-    "runtime:install": "node node_modules/electron/install.js",
-    "desktop": "electron .",
-    "build:web": "node tools/build_release.cjs",
-    "build:windows": "node tools/build_release.cjs --windows",
-    "verify:browser": "node --experimental-websocket tools/verify_alpha.cjs",
-    "measure:weapons": "node --experimental-websocket tools/measure_weapon_pairs.cjs",
-    "capture:bosses": "node --experimental-websocket tools/capture_boss_gallery.cjs",
-    "measure:bosses": "node --experimental-websocket tools/measure_boss_roster.cjs",
-    "capture:sectors": "node --experimental-websocket tools/capture_sector_gallery.cjs",
-    "measure:performance": "node tools/performance/stress_harness.js --frames 600 --json previews/release-j/performance-stress.json"
+    "check:delivery": "node tools/check-delivery.cjs",
+    "build:web": "node tools/build-web.cjs",
+    "build:desktop": "node tools/build-desktop.cjs",
+    "build:desktop:dir": "node tools/build-desktop.cjs --dir",
+    "build:desktop:signed": "node tools/build-desktop.cjs --signed",
+    "dist": "node tools/build-desktop.cjs",
+    "start": "node tools/open.cjs",
+    "serve": "node tools/serve.cjs",
+    "desktop": "node tools/open-desktop.cjs",
+    "audit:reference": "node tools/check-reference.cjs && node tools/audit-reference.cjs",
+    "check:input": "node tools/check-input.cjs",
+    "check:loop": "node tools/check-loop.cjs",
+    "check:slice": "node tools/check-slice.cjs",
+    "check:motion": "node tools/check-motion.cjs",
+    "check:world": "node tools/check-world.cjs",
+    "measure:performance": "node tools/performance/stress_harness.js --frames 600 --json local/validation/performance-stress.json",
+    "content:build": "node tools/content-catalog.cjs --build",
+    "check:content": "node tools/content-catalog.cjs",
+    "inventory:modules": "node tools/inventory-modules.cjs",
+    "release:manifest": "node tools/release-manifest.cjs",
+    "qa:alpha": "node tools/qa-alpha.cjs",
+    "build:android:assets": "node tools/build-android-assets.cjs"
+  },
+  "build": {
+    "appId": "com.deadsingularity.v1",
+    "productName": "DeadSingularity",
+    "copyright": "DeadSingularity — Proprietary",
+    "electronVersion": "44.5.0",
+    "files": [
+      "desktop/*.cjs",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "css",
+        "to": "css",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "js",
+        "to": "js",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "index.html",
+        "to": "index.html"
+      },
+      {
+        "from": "AVISOS.md",
+        "to": "AVISOS.md"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/brand/icon.ico",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "DeadSingularity",
+      "installerIcon": "assets/brand/icon.ico",
+      "uninstallerIcon": "assets/brand/icon.ico",
+      "installerHeaderIcon": "assets/brand/icon.ico",
+      "license": "AVISOS.md",
+      "artifactName": "DeadSingularity_V1_Setup_${version}.exe"
+    },
+    "directories": {
+      "output": "releases",
+      "buildResources": "assets"
+    },
+    "asar": true,
+    "compression": "maximum",
+    "generateUpdatesFilesForAllChannels": false
   },
   "devDependencies": {
-    "electron": "44.5.0"
+    "electron": "44.5.0",
+    "electron-builder": "24.13.3"
   }
 }

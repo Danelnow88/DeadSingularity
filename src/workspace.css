@@ -1,0 +1,17 @@
+:root { color-scheme: dark; font-family: system-ui, sans-serif; background: #070b15; color: #eff6ff; }
+* { box-sizing: border-box; }
+body { margin: 0; background: radial-gradient(ellipse at top right,#172341,transparent 65%); min-height: 100vh; }
+main { max-width: 940px; margin: auto; padding: clamp(24px,6vw,70px) 24px; }
+.eyebrow { color: #a5dbe9; font-size: 14px; font-weight: 700; }
+h1 { font-size: clamp(30px,6vw,52px); margin: 12px 0 20px; line-height: 1.12; }
+h2 { font-size: 23px; margin: 0 0 12px; }
+p { font-size: 17px; line-height: 1.6; }
+.intro { max-width: 760px; color: #c8d5e5; margin-bottom: 30px; }
+.panel { border: 1px solid #3f546f; border-radius: 15px; padding: 26px; margin: 18px 0; background: #101a2bee; }
+a { color: #a2eaf4; }
+.button { display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 12px 22px; border-radius: 9px; font-weight: 800; color: #041421; background: #97e6ef; text-decoration: none; margin-top: 8px; }
+.button:hover { background: #c5f4fa; }
+a:focus-visible { outline: 3px solid #ffffff; outline-offset: 5px; }
+.status { font-weight: 700; color: #e2d8ff; }
+.footnote { color: #b2c2d7; font-size: 15px; }
+@media(max-width:500px) { .panel { padding: 20px; } .button { width: 100%; } }

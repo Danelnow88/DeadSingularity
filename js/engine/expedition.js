@@ -4,8 +4,9 @@
   'use strict';
   const NV = window.NV;
   const VERSION = 1;
-  const SAVE_KEY = 'neonVoidExpeditionV1';
-  const PROFILE_KEY = 'neonVoidCareerV1';
+  const catalogIdentity = () => NV.activeCatalog ? { id: NV.activeCatalog.id, packages: NV.extensions.export().map(p => ({id:p.id,version:p.version})) } : null;
+  const SAVE_KEY = 'deadSingularityExpeditionV1';
+  const PROFILE_KEY = 'deadSingularityCareerV1';
   const SECTORS = ['UMBRAL', 'FUNDICIÓN', 'FRACTURA', 'CORAZÓN DEL VACÍO'];
   const PLAYER_FIELDS = ['hp', 'maxHp', 'armor', 'luck', 'agility', 'level', 'xp', 'xpToNext',
     'baseMoveSpeed', 'moveSpeedPermanentMult', 'moveControlPermanentMult', 'permCrit', 'permDodge', 'permRegen', 'permGreed'];
@@ -125,7 +126,7 @@
     const run = normalizeRun(raw.run);
     if (!run || run.completed) return null;
     const inventory = [...new Set(Array.isArray(raw.inventory) ? raw.inventory : [])].filter(id => NV.weaponById(id)).slice(0, 6);
-    if (!inventory.length) return null;
+    if (!inventory.length || (Array.isArray(raw.inventory) && raw.inventory.some(id => !NV.weaponById(id)))) return null;
     const player = {};
     for (const key of PLAYER_FIELDS) if (Number.isFinite(raw.player && raw.player[key])) player[key] = number(raw.player[key], 0, 1e6);
     player.maxHp = number(player.maxHp, 1, 5000, 120);
@@ -146,7 +147,7 @@
     const shopBought = {};
     for (const id of ['hp', 'speed', 'armor', 'luck']) shopBought[id] = integer(raw.shopBought && raw.shopBought[id], 0, 8);
     const upgradeSlots = (Array.isArray(raw.upgradeSlots) ? raw.upgradeSlots : []).filter(s => s && ['hp', 'speed', 'armor', 'luck'].includes(s.icon)).slice(0, 24).map(s => ({ icon: s.icon, name: { hp: '+25 HP', speed: 'Agilidad', armor: 'Armadura', luck: 'Suerte' }[s.icon] }));
-    return { version: VERSION, character: raw.character, wave: raw.wave, player, run, inventory, levels, kills, fus, shopBought, upgradeSlots,
+    return { version: VERSION, catalog: catalogIdentity(), character: raw.character, wave: raw.wave, player, run, inventory, levels, kills, fus, shopBought, upgradeSlots,
       currentWeapon: inventory.includes(raw.currentWeapon) ? raw.currentWeapon : inventory[0], consumables,
       difficulty: ['easy', 'normal', 'hard'].includes(raw.difficulty) ? raw.difficulty : 'normal',
       score: integer(raw.score, 0, 1e9), shards: integer(raw.shards, 0, 1e7), savedAt: integer(raw.savedAt, 0, 1e15) };
@@ -159,16 +160,17 @@
   }
   function profile() { return normalizeProfile(read(PROFILE_KEY)); }
   function exportProgress() {
-    const raw = read('neonVoidMeta') || {};
-    return { kind: 'neon-void-progress', version: VERSION,
+    const raw = read('deadSingularityMeta') || {};
+    return { kind: 'dead-singularity-progress', version: VERSION,
       meta: { metaShards: integer(raw.metaShards, 0, 1e9), permUpgrades: NV.normalizePermUpgrades(raw.permUpgrades) },
       career: profile(), checkpoint: checkpoint(read(SAVE_KEY)) };
   }
   function importProgress(raw) {
-    if (!raw || raw.kind !== 'neon-void-progress' || raw.version !== VERSION || !raw.meta || !raw.career) return false;
+    raw = NV.migration ? NV.migration.normalizeProgress(raw) : raw;
+    if (!raw || raw.kind !== 'dead-singularity-progress' || raw.version !== VERSION || !raw.meta || !raw.career) return false;
     const saved = raw.checkpoint ? checkpoint(raw.checkpoint) : null;
     if (raw.checkpoint && !saved) return false; // no descartar silenciosamente una partida incompatible.
-    const data = { neonVoidMeta: { metaShards: integer(raw.meta.metaShards, 0, 1e9), permUpgrades: NV.normalizePermUpgrades(raw.meta.permUpgrades) },
+    const data = { deadSingularityMeta: { metaShards: integer(raw.meta.metaShards, 0, 1e9), permUpgrades: NV.normalizePermUpgrades(raw.meta.permUpgrades) },
       [PROFILE_KEY]: normalizeProfile(raw.career), [SAVE_KEY]: saved };
     const previous = {};
     try {
