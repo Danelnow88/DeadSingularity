@@ -9,6 +9,8 @@
   var ctx = canvas.getContext('2d', { alpha:true });
   if (!ctx) return;
   var motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var mobile=!!(NV.capabilities&&NV.capabilities.isMobile);
+  var travelSpeed=mobile?.18:.09;
   var colors = ['#81dfff','#d59bff','#ffd4a0','#ff9cd7','#eef7ff'];
   var sprites = colors.map(function (color) {
     var sprite = document.createElement('canvas'); sprite.width = sprite.height = 64;
@@ -41,7 +43,7 @@
     stars=[];
     for(var i=0;i<count;i++) stars.push({x:random(),y:random(),depth:.2+random()*.8,
       radius:.35+random()*.8,phase:random()*Math.PI*2,color:Math.floor(random()*colors.length),
-      bright:i%23===0,alpha:.2+random()*.6});
+      bright:i%(mobile?14:23)===0,alpha:.28+random()*.6});
     render();
   }
   function render() {
@@ -51,13 +53,21 @@
       var s=stars[i];
       // Move towards the camera: perspective expands out of one vanishing point.
       // Wrapped depth recycles the same bounded pool, without allocations/RNG.
-      var z=.12+((s.depth-time*.065)%1+1)%1;
+      var z=.12+((s.depth-time*travelSpeed)%1+1)%1;
       var scale=1/(z+.35);
       var x=width*.5+(s.x-.5)*width*scale+pointerX*5;
       var y=height*.44+(s.y-.5)*height*scale+pointerY*4;
       if(x < -32 || y < -32 || x > width+32 || y > height+32) continue;
       var fade=Math.min(1,z/.2,(1.12-z)/.08);
       ctx.globalAlpha=(s.bright?.9:s.alpha)*(.78+.22*Math.sin(time*.65+s.phase))*fade;
+      if(!calm&&(s.bright||i%11===0)) {
+        var dx=x-width*.5,dy=y-height*.44,distance=Math.hypot(dx,dy)||1;
+        var length=Math.min(24,(mobile?5:3)+scale*scale*3);
+        var alpha=ctx.globalAlpha;ctx.globalAlpha=alpha*.38;
+        ctx.strokeStyle=colors[s.color];ctx.lineWidth=mobile?1.2:1;
+        ctx.beginPath();ctx.moveTo(x-dx/distance*length,y-dy/distance*length);ctx.lineTo(x,y);ctx.stroke();
+        ctx.globalAlpha=alpha;
+      }
       if(s.bright) {
         var size=12+scale*12;
         ctx.drawImage(sprites[s.color],x-size/2,y-size/2,size,size);
@@ -96,9 +106,11 @@
   else if(motion.addListener) motion.addListener(sync);
   if(NV.onSettingsChange) NV.onSettingsChange(sync);
   NV.lobbyAtmosphere={getSnapshot:function(){
-    var s=stars[0],z=s?.12+((s.depth-(reduced()?0:elapsed)*.065)%1+1)%1:1;
+    var s=stars[0],z=s?.12+((s.depth-(reduced()?0:elapsed)*travelSpeed)%1+1)%1:1;
     return {active:active,stars:stars.length,frames:frames,motion:'forward',time:elapsed,
       probe:s?{depth:z,distance:Math.hypot((s.x-.5)*width,(s.y-.5)*height)/(z+.35)}:null,
-      reducedMotion:reduced(),width:width,height:height,dpr:dpr};}};
+      reducedMotion:reduced(),travelSpeed:travelSpeed,
+      stopReason:!visible()?'hidden':motion.matches?'system-reduced-motion':graphics().particles===false?'particles-disabled':reduced()?'reduced-effects':null,
+      width:width,height:height,dpr:dpr};}};
   sync();
 })();

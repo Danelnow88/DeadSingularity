@@ -22,6 +22,8 @@ jobs:
       - run: npm run quality
       - name: Validate lobby presentation
         run: node tools/qa-lobby-runner.cjs
+      - name: Validate mobile touch ergonomics
+        run: node tools/qa-lobby-runner.cjs --mobile-hud
       - run: npm run build:web
       - run: npm run qa:alpha -- --soak-seconds=10
       - run: npm run build:desktop:dir
@@ -44,6 +46,8 @@ jobs:
             local/validation/*.png
             local/validation/lobby-cosmos/*.json
             local/validation/lobby-cosmos/*.png
+            local/validation/mobile-ergonomics/*.json
+            local/validation/mobile-ergonomics/*.png
             local/logs/*.log
           if-no-files-found: warn
           retention-days: 14

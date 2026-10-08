@@ -85,14 +85,16 @@
   const consumableIndicatorIcon = d.getElementById('consumableIndicatorIcon');
   const weaponIndicatorName = d.getElementById('weaponIndicatorName');
   const consumableIndicatorName = d.getElementById('consumableIndicatorName');
+  const consumableIndicatorCount = d.getElementById('consumableIndicatorCount');
   const specialStatus = d.getElementById('touchSpecialStatus');
   const mobileHudEl = d.getElementById('mobileHud');
 
-  const MAX_R = 40;      // radio máximo de arrastre del thumb (px CSS)
+  const MAX_R = 48;      // radio máximo de arrastre del thumb (px CSS)
   const DEAD_PX = 8;     // dead zone en píxeles (tolerancia al apoyar el dedo)
 
   let activePointer = null; // pointerId / touch identifier del joystick activo
   const heldPointers = new Map();
+  const resetCycleGestures = [];
   let originX = 0, originY = 0;
 
   const hasPointerEvents = !!(w.PointerEvent);
@@ -130,15 +132,18 @@
   // --- Reset total (evita teclas/direcciones "trabadas" al cambiar de app) ---
   function resetJoystick() {
     activePointer = null;
+    if (input.setMoveVector) input.setMoveVector(0, 0);
     if (input.setMoveLeft) input.setMoveLeft(false);
     if (input.setMoveRight) input.setMoveRight(false);
     if (input.setMoveUp) input.setMoveUp(false);
     if (input.setMoveDown) input.setMoveDown(false);
     if (zone) zone.classList.remove('active');
     if (thumb) thumb.style.transform = '';
+    if (base && base.style) { base.style.left='';base.style.top='';base.style.bottom=''; }
   }
   function resetButtons() {
     heldPointers.clear();
+    resetCycleGestures.forEach(clear=>clear());
     if (input.setSlide) input.setSlide(false);
     if (input.setSpecial) input.setSpecial(false);
   }
@@ -158,6 +163,7 @@
   function applyJoystickOutput(dx, dy) {
     const mag = Math.hypot(dx, dy);
     if (mag <= DEAD_PX) {
+      if (input.setMoveVector) input.setMoveVector(0, 0);
       if (input.setMoveLeft) input.setMoveLeft(false);
       if (input.setMoveRight) input.setMoveRight(false);
       if (input.setMoveUp) input.setMoveUp(false);
@@ -169,6 +175,13 @@
     const cx = (dx / mag) * MAX_R * clamp;
     const cy = (dy / mag) * MAX_R * clamp;
     if (thumb) thumb.style.transform = 'translate(' + cx + 'px,' + cy + 'px)';
+    // Analog intensity uses the existing normalized intent/physics, not a
+    // separate mobile speed. Keep the directional bridge for older runtimes.
+    if (input.setMoveVector) {
+      const intensity=Math.min(1,(mag-DEAD_PX)/(MAX_R-DEAD_PX));
+      input.setMoveVector(dx/mag*intensity,dy/mag*intensity);
+      return;
+    }
     const v = vectorToInput(cx / MAX_R, cy / MAX_R, { deadZone: DEAD_PX / MAX_R, threshold: 0.18 });
     if (input.setMoveLeft) input.setMoveLeft(v.left);
     if (input.setMoveRight) input.setMoveRight(v.right);
@@ -181,8 +194,17 @@
     try { e.preventDefault(); } catch (_) { /* defensivo */ }
     activePointer = idOf(e);
     try { if(zone.setPointerCapture&&e.pointerId!=null)zone.setPointerCapture(e.pointerId); } catch (_) {}
-    const c = joystickCenter();
-    originX = c.x; originY = c.y;
+    const p=ptOf(e),c=joystickCenter();
+    originX=p&&Number.isFinite(p.clientX)?p.clientX:c.x;
+    originY=p&&Number.isFinite(p.clientY)?p.clientY:c.y;
+    // Any contact in the broad zone grabs the stick at rest. The visible base
+    // stays inside the safe zone, even when the finger starts near an edge.
+    if(base && base.style && zone && zone.getBoundingClientRect) {
+      const r=zone.getBoundingClientRect(),radius=58;
+      const x=Math.max(radius,Math.min(r.width-radius,originX-r.left));
+      const y=Math.max(radius,Math.min(r.height-radius,originY-r.top));
+      base.style.left=(x-radius)+'px';base.style.top=(y-radius)+'px';base.style.bottom='auto';
+    }
     if (zone && zone.classList) zone.classList.add('active');
     if (thumb) thumb.style.transform = 'translate(0,0)';
   });
@@ -222,6 +244,7 @@
   if (slideBtn) {
     bindHeldAction(slideBtn, 'setSlide');
   }
+  bind(zone,'lostpointercapture',e=>{if(idOf(e)===activePointer)resetJoystick();});
   function bindHeldAction(button, setter) {
     bind(button, 'pointerdown', e => {
       if (heldPointers.has(button)) return;
@@ -237,11 +260,11 @@
     bind(w,'pointerup',end); bind(w,'pointercancel',end);
   }
   for(const [button,setter] of [[slideBtn,'setSlide'],[specialBtn,'setSpecial']]){
-    bind(button,'lostpointercapture',()=>{heldPointers.delete(button);if(input[setter])input[setter](false);});
+    bind(button,'lostpointercapture',e=>{if(heldPointers.get(button)!==idOf(e))return;heldPointers.delete(button);if(input[setter])input[setter](false);});
   }
   // USAR = F (consumible seleccionado). Acción one-shot en el down.
   if (useBtn) {
-    bind(useBtn, 'pointerdown', press(() => { if (typeof input.useSelected === 'function') input.useSelected(); }));
+    bind(useBtn, 'pointerdown', press(() => { if (!useBtn.disabled && typeof input.useSelected === 'function') input.useSelected(); }));
   }
 
   // --- CAMBIO DE ARMA táctil (reutiliza cycleWeapon del juego) ---
@@ -252,8 +275,37 @@
   if (consumNext) bind(consumNext, 'pointerdown', press(() => { if (typeof input.cycleConsumable === 'function') input.cycleConsumable(1); }));
   // --- MODO CHIP compacto: tocar el indicador cicla al siguiente.
   //     Solo presentacion/mapeo de input: reutiliza cycleWeapon/cycleConsumable.
-  if (weaponIndicator) bind(weaponIndicator, 'pointerdown', press(() => { if (typeof input.cycleWeapon === 'function') input.cycleWeapon(1); }));
-  if (consumableIndicator) bind(consumableIndicator, 'pointerdown', press(() => { if (typeof input.cycleConsumable === 'function') input.cycleConsumable(1); }));
+  bindCycleIndicator(weaponIndicator,'cycleWeapon');
+  bindCycleIndicator(consumableIndicator,'cycleConsumable');
+  function bindCycleIndicator(button,method) {
+    if(!button)return;
+    let gesture=null;
+    const cycle=dir=>{if(typeof input[method]==='function')input[method](dir);};
+    const clear=()=>{gesture=null;};
+    resetCycleGestures.push(clear);
+    bind(button,'pointerdown',e=>{
+      if(gesture)return;
+      const p=e.changedTouches?e.changedTouches[0]:e;
+      gesture={id:p.identifier==null?e.pointerId:p.identifier,x:p.clientX,y:p.clientY};
+      try{e.preventDefault();if(button.setPointerCapture&&e.pointerId!=null)button.setPointerCapture(e.pointerId);}catch(_){}
+    });
+    const end=e=>{
+      if(!gesture)return;
+      const p=e.changedTouches?[...e.changedTouches].find(t=>t.identifier===gesture.id):e;
+      if(!p||(p.identifier==null?p.pointerId:p.identifier)!==gesture.id)return;
+      const dx=p.clientX-gesture.x,dy=p.clientY-gesture.y;clear();
+      if(Math.abs(dx)>=24&&Math.abs(dx)>Math.abs(dy)*1.2)cycle(dx<0?1:-1);
+      else if(Math.hypot(dx,dy)<18)cycle(1);
+    };
+    bind(button,'pointerup',end);bind(w,'pointerup',end);
+    const cancel=e=>{if(!gesture)return;const p=e.changedTouches?[...e.changedTouches].find(t=>t.identifier===gesture.id):e;if(p&&(p.identifier==null?p.pointerId:p.identifier)===gesture.id)clear();};
+    bind(button,'pointercancel',cancel);bind(button,'lostpointercapture',cancel);
+    button.addEventListener('click',e=>{if(e.detail===0)cycle(1);});
+    w.addEventListener('blur',clear);
+    w.addEventListener('resize',clear);
+    d.addEventListener('visibilitychange',()=>{if(d.hidden)clear();});
+    d.addEventListener('nv-game-state-change',clear);
+  }
 
   // --- PANEL DE OPCIONES MÓVIL (☰) ---
   function closeOptions() { if (mobileOptions) mobileOptions.classList.add('hidden'); }
@@ -296,7 +348,7 @@
       NV.drawWeaponIcon(iconCtx, (info && info.id) || 'pistol', 16, 16, 27, { glow: 3 });
     }
     weaponIndicator.title = 'Arma actual: ' + n;
-    weaponIndicator.setAttribute('aria-label', 'Arma: ' + n + '. Tocar para cambiar.');
+    weaponIndicator.setAttribute('aria-label', 'Arma: ' + n + '. Tocar: siguiente. Deslizar: anterior o siguiente.');
   }
   function renderConsumableInfo(info) {
     if (!consumableIndicator) return;
@@ -304,19 +356,24 @@
     consumableIndicator.classList.toggle('is-empty', !info);
     if (!info) {
       if (consumableIndicatorName) consumableIndicatorName.textContent = 'SIN';
+      if (consumableIndicatorCount) consumableIndicatorCount.textContent = '';
       consumableIndicator.title = 'Sin consumibles';
+      consumableIndicator.setAttribute('aria-label','Sin consumibles');
+      if(useBtn){useBtn.disabled=true;useBtn.setAttribute('aria-label','Sin consumibles para usar');}
       return;
     }
     const consumable = NV.CONSUMABLES && NV.CONSUMABLES[info.type];
     const label = (consumable && consumable.name) || info.name || info.type || '—';
     const count = typeof info.count === 'number' ? info.count : info.stack;
     const s = (typeof count === 'number' && count > 0) ? ' x' + count : '';
-    if (consumableIndicatorName) consumableIndicatorName.textContent = label + s;
+    if (consumableIndicatorName) consumableIndicatorName.textContent = label;
+    if (consumableIndicatorCount) consumableIndicatorCount.textContent = typeof count==='number'&&count>0?String(count):'';
     if (iconCtx && typeof NV.drawConsumableIcon === 'function') {
       NV.drawConsumableIcon(iconCtx, info.type || info.name, 16, 16, 27, { glow: 3 });
     }
     consumableIndicator.title = 'Consumible: ' + label;
-    consumableIndicator.setAttribute('aria-label', 'Consumible: ' + label + s + '. Tocar para cambiar.');
+    consumableIndicator.setAttribute('aria-label', 'Consumible: ' + label + s + '. Tocar: siguiente. Deslizar: anterior o siguiente.');
+    if(useBtn){useBtn.disabled=false;useBtn.setAttribute('aria-label','Usar '+label+s);}
   }
   function renderSpecialInfo(info) {
     if (!specialBtn || !info) return;
@@ -487,6 +544,7 @@
   // --- Higiene global ---
   if (w && typeof w.addEventListener === 'function') {
     w.addEventListener('blur', () => { resetJoystick(); resetButtons(); });
+    w.addEventListener('resize', () => { resetJoystick(); resetButtons(); });
     bind(w, 'pointerup', endJoystickPointer);
     bind(w, 'pointercancel', endJoystickPointer);
   }

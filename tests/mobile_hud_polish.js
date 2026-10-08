@@ -8,6 +8,7 @@ function t(name, fn) {
 
 const html = fs.readFileSync('index.html', 'utf8');
 const css = fs.readFileSync('css/styles.css', 'utf8');
+const finalMobile = fs.readFileSync('css/mobile.css', 'utf8');
 const game = fs.readFileSync('js/game.js', 'utf8');
 const mobile = fs.readFileSync('js/ui/mobileControls.js', 'utf8');
 
@@ -19,11 +20,13 @@ t('mobile arma/item incluyen canvas de icono y etiqueta legible', () => {
   if (!mobile.includes('NV.drawConsumableIcon(iconCtx')) throw new Error('item no reutiliza drawConsumableIcon');
 });
 
-t('arma/item mobile se apilan upper-right y liberan bottom-center', () => {
-  if (!/\.nv-mobile \.mobile-weapon-switch,[\s\S]*right:\s*calc\(env\(safe-area-inset-right/.test(css)) throw new Error('switches no respetan safe-area derecha');
-  if (!/\.nv-mobile \.mobile-weapon-switch\s*\{[\s\S]*top:\s*calc\(env\(safe-area-inset-top/.test(css)) throw new Error('arma no está bajo header/menu');
-  if (!/\.nv-mobile \.mobile-consumable-switch\s*\{[\s\S]*top:\s*calc\(env\(safe-area-inset-top/.test(css)) throw new Error('item no está apilado bajo arma');
-  if (!/\.nv-mobile \.mobile-weapon-switch,[\s\S]*bottom:\s*auto/.test(css)) throw new Error('bottom-center no fue liberado');
+t('dock final agrupa equipo a la derecha y deja libre JEFE/DASH', () => {
+  if (!html.includes('id="mobileLoadout"')) throw new Error('falta dock compartido');
+  if (!finalMobile.includes('right:max(12px,var(--nv-safe-right,env(safe-area-inset-right')) throw new Error('safe area ausente');
+  if (!finalMobile.includes('position:static !important; inset:auto !important; transform:none !important;')) throw new Error('switches todavía posicionados en el centro');
+  if (!finalMobile.includes('width:270px; height:52px')) throw new Error('dock compacto ausente');
+  if (!finalMobile.includes('height:84px !important')) throw new Error('acciones no ampliadas');
+  if (!finalMobile.includes('width:clamp(210px,27vw,280px)')) throw new Error('agarre amplio ausente');
 });
 
 t('especial mobile integra progreso, segundos y estado listo', () => {
@@ -55,7 +58,7 @@ t('desktop conserva la posición legacy del combo y sólo relocaliza enemigos', 
 });
 
 t('switching e input especial conservan las rutas existentes', () => {
-  for (const token of ['input.cycleWeapon(1)', 'input.cycleConsumable(1)', "bindHeldAction(specialBtn, 'setSpecial')", 'input[setter](true)', 'input[setter](false)']) {
+  for (const token of ["bindCycleIndicator(weaponIndicator,'cycleWeapon')", "bindCycleIndicator(consumableIndicator,'cycleConsumable')", "bindHeldAction(specialBtn, 'setSpecial')", 'input[setter](true)', 'input[setter](false)']) {
     if (!mobile.includes(token)) throw new Error('ruta de input ausente: ' + token);
   }
 });

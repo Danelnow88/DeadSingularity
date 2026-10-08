@@ -9,10 +9,10 @@
     <link rel="stylesheet" href="css/lobby-f093.css?nv=audio-20261002b" />
     <link rel="stylesheet" href="css/alpha.css?nv=audio-20261002b" />
     <link rel="stylesheet" href="css/lobby-layout.css?nv=lobby-20261003" />
-    <link rel="stylesheet" href="css/mobile.css?nv=mobile-controls-20261007h" />
+    <link rel="stylesheet" href="css/mobile.css?nv=mobile-ergonomics-20261008" />
     <link rel="stylesheet" href="css/system-menu.css?nv=icons-ui-20261007" />
     <link rel="stylesheet" href="css/shop-remaster.css?nv=shop-mobile-20261007g" />
-    <link rel="stylesheet" href="css/lobby-cosmos.css?nv=cosmos-20261008" />
+    <link rel="stylesheet" href="css/lobby-cosmos.css?nv=cosmos-mobile-20261008b" />
     <!-- Capa móvil: detección por capacidad (se carga primero; solo etiqueta <html>). -->
     <script src="js/core/capabilities.js?nv=audio-20261002b"></script>
     <!-- La distribución Canvas2D funciona offline. WebGL legado sólo a pedido. -->
@@ -258,28 +258,30 @@
           <div id="joystickBase" class="joystick-base"><div id="joystickThumb" class="joystick-thumb"></div></div>
         </div>
         <div id="mobileActions" class="mobile-actions" aria-label="Controles táctiles">
-          <button id="touchUseBtn" class="touch-btn touch-use" type="button">USAR</button>
           <button id="touchSlideBtn" class="touch-btn touch-slide" type="button">DASH</button>
           <button id="touchSpecialBtn" class="touch-btn touch-special is-ready" type="button" aria-label="Especial listo">
             <span class="touch-special-label">ESPECIAL</span>
             <span id="touchSpecialStatus" class="touch-special-status" aria-hidden="true">LISTO</span>
           </button>
         </div>
+        <div id="mobileLoadout" class="mobile-loadout" aria-label="Equipo táctil">
         <div id="mobileWeaponSwitch" class="mobile-weapon-switch" aria-label="Cambio de arma">
           <button id="touchWeaponPrev" class="touch-btn touch-switch" type="button" aria-label="Arma anterior">◀</button>
           <button id="weaponIndicator" class="switch-indicator" type="button" aria-label="Cambiar arma" aria-live="polite">
             <canvas id="weaponIndicatorIcon" class="switch-indicator-icon" width="32" height="32" aria-hidden="true"></canvas>
-            <span class="switch-indicator-copy"><span class="switch-indicator-kind">ARMA</span><span id="weaponIndicatorName" class="switch-indicator-name">—</span></span>
+            <span class="switch-indicator-copy"><span class="switch-indicator-kind">ARMA ↔</span><span id="weaponIndicatorName" class="switch-indicator-name">—</span></span>
           </button>
           <button id="touchWeaponNext" class="touch-btn touch-switch" type="button" aria-label="Arma siguiente">▶</button>
         </div>
         <div id="mobileConsumableSwitch" class="mobile-consumable-switch" aria-label="Selección de consumible">
           <button id="touchConsumPrev" class="touch-btn touch-switch" type="button" aria-label="Consumible anterior">◀</button>
           <button id="consumableIndicator" class="switch-indicator is-empty" type="button" aria-label="Cambiar consumible" aria-live="polite">
-            <canvas id="consumableIndicatorIcon" class="switch-indicator-icon" width="32" height="32" aria-hidden="true"></canvas>
-            <span class="switch-indicator-copy"><span class="switch-indicator-kind">ITEM</span><span id="consumableIndicatorName" class="switch-indicator-name">SIN</span></span>
+            <canvas id="consumableIndicatorIcon" class="switch-indicator-icon" width="32" height="32" aria-hidden="true"></canvas><span id="consumableIndicatorCount" class="switch-count" aria-hidden="true"></span>
+            <span class="switch-indicator-copy"><span class="switch-indicator-kind">ÍTEM ↔</span><span id="consumableIndicatorName" class="switch-indicator-name">SIN</span></span>
           </button>
           <button id="touchConsumNext" class="touch-btn touch-switch" type="button" aria-label="Consumible siguiente">▶</button>
+          <button id="touchUseBtn" class="touch-btn touch-use" type="button" aria-label="Usar consumible seleccionado">USAR</button>
+        </div>
         </div>
         <div id="mobileOptions" class="mobile-options hidden" aria-label="Panel de opciones">
           <button id="mPauseBtn" class="opt-btn" type="button">⏸ Pausa</button>
@@ -457,9 +459,9 @@
     <script src="js/ui/gamepadControls.js?nv=audio-20261002b"></script>
     <script src="js/ui/alpha.js?nv=shop-footer-20261007g"></script>
     <script src="js/ui/systemMenu.js?nv=system-20261007"></script>
-    <script src="js/ui/lobbyAtmosphere.js?nv=cosmos-20261008"></script>
+    <script src="js/ui/lobbyAtmosphere.js?nv=cosmos-mobile-20261008b"></script>
     <!-- Último: necesita NV.input (expuesto por game.js) y NV.viewport. -->
-    <script src="js/ui/mobileControls.js?nv=mobile-controls-20261007h"></script>
+    <script src="js/ui/mobileControls.js?nv=mobile-ergonomics-20261008"></script>
   <script src="js/core/bootstrap.js?nv=growth-1"></script>
   </body>
 </html>
