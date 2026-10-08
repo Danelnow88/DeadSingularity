@@ -18,7 +18,9 @@ Comandos de desarrollo:
 - npm run qa:alpha: Chromium/Electron real, guardados, audio, controles y escenarios repetidos.
 - npm run build:android:assets: prepara los mismos recursos para el contenedor Android.
 
-Electron está fijado a 44.5.0. El renderer tiene sandbox y no accede a Node.
+Electron está fijado a 44.5.0. npm ci descarga automáticamente su binario
+mediante install-electron; npm run runtime:install permite recuperarlo sin
+cambiar la versión. Se requiere Node 22.12 o posterior. El renderer tiene sandbox y no accede a Node.
 Las entregas sirven únicamente index.html, js, css, assets y AVISOS.md; no incluyen
 perfiles, respaldos, reference, src ni herramientas de desarrollo.
 check:delivery verifica 97 recursos de esta versión; la referencia congelada

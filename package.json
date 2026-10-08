@@ -32,7 +32,9 @@
     "inventory:modules": "node tools/inventory-modules.cjs",
     "release:manifest": "node tools/release-manifest.cjs",
     "qa:alpha": "node tools/qa-alpha.cjs",
-    "build:android:assets": "node tools/build-android-assets.cjs"
+    "build:android:assets": "node tools/build-android-assets.cjs",
+    "postinstall": "install-electron",
+    "runtime:install": "install-electron"
   },
   "build": {
     "appId": "com.deadsingularity.v1",
