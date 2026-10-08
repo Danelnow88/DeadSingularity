@@ -5,8 +5,8 @@
   "files": [
     {
       "path": "index.html",
-      "size": 36711,
-      "sha256": "1d8cfdea6f95e3fce57cb4827d979133ecbacdc8f8a6c7e3de3d1dc3892c228d"
+      "size": 36708,
+      "sha256": "e1551c639b07c618a1408f035a3fbf8c463f39c517691d14cf118ffe8a99a5c1"
     },
     {
       "path": "AVISOS.md",
@@ -460,8 +460,8 @@
     },
     {
       "path": "css/mobile.css",
-      "size": 28986,
-      "sha256": "8ca98684143aec1d1fa5eb9723dd021a4279b23ba2e3f69758fe6f5e6ea3a057"
+      "size": 28999,
+      "sha256": "bb07e6af3051fbc721265447df303cd825fcb435818f21ad8157bdae2f65b6f9"
     },
     {
       "path": "css/shop-remaster.css",

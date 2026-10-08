@@ -29,6 +29,10 @@ verified: confirm the published revision on the actual phone.
   disabled with no items; it consumes exactly one selected item through the same API.
 - Follow-up: USAR sits between the equipment row and DASH, outside both groups.
   Right margin is 8px minimum, always respecting safe-area insets.
+- Physical follow-up: user reports Chrome works on Moto G84 5G; the stationary
+  background was observed in Brave. The revised lifecycle is not yet physically
+  verified in Brave. Right-hand controls lifted another 8px above the safe-area
+  boundary, with their existing internal spacing preserved.
 - Portrait now requests rotation from initial lobby entry as well as gameplay.
   Orientation refreshes on pageshow, visibility and visual viewport changes.
 - Background lifecycle is idempotent: repeated resize/mutation notifications no
