@@ -5,8 +5,8 @@
   "files": [
     {
       "path": "index.html",
-      "size": 36708,
-      "sha256": "16b80197757d413030df5a78b421aca8ad3e50cac02cbefd99cf92cfa612a847"
+      "size": 36783,
+      "sha256": "a90667ed9b532a6d734a466d3dd214d38c86c8e4fc4de9f7b9f818c301cce973"
     },
     {
       "path": "AVISOS.md",
@@ -415,8 +415,13 @@
     },
     {
       "path": "js/ui/lobbyAtmosphere.js",
-      "size": 7702,
-      "sha256": "68f71a3ab197caf80b3c694429a33b076352eb41a750bdc420eb7269e09a7cee"
+      "size": 8115,
+      "sha256": "5afc4d1195c09432109c59930684584a576c569784d218786566ec9bdfffddb6"
+    },
+    {
+      "path": "js/ui/lobbyViewport.js",
+      "size": 1143,
+      "sha256": "a721392abc88eab7230a06a7bc0e4f9ca735bd64557013bf9ba2686e0cbd6c65"
     },
     {
       "path": "js/ui/mobileControls.js",
@@ -445,8 +450,8 @@
     },
     {
       "path": "css/lobby-cosmos.css",
-      "size": 3375,
-      "sha256": "7c98a9dda5a98257e1ab9b64c4c11e68c42de4d1b4341114f28c89a5b84e8137"
+      "size": 6502,
+      "sha256": "523dacc10baf3fa963ea7da39e9950fed894189b5bfb4a2c02f3bd4b92f486fa"
     },
     {
       "path": "css/lobby-f093.css",

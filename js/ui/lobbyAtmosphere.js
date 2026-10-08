@@ -24,7 +24,7 @@
     return sprite;
   });
   var width=1,height=1,dpr=1,stars=[],raf=0,last=null,elapsed=0,frames=0,quality=null;
-  var active=false,suspended=false,pointerX=0,pointerY=0,wake=0,renderedCalm=null;
+  var active=false,suspended=false,pointerX=0,pointerY=0,wake=0,renderedCalm=null,watchFrame=-1,fallbackFrames=0;
   function graphics() { return NV.settings && NV.settings.graphics || {}; }
   function reduced() {
     return motion.matches || graphics().particles === false ||
@@ -99,7 +99,16 @@
     // change event. Cheap recovery only while this lobby is actually visible;
     // no Canvas redraw, gameplay timer or second RAF loop.
     if(wake || typeof window.setTimeout!=='function') return;
-    wake=window.setTimeout(function(){wake=0;sync();},500);
+    wake=window.setTimeout(function(){
+      wake=0;
+      if(active && visible() && !reduced() && frames===watchFrame){
+        // Recover a stalled decorative RAF, without touching simulation timers.
+        elapsed+=.5; render(); fallbackFrames++;
+        if(raf)window.cancelAnimationFrame(raf);
+        last=null; raf=window.requestAnimationFrame(tick);
+      }
+      watchFrame=frames; sync();
+    },500);
   }
   function sync() {
     if(!visible()) { stop(); cancelWake(); pointerX=pointerY=0; return; }
@@ -128,7 +137,7 @@
   if(NV.onSettingsChange) NV.onSettingsChange(sync);
   NV.lobbyAtmosphere={getSnapshot:function(){
     var s=stars[0],z=s?.12+((s.depth-(reduced()?0:elapsed)*travelSpeed)%1+1)%1:1;
-    return {active:active,stars:stars.length,frames:frames,motion:'forward',time:elapsed,
+    return {active:active,stars:stars.length,frames:frames,fallbackFrames:fallbackFrames,motion:'forward',time:elapsed,
       probe:s?{depth:z,distance:Math.hypot((s.x-.5)*width,(s.y-.5)*height)/(z+.35)}:null,
       reducedMotion:reduced(),travelSpeed:travelSpeed,
       stopReason:!visible()?'hidden':motion.matches?'system-reduced-motion':graphics().particles===false?'particles-disabled':reduced()?'reduced-effects':null,

@@ -53,6 +53,8 @@ app.whenReady().then(async()=>{
     assert(environment.mobile&&environment.coarse,'Real touch detection must activate mobile');
     assert(after.active&&after.frames>before.frames,'Default mobile background must animate '+JSON.stringify({before,after,environment}));
     assert(after.probe.distance>before.probe.distance*1.08,'Mobile approach must be visibly measurable');
+    assert(await evaluate(`parseFloat(getComputedStyle(document.getElementById('heroName')).fontSize)<=26&&parseFloat(getComputedStyle(document.querySelector('#heroStats .stat-chip')).fontSize)<=18`),'Desktop ID/stat typography must not leak into mobile');
+    assert(await evaluate(`(()=>{const panel=document.querySelector('#startScreen .main-lobby-panel'),p=panel.getBoundingClientRect(),b=document.querySelector('#startScreen .btn-mejoras').getBoundingClientRect();return p.bottom<=innerHeight+1&&p.left>=0&&p.right<=innerWidth+1&&b.height>=44&&b.top>=0&&b.bottom<=innerHeight+1;})()`),'Lobby panel and MEJORAS must not be clipped');
     await evaluate(`window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true}))`);
     assert(!(await evaluate('NV.lobbyAtmosphere.getSnapshot()')).active,'Page hide suspends stars');
     await evaluate(`window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));window.__lobbyResizeStorm=setInterval(()=>{window.dispatchEvent(new Event('resize'));},16)`);

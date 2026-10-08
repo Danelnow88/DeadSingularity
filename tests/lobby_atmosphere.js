@@ -30,6 +30,10 @@ const beforeStorm=snap().time;
 for(let now=80;now<=400;now+=40){callbacks.resize();callbacks.mutation();advance(now);}
 assert(snap().time>beforeStorm+.25,'Repeated observer events cannot starve animation');
 assert.equal(pending.size,1,'One animation loop after observer storm');
+function wakeOnce(){const [id,fn]=wakes.entries().next().value;wakes.delete(id);fn();}
+const stalledTime=snap().time;wakeOnce();wakeOnce();
+assert(snap().time>stalledTime&&snap().fallbackFrames>0,'Stalled decorative RAF recovers without a second loop');
+assert.equal(pending.size,1);
 classes.add('hidden');callbacks.mutation();assert(!snap().active);assert.equal(pending.size,0);
 classes.delete('hidden');callbacks.mutation();assert(snap().active);
 hidden=true;callbacks.visibilitychange();assert(!snap().active);assert.equal(pending.size,0);

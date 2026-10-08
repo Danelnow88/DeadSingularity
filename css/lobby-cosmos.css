@@ -1,4 +1,5 @@
 /* Presentation-only cosmos: isolated from gameplay and the pilot library. */
+#startScreen { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 #startScreen { background:#02040b; isolation:isolate; --text-muted:#a9b8cb; }
 #startScreen .lobby-atmosphere { opacity:1; z-index:0; overflow:hidden; }
 #startScreen .lobby-cosmos { position:absolute; inset:0; display:block; width:100%; height:100%; pointer-events:none; }
@@ -34,6 +35,55 @@
 }
 @media(prefers-reduced-motion:reduce) {
   #startScreen .btn-jugar:hover { transform:none; }
+}
+/* One mobile composition; no fixed minimum columns or clipped controls. */
+html.nv-mobile #startScreen {
+  inset:auto; left:var(--nv-lobby-left,0px); top:var(--nv-lobby-top,0px);
+  width:var(--nv-lobby-width,100%); height:var(--nv-lobby-height,100dvh);
+}
+html.nv-mobile.nv-landscape #startScreen .lobby-masthead {
+  flex:0 0 50px; min-height:50px; padding:4px 12px;
+}
+html.nv-mobile.nv-landscape #startScreen .main-lobby-panel {
+  flex:1 1 0; height:auto; min-height:0; width:100%; max-width:none;
+  grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) minmax(0,1fr) !important;
+  gap:8px; padding:8px 12px; overflow:visible;
+}
+html.nv-mobile.nv-landscape #startScreen :is(.main-lobby-copy,.lobby-center,.lobby-modes) {
+  min-width:0; min-height:0; height:100%; max-height:100%; gap:4px;
+}
+html.nv-mobile.nv-landscape #startScreen .main-lobby-copy { overflow:visible; }
+html.nv-mobile.nv-landscape #startScreen .panel-piloto {
+  flex:1 1 auto; min-height:0; padding:7px; gap:5px; overflow-y:auto;
+  overscroll-behavior:contain;
+}
+html.nv-mobile.nv-landscape #startScreen .main-lobby-actions { flex:0 0 auto; }
+html.nv-mobile.nv-landscape #startScreen #heroName { font-size:clamp(20px,3vw,26px); }
+html.nv-mobile.nv-landscape #startScreen #heroTag { font-size:9px; }
+html.nv-mobile.nv-landscape #startScreen .hero-info-name { gap:4px; }
+html.nv-mobile.nv-landscape #startScreen .hero-info-header { gap:4px; }
+html.nv-mobile.nv-landscape #startScreen .hero-nav { width:44px; height:44px; min-height:44px; flex:0 0 44px; }
+html.nv-mobile.nv-landscape #startScreen .hero-info-stats { padding:6px 0; }
+html.nv-mobile.nv-landscape #startScreen .stat-chip { font-size:16px; gap:3px; }
+html.nv-mobile.nv-landscape #startScreen .stat-chip b { font-size:8px; }
+html.nv-mobile.nv-landscape #startScreen .btn-mejoras { min-height:44px; padding:6px; }
+html.nv-mobile.nv-landscape #startScreen .lobby-center { overflow-y:auto; overflow-x:hidden; }
+html.nv-mobile.nv-landscape #startScreen .lobby-hero {
+  flex:0 1 auto; height:clamp(40px,calc(var(--nv-lobby-height,100dvh) - 300px),120px);
+  min-height:40px; padding:0;
+}
+html.nv-mobile.nv-landscape #startScreen .avatar-circle { width:auto; height:100%; max-height:100%; overflow:visible; }
+html.nv-mobile.nv-landscape #startScreen .orbit-caption {
+  width:max-content; max-width:200%; white-space:normal; text-align:center;
+  font-size:7px; letter-spacing:.3px; line-height:1.15; padding:0 2px;
+}
+html.nv-mobile.nv-landscape #startScreen .btn-jugar { flex-shrink:0; min-height:44px; padding:6px; }
+html.nv-mobile.nv-landscape #startScreen .btn-jugar span { font-size:20px; }
+html.nv-mobile.nv-landscape #startScreen .lobby-diff-btn { min-height:36px; padding:4px; }
+html.nv-mobile.nv-landscape #startScreen .lobby-modes { overflow-y:auto; overflow-x:hidden; justify-content:flex-start; }
+html.nv-mobile.nv-landscape #startScreen .card-mode { flex:0 0 auto; padding:7px; }
+html.nv-mobile #startScreen :is(.lobby-masthead,.panel-piloto,.card-mode,.lobby-footer) {
+  backdrop-filter:none; -webkit-backdrop-filter:none;
 }
 /* Portrait is covered by the rotation gate, including the lobby. */
 @media(orientation:portrait) {
