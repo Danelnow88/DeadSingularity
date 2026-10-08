@@ -27,9 +27,9 @@
   var active=false,suspended=false,pointerX=0,pointerY=0,wake=0,renderedCalm=null,watchFrame=-1,fallbackFrames=0;
   function graphics() { return NV.settings && NV.settings.graphics || {}; }
   function reduced() {
-    return motion.matches || graphics().particles === false ||
-      !!(NV.settings && NV.settings.gameplay && NV.settings.gameplay.reducedEffects);
+    return motion.matches || graphics().particles === false;
   }
+  function gentle() { return !!(NV.settings && NV.settings.gameplay && NV.settings.gameplay.reducedEffects); }
   function visible() { return !suspended && !document.hidden && !(mobile && NV.capabilities.orientation === 'portrait') && !lobby.classList.contains('hidden') && lobby.getClientRects().length > 0; }
   function resize() {
     var nextWidth=Math.max(1,canvas.clientWidth),nextHeight=Math.max(1,canvas.clientHeight);
@@ -51,7 +51,7 @@
   }
   function render() {
     ctx.clearRect(0,0,width,height);
-    var calm=reduced(),time=calm?0:elapsed;
+    var calm=reduced(),soft=gentle(),time=calm?0:elapsed;
     renderedCalm=calm;
     for(var i=0;i<stars.length;i++) {
       var s=stars[i];
@@ -63,8 +63,8 @@
       var y=height*.44+(s.y-.5)*height*scale+pointerY*4;
       if(x < -32 || y < -32 || x > width+32 || y > height+32) continue;
       var fade=Math.min(1,z/.2,(1.12-z)/.08);
-      ctx.globalAlpha=(s.bright?.9:s.alpha)*(.78+.22*Math.sin(time*.65+s.phase))*fade;
-      if(!calm&&(s.bright||i%11===0)) {
+      ctx.globalAlpha=(s.bright?.9:s.alpha)*(soft?.78:(.78+.22*Math.sin(time*.65+s.phase)))*fade;
+      if(!calm&&!soft&&(s.bright||i%11===0)) {
         var dx=x-width*.5,dy=y-height*.44,distance=Math.hypot(dx,dy)||1;
         var length=Math.min(24,(mobile?5:3)+scale*scale*3);
         var alpha=ctx.globalAlpha;ctx.globalAlpha=alpha*.38;
@@ -139,8 +139,8 @@
     var s=stars[0],z=s?.12+((s.depth-(reduced()?0:elapsed)*travelSpeed)%1+1)%1:1;
     return {active:active,stars:stars.length,frames:frames,fallbackFrames:fallbackFrames,motion:'forward',time:elapsed,
       probe:s?{depth:z,distance:Math.hypot((s.x-.5)*width,(s.y-.5)*height)/(z+.35)}:null,
-      reducedMotion:reduced(),travelSpeed:travelSpeed,
-      stopReason:!visible()?'hidden':motion.matches?'system-reduced-motion':graphics().particles===false?'particles-disabled':reduced()?'reduced-effects':null,
+      reducedMotion:reduced(),reducedFlashes:gentle(),travelSpeed:travelSpeed,
+      stopReason:!visible()?'hidden':motion.matches?'system-reduced-motion':graphics().particles===false?'particles-disabled':null,
       width:width,height:height,dpr:dpr};}};
   sync();
 })();

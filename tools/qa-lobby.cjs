@@ -56,6 +56,12 @@ app.whenReady().then(async()=>{
     assert(await evaluate(`(()=>{const c=document.getElementById('lobbyPreview'),pixels=c.getContext('2d').getImageData(0,0,c.width,c.height).data;for(let i=3;i<pixels.length;i+=4)if(pixels[i])return true;return false;})()`),'Pilot preview must actually render');
     assert(geometry.play.x>=0&&geometry.play.x+geometry.play.w<=geometry.width+1&&geometry.play.h>=44);
     fs.writeFileSync(path.join(out,name+'.png'),(await win.webContents.capturePage()).toPNG());
+    await evaluate('NV.setComfortOption("reducedEffects",true)');
+    const comfortBefore=await evaluate('NV.lobbyAtmosphere.getSnapshot()');await delay(500);
+    const comfortAfter=await evaluate('NV.lobbyAtmosphere.getSnapshot()');
+    assert(comfortAfter.active&&comfortAfter.reducedFlashes&&comfortAfter.frames>comfortBefore.frames&&comfortAfter.time>comfortBefore.time,'Reduced flashes preserve smooth lobby travel');
+    assert.equal(await evaluate('NV.settings.gameplay.reducedEffects'),true,'Retain comfort preference');
+    await evaluate('NV.setComfortOption("reducedEffects",false)');
     await evaluate('NV.setGraphicsOption("particles",false)');assert.equal((await evaluate('NV.lobbyAtmosphere.getSnapshot()')).active,false);
     await evaluate('NV.setGraphicsOption("particles",true); document.getElementById("hero-next").click()');
     await evaluate('document.getElementById("lobbySettingsBtn").click()');assert(await evaluate('!document.getElementById("settingsPanel").classList.contains("hidden")'));

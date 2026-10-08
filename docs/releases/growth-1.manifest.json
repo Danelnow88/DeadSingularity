@@ -6,7 +6,7 @@
     {
       "path": "index.html",
       "size": 36777,
-      "sha256": "dcaaf89be89f834b5a6f2748ff48a62b442be92e54e254357ec83983600cf9c7"
+      "sha256": "0723d4186fae65b5cd72675bb5ea37a3dcbe36e0a581ef38d87101d8636a721f"
     },
     {
       "path": "AVISOS.md",
@@ -415,13 +415,13 @@
     },
     {
       "path": "js/ui/lobbyAtmosphere.js",
-      "size": 8115,
-      "sha256": "5afc4d1195c09432109c59930684584a576c569784d218786566ec9bdfffddb6"
+      "size": 8166,
+      "sha256": "a067783871a815f40eb293377b1e7d8c16e9e4b67f8959ef7dca75f47331f28c"
     },
     {
       "path": "js/ui/lobbyViewport.js",
-      "size": 6238,
-      "sha256": "acb9b2305032c2d8d5ef9dd389d6f243706a164d08849beec19899a60a045b2d"
+      "size": 6524,
+      "sha256": "23fda5368fccc5dbed7fb796dc356f1e3db6d3d5d594ead175dfa99e080e0bb3"
     },
     {
       "path": "js/ui/mobileControls.js",

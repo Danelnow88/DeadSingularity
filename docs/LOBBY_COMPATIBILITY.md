@@ -51,3 +51,19 @@ COPIAR DIAGNÓSTICO button, instructions and a selectable readonly text area.
 Clipboard denial selects the text for manual copying instead of requiring a photo.
 Confirm the current Pages script cache key is `lobby-diag-20261008h` before
 asking the user to find it: the previous request happened before CI deployed it.
+
+## Confirmed physical stop condition (S20 FE, user report)
+
+Landscape diagnostic h: atmosphere active=false, frames=1, time=0,
+stopReason=reduced-effects, visual scale=1, viewport 1445x560. The saved gameplay
+preference reducedEffects was incorrectly treated as a reduced-motion preference
+by the lobby. Its UI promises reduced flashes/camera shake, not a frozen backdrop.
+Revision i leaves smooth forward travel active while removing twinkle and trails
+in that comfort mode. OS prefers-reduced-motion and particles=false still stop
+the backdrop; all saved settings and gameplay effects remain unchanged.
+
+The diagnostic is bottom-right with a bounded height that reserves the masthead
+for real fullscreen. It reports document fullscreen state; viewport refresh now
+also listens for standard/prefixed fullscreen transitions. Chrome's reported
+clipping still requires its physical diagnostic; do not claim it fixed from the
+Brave report. Backup: local/backups/antes-lobby-comfort-20261008/.

@@ -10,6 +10,8 @@ assert.equal(values['--nv-lobby-height'],'320px');assert.equal(values['--nv-lobb
 assert.equal(values['--nv-lobby-top'],'12px');
 visualViewport.height=360;events['visual:resize']();assert.equal(values['--nv-lobby-height'],'360px');
 window.visualViewport=null;events.pageshow();assert.equal(values['--nv-lobby-height'],'573px');
+window.innerHeight=600;events.fullscreenchange();assert.equal(values['--nv-lobby-height'],'600px');
+window.innerHeight=620;events.webkitfullscreenchange();assert.equal(values['--nv-lobby-height'],'620px');
 const css=fs.readFileSync('css/lobby-cosmos.css','utf8');
 assert(css.includes('text-size-adjust:100%')&&css.includes('minmax(0,1fr)'));
 assert(css.includes('#startScreen #heroName { font-size:clamp(20px,3vw,26px)'));
@@ -35,6 +37,8 @@ const diagWindow={NV:{capabilities:{isMobile:false,orientation:'landscape'},lobb
 vm.runInNewContext(source,{window:diagWindow,document:diagDocument,MutationObserver:class{constructor(fn){mutation=fn;}observe(){}disconnect(){disconnected=true;}}});
 let diagnostic=JSON.parse(nodes[1].value);
 assert(nodes[0].style.cssText.includes('background:#8b0012'));
+assert(nodes[0].style.cssText.includes('top:auto')&&nodes[0].style.cssText.includes('100dvh - 70px'),'Keep masthead/fullscreen control reachable');
+assert.equal(diagnostic.fullscreen,false);
 assert.equal(nodes[3].textContent,'COPIAR DIAGNÓSTICO');assert(nodes[3].style.cssText.includes('min-height:48px'));
 assert(nodes[4].textContent.includes('DIAGNÓSTICO TEMPORAL'));
 assert.equal(diagnostic.mobile,false);assert.equal(diagnostic.atmosphere.stopReason,'particles-disabled');
@@ -42,6 +46,7 @@ assert.equal(diagnostic.panels['.panel-piloto'].contentH,350);assert.equal(diagn
 assert.equal(scheduled.size,1);
 const next=scheduled.values().next().value;scheduled.clear();frames=40;next();
 assert.equal(JSON.parse(nodes[1].value).framesSinceSample,30);
+diagDocument.fullscreenElement={};listeners.pageshow();assert.equal(JSON.parse(nodes[1].value).fullscreen,true);
 diagDocument.hidden=true;listeners.visibilitychange();assert.equal(scheduled.size,0);
 diagDocument.hidden=false;listeners.visibilitychange();assert.equal(scheduled.size,1);
 lobbyHidden=true;mutation();assert.equal(nodes[0].style.display,'none');assert.equal(scheduled.size,0);

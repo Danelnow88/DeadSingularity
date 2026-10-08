@@ -9,7 +9,7 @@
     var close=document.createElement('button'),copy=document.createElement('button'),timer=0,previous=null,observer=null;
     var title=document.createElement('strong'),help=document.createElement('p');
     panel.setAttribute('aria-label','Diagnóstico del lobby');
-    panel.style.cssText='position:fixed!important;z-index:2147483647!important;left:8px!important;right:8px!important;top:max(8px,env(safe-area-inset-top))!important;max-height:70dvh;overflow:auto;background:#8b0012!important;color:white!important;border:3px solid #ff5369;padding:10px;font:12px sans-serif;box-sizing:border-box;box-shadow:0 4px 30px #000';
+    panel.style.cssText='position:fixed!important;z-index:2147483647!important;left:auto!important;right:8px!important;top:auto!important;bottom:max(8px,env(safe-area-inset-bottom))!important;width:min(520px,calc(100vw - 16px));max-height:min(70dvh,calc(100dvh - 70px));overflow:auto;background:#8b0012!important;color:white!important;border:3px solid #ff5369;padding:10px;font:12px sans-serif;box-sizing:border-box;box-shadow:0 4px 30px #000';
     title.textContent='DIAGNÓSTICO TEMPORAL — V1';
     title.style.cssText='display:block!important;font:bold 17px sans-serif!important;color:white!important;margin:0 0 6px';
     help.textContent='Esperá 5 segundos, tocá COPIAR DIAGNÓSTICO y pegalo en el chat. No es Récords e informes.';
@@ -27,9 +27,9 @@
     }
     function snapshot(){
       var v=window.visualViewport,a=NV.lobbyAtmosphere&&NV.lobbyAtmosphere.getSnapshot();
-      var data={revision:'lobby-diag-20261008h',mobile:NV.capabilities&&NV.capabilities.isMobile,
+      var data={revision:'lobby-comfort-20261008i',mobile:NV.capabilities&&NV.capabilities.isMobile,
         orientation:NV.capabilities&&NV.capabilities.orientation,classes:document.documentElement.className,
-        hidden:document.hidden,viewport:[window.innerWidth,window.innerHeight],
+        hidden:document.hidden,fullscreen:!!(document.fullscreenElement||document.webkitFullscreenElement),viewport:[window.innerWidth,window.innerHeight],
         visual:v?{w:v.width,h:v.height,scale:v.scale,left:v.offsetLeft,top:v.offsetTop}:null,
         atmosphere:a||'module-not-loaded',framesSinceSample:a&&previous!==null?a.frames-previous:null,
         panels:{}};
@@ -68,6 +68,8 @@
   window.addEventListener('orientationchange',refresh,{passive:true});
   window.addEventListener('pageshow',refresh);
   document.addEventListener('visibilitychange',refresh);
+  document.addEventListener('fullscreenchange',refresh);
+  document.addEventListener('webkitfullscreenchange',refresh);
   if(window.visualViewport){
     window.visualViewport.addEventListener('resize',refresh,{passive:true});
     window.visualViewport.addEventListener('scroll',refresh,{passive:true});

@@ -1,10 +1,10 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync('js/ui/lobbyAtmosphere.js','utf8');
-const callbacks={}; let hidden=false,rafId=0,draws=0;
+const callbacks={}; let hidden=false,rafId=0,draws=0,strokes=0;
 const pending=new Map(),classes=new Set();
 const wakes=new Map();let wakeId=0;
-const context={clearRect(){},setTransform(){},fillRect(){draws++;},drawImage(){draws++;},beginPath(){},moveTo(){},lineTo(){},stroke(){},createRadialGradient(){return {addColorStop(){}};}};
+const context={clearRect(){},setTransform(){},fillRect(){draws++;},drawImage(){draws++;},beginPath(){},moveTo(){},lineTo(){},stroke(){strokes++;},createRadialGradient(){return {addColorStop(){}};}};
 const canvas={clientWidth:1280,clientHeight:800,parentElement:{},getContext(){return context;}};
 const lobby={classList:{contains(name){return classes.has(name);}},getClientRects(){return classes.has('hidden')?[]:[{}];},addEventListener(){}};
 const settings={graphics:{quality:'high',particles:true},gameplay:{reducedEffects:false},balance:{sentinel:17}};
@@ -53,7 +53,13 @@ assert(snap().probe.distance-mobileDistance>0,'avance móvil medible sin RNG com
 window.NV.capabilities.orientation='portrait';callbacks.orientationchange();assert(!snap().active);
 window.NV.capabilities.orientation='landscape';callbacks.orientationchange();assert(snap().active);
 callbacks.pagehide();callbacks.pageshow();advance(5000);advance(5060);assert(snap().active&&snap().time>0);
-settings.gameplay.reducedEffects=true;callbacks.settings();assert.equal(snap().stopReason,'reduced-effects');assert(!snap().active);
+settings.gameplay.reducedEffects=true;callbacks.settings();assert.equal(snap().stopReason,null);assert(snap().active&&snap().reducedFlashes);
+const gentleTime=snap().time,gentleStrokes=strokes;advance(5100);advance(5160);
+assert(snap().time>gentleTime,'Reduced flashes must not freeze forward travel');
+assert.equal(strokes,gentleStrokes,'Comfort mode removes trails');
+assert.equal(settings.gameplay.reducedEffects,true,'Do not override the saved accessibility preference');
+motion.matches=true;callbacks.motion();assert(!snap().active,'System reduced motion still stops travel');
+assert.equal(snap().stopReason,'system-reduced-motion');motion.matches=false;callbacks.motion();assert(snap().active);
 assert.equal(settings.balance.sentinel,17);
 const html=fs.readFileSync('index.html','utf8');assert.equal((html.match(/id="lobbyCosmos"/g)||[]).length,1);
 assert(html.includes('js/ui/lobbyAtmosphere.js')&&html.includes('css/lobby-cosmos.css'));
