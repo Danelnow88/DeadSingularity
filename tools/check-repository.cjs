@@ -12,6 +12,7 @@ const files = [...new Set(result.stdout.split('\0').filter(Boolean))];
 const forbidden = /^(?:node_modules|local|releases)\/|\.lnk$|(?:^|\/)\.env(?:\.|$)|\.(?:pfx|p12|key)$/i;
 let bytes = 0;
 const failures = [];
+if (!files.includes('docs/releases/growth-1.manifest.json')) failures.push('Falta manifiesto de entrega en los archivos publicables');
 for (const file of files) {
   if (forbidden.test(file) && !file.endsWith('.env.example')) failures.push('No publicar: ' + file);
   const absolute = path.join(root, file);

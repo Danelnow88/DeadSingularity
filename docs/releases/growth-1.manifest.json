@@ -1,0 +1,492 @@
+{
+  "id": "deadsingularity-growth-1",
+  "version": "1.1.0-alpha.1",
+  "basis": "reference/prototype frozen; branding, catalog, bounded extensions and adapters are intentional changes",
+  "files": [
+    {
+      "path": "index.html",
+      "size": 36209,
+      "sha256": "bdc3422134854123455d6184ad7adfb39d712345cb799cc00426fb419797d93d"
+    },
+    {
+      "path": "AVISOS.md",
+      "size": 1314,
+      "sha256": "2aad42572f392e0ec13b51e0459a7d5246b74ef7c7b883f5835174d72abef673"
+    },
+    {
+      "path": "js/audio/soundtrack.js",
+      "size": 8399,
+      "sha256": "ffdb0bf7a58c52de869ce42814f68692b8d9a10d7c28156f0191d02c34f1caac"
+    },
+    {
+      "path": "js/audio/synth.js",
+      "size": 55115,
+      "sha256": "641d294eb4718bc0cf13eb6b87b90fa92e521ae6e373bf4f39859c0070473e8d"
+    },
+    {
+      "path": "js/audio/uiAudio.js",
+      "size": 2834,
+      "sha256": "264f38d87bd1bc1bc65c6bd7a4968908abb9d7f437bf7b1fe7868ed9d60035a9"
+    },
+    {
+      "path": "js/audio/voices.js",
+      "size": 5328,
+      "sha256": "62ff090b1078d54f98756f8d1ffe29b12dbcbe5dea543fb340a38d70a7dc132a"
+    },
+    {
+      "path": "js/audio/weaponSfx.js",
+      "size": 5080,
+      "sha256": "116de3d1d568c7affd3684cf455fb645b95ede6c2e959f54fa4a211c6f404414"
+    },
+    {
+      "path": "js/core/bootstrap.js",
+      "size": 3103,
+      "sha256": "2b7afcf0c63ea29d8ffc9b779fd18081f5e4c9304c97bae9dc4556f2fb3ace4b"
+    },
+    {
+      "path": "js/core/capabilities.js",
+      "size": 5644,
+      "sha256": "261b799ad231cd8a4c3ce90370ed471580b015d2f52cf4117e8fc0c85764471c"
+    },
+    {
+      "path": "js/core/content.js",
+      "size": 7434,
+      "sha256": "7110aa8ee208f49e5282734026d65f32cf26b839b8497c172f5b0c375a77a195"
+    },
+    {
+      "path": "js/core/extensions.js",
+      "size": 2347,
+      "sha256": "bc8c3722fc7fb1bc102bbb1cdc96e56dd4aae3698757c8fabe9bd36947a904ff"
+    },
+    {
+      "path": "js/core/inputIntent.js",
+      "size": 2086,
+      "sha256": "ad2d026ff31cace68d6f55ef55deaceb35db26ee3cbf77cafd37bed11a177ec0"
+    },
+    {
+      "path": "js/core/runtime.js",
+      "size": 2858,
+      "sha256": "6feebdf06cc9edc443a8b437b544d5f530a43411be48422ceb84dbfc88566d4f"
+    },
+    {
+      "path": "js/core/services.js",
+      "size": 6599,
+      "sha256": "358de219f2a036c4b4c705c28bf079dc4cc5afbeb7fb2b83deff2475eb912e44"
+    },
+    {
+      "path": "js/core/settings.js",
+      "size": 9033,
+      "sha256": "c6c77716c0281ac52a2f08c396ec85c362a6a3aa35d24e799f2598166b96ac2f"
+    },
+    {
+      "path": "js/core/state.js",
+      "size": 264,
+      "sha256": "ecaef464a375df66ad5c9ca440509c4d1af80edb5e4490782cfba3813bda87e7"
+    },
+    {
+      "path": "js/core/storageMigration.js",
+      "size": 1270,
+      "sha256": "d73b2e2d8541a43f599a639c3efedc23999755df3cef097bce0c06af40473fd7"
+    },
+    {
+      "path": "js/core/utils.js",
+      "size": 3638,
+      "sha256": "fc9b04ae4aff118aa5a010d98e85aa474a951be7d1f5e78ad7db52e51bb325c5"
+    },
+    {
+      "path": "js/core/viewport.js",
+      "size": 17842,
+      "sha256": "88c5c9f432b74b07c2bcd75ef79aff4bf7576392f88fc09b016d71a5db81d6d6"
+    },
+    {
+      "path": "js/data/balance.js",
+      "size": 24892,
+      "sha256": "176ab7799ec749803c7c879b48a5ffc74e7eecac5813fe3cd8f29cb9929c9951"
+    },
+    {
+      "path": "js/data/bossDesignLab.js",
+      "size": 4706,
+      "sha256": "08a4a8322b67b7b5128bb759502caa78abf5c91c07a457fcdea7e8662d6fd2de"
+    },
+    {
+      "path": "js/data/catalog.js",
+      "size": 15289,
+      "sha256": "4e027c6c3bf1283f45c7b1c9d49dcd77c784b538d6c42d12263e8e288ef3894c"
+    },
+    {
+      "path": "js/data/consumables.js",
+      "size": 2827,
+      "sha256": "5426ebb845bfb7751ca459b238d7a77dd215feb9a0251455bf0af14e756cc1e9"
+    },
+    {
+      "path": "js/data/gameData.js",
+      "size": 21277,
+      "sha256": "657076464ed25d5e8d2a09bd54315d406b7c3f240fa24930166f4b6d04a2957d"
+    },
+    {
+      "path": "js/data/pilotAnimationBaseline.js",
+      "size": 3288,
+      "sha256": "faa798198f06cc8e249e403226717753fa68896e8042e7591c163c58c5bd9a70"
+    },
+    {
+      "path": "js/engine/boss.js",
+      "size": 23031,
+      "sha256": "dea3e32ded38c0de43f3548d83822ab7f7bf7fa5b90b7d6f4118cda48fd3a803"
+    },
+    {
+      "path": "js/engine/bossEncounters.js",
+      "size": 23628,
+      "sha256": "bb5c60bd3821e57422ed90aa3577e0cba71de68fa0df20d3884ff4df31d4f434"
+    },
+    {
+      "path": "js/engine/bullets.js",
+      "size": 20731,
+      "sha256": "a5cdc1e9e90a30d0b63a12ea71084ea17665a0e80c59fe07e16ff8efcb887ce3"
+    },
+    {
+      "path": "js/engine/cameraSafety.js",
+      "size": 3697,
+      "sha256": "361a16e81e2db39d6d2e6685ba14c6fa1e43d3f7faedc985ad48e11626435ed8"
+    },
+    {
+      "path": "js/engine/combat.js",
+      "size": 5265,
+      "sha256": "2c5437d23a5d3b6606268aea69561b4dc4511644ac4e4d8de82d03c96707e260"
+    },
+    {
+      "path": "js/engine/consumables.js",
+      "size": 5252,
+      "sha256": "597ce5695efde7c31bbb45aa7c8c341d783b09b29f013f5b7fe6e4ac94835658"
+    },
+    {
+      "path": "js/engine/drones.js",
+      "size": 2483,
+      "sha256": "d088d1bc6a283cda2458f4139b0163a7f3a06bb2f987f5343e7960a6becc8db9"
+    },
+    {
+      "path": "js/engine/enemies.js",
+      "size": 147124,
+      "sha256": "d54ba9157f1d8a9dfea81a1b13dee0886e6749b16f23b2c8ecf18036f098ccca"
+    },
+    {
+      "path": "js/engine/enemyArrival.js",
+      "size": 3917,
+      "sha256": "b5e0f1836ccf3208bf24b4cf7f35cb5c2bad4c2d2d848dc04916bcd482876363"
+    },
+    {
+      "path": "js/engine/enemySpawnRegistry.js",
+      "size": 1677,
+      "sha256": "254a40ad3095083ae3b6878196ab05b1fc64e2f3278c55bdb54986fe778f9526"
+    },
+    {
+      "path": "js/engine/enemyState.js",
+      "size": 5911,
+      "sha256": "d5b54029b460874a8ffdac26d4d621a3826231ef76ec560f6ecec2748306b317"
+    },
+    {
+      "path": "js/engine/expedition.js",
+      "size": 12751,
+      "sha256": "d003bcff0e4d04ca62904d428f312abc0491012b4183c3970f220c005fe48580"
+    },
+    {
+      "path": "js/engine/flame.js",
+      "size": 7276,
+      "sha256": "56d77a682b3172a88f16291d6c1c50b7db02c8f8ce9c46f59a9644e08a787f27"
+    },
+    {
+      "path": "js/engine/fx.js",
+      "size": 15933,
+      "sha256": "56a251f7a2bc9ee607dc8d5598c61d88a97b5a45e8f5224ef86c61133d2274fc"
+    },
+    {
+      "path": "js/engine/hazards.js",
+      "size": 27751,
+      "sha256": "e929885682eac702656ad09cb9a8a51d4c64c74dca8013b7e9a02a1f56843cd1"
+    },
+    {
+      "path": "js/engine/hostileBudget.js",
+      "size": 2530,
+      "sha256": "1844f4dcbd4d531a145e2628469f963a7452273d5748e2a647518c8cee26bb23"
+    },
+    {
+      "path": "js/engine/metaDiagnostics.js",
+      "size": 1191,
+      "sha256": "536efc60d6ca8b72c850982875b3729778c9ba54616fa89f39cfc602d368aec6"
+    },
+    {
+      "path": "js/engine/meteors.js",
+      "size": 2506,
+      "sha256": "d12258a3346af60cd8e27b039930422d4d54c52e9926973addb7645b0d727ebd"
+    },
+    {
+      "path": "js/engine/movement.js",
+      "size": 8400,
+      "sha256": "1b4848a39ae4180e9124043a8e17cc2d05b92e8f4179e22900e62b8ac4ee4c1c"
+    },
+    {
+      "path": "js/engine/performanceMonitor.js",
+      "size": 5254,
+      "sha256": "42d46db5018ea1c762160f23be9dbfa03e72e2e7bc1f00c12d4fc3f23d5c1a37"
+    },
+    {
+      "path": "js/engine/pickups.js",
+      "size": 11580,
+      "sha256": "f62c8f2d9c801680c8b78690a0f867efd90e69ab6ee849d2e17040746be1ce90"
+    },
+    {
+      "path": "js/engine/playerStun.js",
+      "size": 2369,
+      "sha256": "4bad4a8579cba94ed116ada23bbb9bd8d67fd9311df6f9c86d6c25b374a2950e"
+    },
+    {
+      "path": "js/engine/playtestTelemetry.js",
+      "size": 12695,
+      "sha256": "60a542c0a9919321372e966ce0bef075ba5ad797972071b296e1fdf52491916c"
+    },
+    {
+      "path": "js/engine/rhythm.js",
+      "size": 35230,
+      "sha256": "eb55666c49e6389bc441062188205a3e8bde6a826f80ead901cdb8f85497798d"
+    },
+    {
+      "path": "js/engine/sectorEncounters.js",
+      "size": 11044,
+      "sha256": "251c167094368e74e9aa774b6e106d0894e7e4788c20c8a3246ab4b0ab533463"
+    },
+    {
+      "path": "js/engine/special.js",
+      "size": 5798,
+      "sha256": "546fd28663a3d54bb21c547d2e44579fa17e9acbd2757774fecb66d2790c37de"
+    },
+    {
+      "path": "js/engine/wavePressure.js",
+      "size": 3022,
+      "sha256": "2cd6e1de288a0eaf1259b55e0c417eff98feb24c25ed701fb140f5a9fa6ce9f1"
+    },
+    {
+      "path": "js/engine/weapons.js",
+      "size": 12533,
+      "sha256": "53959d79e7cebc152e2596e353ad495b6800e0b6836b8742da7549138c19ef73"
+    },
+    {
+      "path": "js/engine/weather.js",
+      "size": 5940,
+      "sha256": "07a2177a09b9eaeed554fd3ec3271ec1d7e7952415cbb09b58105fb8d4de8a9f"
+    },
+    {
+      "path": "js/game.js",
+      "size": 222000,
+      "sha256": "bce03dcf51b7ef1963d3cfd4f99c6faf8bac6c30c95f22c88661d6d92ab0c0b3"
+    },
+    {
+      "path": "js/render/bossDesignLab.js",
+      "size": 16736,
+      "sha256": "8e2f0fb47a88abb39dca60e94121daf19b55fa3b9e633b8ca652c2af48704299"
+    },
+    {
+      "path": "js/render/bosses.js",
+      "size": 2154,
+      "sha256": "3b7f240e2f2aa4e8e3adfcf88cbea2108630c020102efcd6ffd575eb05e946d2"
+    },
+    {
+      "path": "js/render/canvas.js",
+      "size": 5426,
+      "sha256": "262790be63d5e88f41f965a63bdac0d265b3d9bbb3a4b06e1394b157b181a803"
+    },
+    {
+      "path": "js/render/consumableEffects.js",
+      "size": 45916,
+      "sha256": "2936ff7a85b740b4670a4cd0ca52bba723c67244024cf6cd063e24e3d6b6ecc3"
+    },
+    {
+      "path": "js/render/consumableIcons.js",
+      "size": 8564,
+      "sha256": "824b77adfc783e2cb8fa8e00a8e4ea4b1c89b5b88a5e88941fa56aed5b2b2fe9"
+    },
+    {
+      "path": "js/render/enemies.js",
+      "size": 54598,
+      "sha256": "890c4783bad94b664c0ef222eac66649ee7f2387295bbe5d18936225712e08fd"
+    },
+    {
+      "path": "js/render/espectroLite.js",
+      "size": 21040,
+      "sha256": "86115edb53feff652cef59ed1815f52b1525daddc5c25c0e3558cc2f8dda62f7"
+    },
+    {
+      "path": "js/render/hazards.js",
+      "size": 14120,
+      "sha256": "ef48c902082b7d72ac19dac771b8bd251e1ff4da6b5aa89e741c8cd7107a40e7"
+    },
+    {
+      "path": "js/render/hud.js",
+      "size": 25404,
+      "sha256": "3e52478343a043e0ce8a54ea76e30a88483b2233e86b5bfdb82b0362358a7bdd"
+    },
+    {
+      "path": "js/render/metaReadability.js",
+      "size": 11377,
+      "sha256": "d17c13f7a99a40ad725da71ddbc6faa85968d00f3494ddb3fd614d9cb16188f4"
+    },
+    {
+      "path": "js/render/metaSkillIcons.js",
+      "size": 10980,
+      "sha256": "f68925f981755911a5fbd47480789246a56ed273ac93dc6cf845c149c3292e8e"
+    },
+    {
+      "path": "js/render/pilotAppearance.js",
+      "size": 2874,
+      "sha256": "d3024f93dce47d607af4fb1ca0fc2b580fed102419893de53887e37bda325199"
+    },
+    {
+      "path": "js/render/pilotGeometry.js",
+      "size": 2814,
+      "sha256": "b7540dcafbe20e0cf4e6ed907515eeded9479b8548be6ff84ddca88a3af4aac2"
+    },
+    {
+      "path": "js/render/player.js",
+      "size": 19359,
+      "sha256": "3c49f6ef1ee651150fdf977cf68047a529c2eb26c9d6d2100d5133b00b0bf67d"
+    },
+    {
+      "path": "js/render/projectiles.js",
+      "size": 23299,
+      "sha256": "6c339b747cd9a9c3b976d1a958134ed271eb7ebb71cc636328bfd0373b0d3734"
+    },
+    {
+      "path": "js/render/sectors.js",
+      "size": 17684,
+      "sha256": "ca139997b68c37aa26b66415eb3075082079fe24d7b21ebaa93fb8ceecc3d6e5"
+    },
+    {
+      "path": "js/render/specialEffects.js",
+      "size": 14776,
+      "sha256": "b4db90bb75305d84d83b1a4e222ba5bc05d6c165dec9774fa9171f8bfac65125"
+    },
+    {
+      "path": "js/render/spectralEnemies2D.js",
+      "size": 131040,
+      "sha256": "ab32894f3cec64d166d56867e1dc8909274ca8a4e5b50c0131a78ddcd0108a65"
+    },
+    {
+      "path": "js/render/visualBudget.js",
+      "size": 5628,
+      "sha256": "78c06e89cb50e5ce07896435ac40ec9403974f94f7cbea1e23dd9d3c0d4edb8b"
+    },
+    {
+      "path": "js/render/weaponIcons.js",
+      "size": 11894,
+      "sha256": "393d0e5dc7f3afe87c1aa5e3d15f54f47828902c382830aaf5ea82668ad7ffb2"
+    },
+    {
+      "path": "js/render/webgpuPresentation.js",
+      "size": 6367,
+      "sha256": "01b934acebc4af776df95204ff6c296c894c6dfdf12f13143a40ec5d51b00945"
+    },
+    {
+      "path": "js/ui/alpha.js",
+      "size": 18225,
+      "sha256": "95e67c46f1029bdc795c4d85416fd4516e5af013c0d579198d11a63e46eecf89"
+    },
+    {
+      "path": "js/ui/characterThoughts.js",
+      "size": 4527,
+      "sha256": "fd27e8c29e02f7c9900d936438b05687f1fc57056b83dd43c586bb79f7c40681"
+    },
+    {
+      "path": "js/ui/characters.js",
+      "size": 1557,
+      "sha256": "bcbb62c7a1d7c2dd2defbc338b2dc68d36183103ceb811afe17de3793d04b32f"
+    },
+    {
+      "path": "js/ui/contentPanel.js",
+      "size": 2684,
+      "sha256": "9f60248371e662d890d918dad8cb08a673c97f0554df89fd24627d1927da201f"
+    },
+    {
+      "path": "js/ui/dom.js",
+      "size": 3707,
+      "sha256": "defca80e14ce4268d76224b236722b541e139f1222977e3b8153c3a7ee014782"
+    },
+    {
+      "path": "js/ui/gamepadControls.js",
+      "size": 2855,
+      "sha256": "4bde0708dc016838536306162efafd60ac94f9ce4d79b735c7951b0683b2f0d7"
+    },
+    {
+      "path": "js/ui/mobileControls.js",
+      "size": 26976,
+      "sha256": "810cfdcf1cc42fcd3e9a9f9d4fda71c81ac565fbf195004475617af49954357e"
+    },
+    {
+      "path": "js/ui/onboarding.js",
+      "size": 4096,
+      "sha256": "783abfa1994932c625c961c661342ad623962ddd3e168df8ed74cf1af1bf27aa"
+    },
+    {
+      "path": "js/ui/settingsPanel.js",
+      "size": 9934,
+      "sha256": "3a4147ee5ed638a3aa3a53509ac86f0a06014fb1a16ea912539cfb0c134cfe99"
+    },
+    {
+      "path": "js/ui/systemMenu.js",
+      "size": 4234,
+      "sha256": "35ed36fe8db7941e4249ffd870c4ad1f21084ad0e56ebabcd269130c92118719"
+    },
+    {
+      "path": "css/alpha.css",
+      "size": 8470,
+      "sha256": "e4f8b8257549d821d0f58dedf235e7dad79fcf456397dfe12450db44ff3a2db0"
+    },
+    {
+      "path": "css/lobby-f093.css",
+      "size": 24192,
+      "sha256": "018e4d96a115720939be65e52c4a3b8dca0f7ce203958317295740cbc1139555"
+    },
+    {
+      "path": "css/lobby-layout.css",
+      "size": 15892,
+      "sha256": "bd788522de211ed826c7d06628c83ceccc088f84e1ce3eaa7bfd1addd1834657"
+    },
+    {
+      "path": "css/mobile.css",
+      "size": 24329,
+      "sha256": "085349467f27d73bae83f8115dfe5801d0a37c88c0d5a193f2c88d8b5127b0ef"
+    },
+    {
+      "path": "css/shop-remaster.css",
+      "size": 28816,
+      "sha256": "ba508472c8c237d8792e7929029766ba0594bf1b461daf4567e3c557f3a01350"
+    },
+    {
+      "path": "css/styles.css",
+      "size": 93810,
+      "sha256": "746d532c2bf6f0617f770d3bd61c78aa94b301716179dc99046ba52ed60435ea"
+    },
+    {
+      "path": "css/system-menu.css",
+      "size": 6418,
+      "sha256": "145f37b6c873311b381ac4937e12ddc0e61daae9094b252e76ec51eeb27b56ad"
+    },
+    {
+      "path": "assets/audio/main-theme-data.js",
+      "size": 5832088,
+      "sha256": "dde63bbd558aeb6799020b2cf552312b7283c5465ffa31fe22e8b27a6d9c7f39"
+    },
+    {
+      "path": "assets/brand/dead-singularity-mark.svg",
+      "size": 1657,
+      "sha256": "bfd913cfa9d22197442f54a2700557f5bee1f5cdd1933435491935e33a616c43"
+    },
+    {
+      "path": "assets/brand/icon.ico",
+      "size": 85895,
+      "sha256": "75ddbce92e5e0e09a1731d69bb331b64e305acea88bc80d7f1e3443a8d569a94"
+    },
+    {
+      "path": "assets/brand/icon.png",
+      "size": 111029,
+      "sha256": "adad7ddf43f7958fb728ee692e8b20c37d1f9bb266dae2493ce5f603c1651019"
+    }
+  ]
+}

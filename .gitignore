@@ -1,6 +1,6 @@
 node_modules/
 local/
-releases/
+/releases/
 previews/*
 !previews/enemy-roster-canonical.html
 !previews/consumable-icons-integration-preview.html
