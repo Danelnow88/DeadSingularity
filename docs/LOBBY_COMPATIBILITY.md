@@ -25,3 +25,23 @@ safe insets, orientation and perspective movement, not just presence in DOM.
 
 Standards: https://developer.mozilla.org/en-US/docs/Web/API/VisualViewport
 and https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/text-size-adjust
+
+## Physical Android evidence still required
+
+The user reports Chrome still clips critical lobby information and Brave still
+shows static stars after revision 8217b6e. Automated desktop touch emulation did
+not reproduce these physical-browser failures: do not mark them resolved.
+
+Opt-in URL `?lobbydiag=1` now shows actual mobile classification, layout/visual
+viewport dimensions and zoom scale, computed typography, panel rectangles and
+scrollable/visible heights, atmosphere frame deltas and its exact stop reason.
+No user-agent fingerprint, network upload, save writes or simulation changes.
+The diagnostic works even if mobile classification fails. Close removes its
+timer/listeners; pagehide/visibility pause it. Normal URLs do not create it.
+
+Next boundary: obtain one copied diagnostic from Chrome and one from Brave on
+the same S20 FE after several seconds in landscape. If frames advance while the
+background appears frozen, investigate visual compositing; if stopped, address
+the reported stop reason; if module missing, inspect deployed script loading.
+For Chrome compare mobile classification, zoom and content/visible heights
+before adding any further device-specific CSS. Shields are not a confirmed cause.

@@ -5,8 +5,8 @@
   "files": [
     {
       "path": "index.html",
-      "size": 36783,
-      "sha256": "a90667ed9b532a6d734a466d3dd214d38c86c8e4fc4de9f7b9f818c301cce973"
+      "size": 36777,
+      "sha256": "400c8485ee0819a87a7849f3cc7faeaa6c5af1b8ab0f2dde66d2220b4ddde8bc"
     },
     {
       "path": "AVISOS.md",
@@ -420,8 +420,8 @@
     },
     {
       "path": "js/ui/lobbyViewport.js",
-      "size": 1143,
-      "sha256": "a721392abc88eab7230a06a7bc0e4f9ca735bd64557013bf9ba2686e0cbd6c65"
+      "size": 4136,
+      "sha256": "98153d295bc9b58be5bb8e91b244c984175ac3c7265dbce9a060c700a93911fd"
     },
     {
       "path": "js/ui/mobileControls.js",
