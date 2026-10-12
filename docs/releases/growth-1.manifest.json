@@ -5,8 +5,8 @@
   "files": [
     {
       "path": "index.html",
-      "size": 41965,
-      "sha256": "74c67dfaf1e7821bb1c5433c11b8d5ba12d319acecb297d9f82c696acbf04beb"
+      "size": 42041,
+      "sha256": "a0d712c9ffbf228ee2eaff3ce71793a90f13117e00187da3ded480aebcc9d549"
     },
     {
       "path": "AVISOS.md",
@@ -127,6 +127,11 @@
       "path": "js/data/pilotAnimationBaseline.js",
       "size": 3288,
       "sha256": "faa798198f06cc8e249e403226717753fa68896e8042e7591c163c58c5bd9a70"
+    },
+    {
+      "path": "js/data/scenerySkyTrial.js",
+      "size": 1246,
+      "sha256": "3fa82d485d63b774d4606d6cba2de57f042820ffd37a95e368a5cc595b92b5eb"
     },
     {
       "path": "js/engine/audioPerimeterMotion.js",
@@ -315,8 +320,8 @@
     },
     {
       "path": "js/game.js",
-      "size": 260138,
-      "sha256": "6df22bf54ca498e88db47cc46dc8d5b2a6ccc0a46adcdf14f566422525416335"
+      "size": 260188,
+      "sha256": "9a1fdf9af18bbf4d5d7472cb80878d5dd8e8d3d1c5a69a9d3492aafa0754caf1"
     },
     {
       "path": "js/render/audioPerimeter.js",
@@ -425,8 +430,8 @@
     },
     {
       "path": "js/render/sectors.js",
-      "size": 25143,
-      "sha256": "f3595461803eaa580ddc4b2267a8e1e8672063b8a0091aaa02abb595b067c8bc"
+      "size": 26551,
+      "sha256": "a46b8052311b6b38b5133f40ee4341050b0056c0b127419367ca4876c7505594"
     },
     {
       "path": "js/render/specialEffects.js",
@@ -637,6 +642,46 @@
       "path": "assets/scenery/jade-basin-v1.webp",
       "size": 59092,
       "sha256": "fae039b73527a8a6ebd516b69ce70fc42f0c1d75dd3c486f09a2df8718cb2a7b"
+    },
+    {
+      "path": "assets/scenery/sky-ash-moon-v1.webp",
+      "size": 33524,
+      "sha256": "d09fc7d7cdaf4a4e122b3871e276c163784a707ca0bb6af5ee5f6dfd37590b61"
+    },
+    {
+      "path": "assets/scenery/sky-drowned-vault-v1.webp",
+      "size": 39090,
+      "sha256": "fd272e892081fdb2ef208ec73d0c6318cb6417761682ac060dbe1649c1d6d7e8"
+    },
+    {
+      "path": "assets/scenery/sky-foundry-v1.webp",
+      "size": 50814,
+      "sha256": "73f269d6aa30e64707e6cfa4ef098c4453c49d1901900522b5c064e0fc0b0831"
+    },
+    {
+      "path": "assets/scenery/sky-fracture-v1.webp",
+      "size": 35732,
+      "sha256": "f27e0d647752a9392e1e6b040dc374aaa0ecebfced913ed84ba1916462769b35"
+    },
+    {
+      "path": "assets/scenery/sky-glass-desert-v1.webp",
+      "size": 29016,
+      "sha256": "562cd6e46ba9ab3e5a90ec0a45579c0766c497f4a68ba45fa785bde9a6d8bb75"
+    },
+    {
+      "path": "assets/scenery/sky-jade-basin-v1.webp",
+      "size": 45078,
+      "sha256": "ccce5844e57d863f25e533cdb07fc1b50984bbe37cdc22229b51997dbe5ee1bc"
+    },
+    {
+      "path": "assets/scenery/sky-threshold-v1.webp",
+      "size": 48362,
+      "sha256": "00715afdc027d5b5c7359240fa36758749648a4efb689796dcf43f8bdac10a8c"
+    },
+    {
+      "path": "assets/scenery/sky-void-heart-v1.webp",
+      "size": 38488,
+      "sha256": "2026cbe49c2d5be1f172ece75610d16950d3b411f734083ecab99188f3726e65"
     },
     {
       "path": "assets/scenery/threshold-v1.webp",

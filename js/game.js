@@ -39,6 +39,7 @@
   const audioPerimeterFrame={active:false,paused:false,hidden:false};
   const sceneryOptions={preview:dimensionContentEnabled},starCamera={x:0,y:0};
   NV.dimensionIllustratedScenery=dimensionContentEnabled;
+  NV.dimensionSceneryTrial=dimensionEventPreview;
   let dimensionExperiment = null, dimensionPursuit = null, experimentPreviousPlayer = null;
   let experimentSerial = 0;
   let dimensionLabLastConfig = null;

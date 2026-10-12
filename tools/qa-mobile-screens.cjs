@@ -57,6 +57,7 @@ app.whenReady().then(async()=>{
    await screen(title.startsWith('CÓMO')?'help':'records','dialog[open]',width,height);await evaluate('document.querySelector("dialog[open]").close()');
   }
   await evaluate('document.getElementById("lobbyPlayBtn").click()');await screen('combat','#game',width,height);
+  assert(await evaluate("NV.getSectorBackdropStats().artReady&&NV.getSectorBackdropStats().artFile.startsWith('sky-')"),'normal mobile combat must display its selected cosmic sky');
   await evaluate('document.getElementById("systemMenuToggle").click()');await screen('system','#systemMenu',width,height);await evaluate('document.getElementById("systemMenuClose").click();NV.__qaScreen("stats")');
   await screen('stats','#game',width,height);
   await evaluate('NV.__qaScreen("shop")');await screen('shop','#shop',width,height);
@@ -65,6 +66,10 @@ app.whenReady().then(async()=>{
    assert.equal(await evaluate('document.getElementById("shop").dataset.activeTab'),tab,'touch shop tab must switch');
   }
   await evaluate('document.querySelector(".alpha-prep-trigger").click()');await screen('prepare','dialog[open]',width,height);await evaluate('document.querySelector("dialog[open]").close();NV.__qaScreen("over")');await wait(3000);await screen('game-over','#gameOver',width,height);
+  await win.loadURL(`http://127.0.0.1:${server.address().port}/index.html?fresh=1&dimensionEvents=preview`);await wait(500);
+  await screen('trial-lobby','#startScreen',width,height);
+  await evaluate('document.getElementById("lobbyPlayBtn").click()');await screen('trial-combat','#game',width,height);
+  assert(await evaluate("NV.dimensionSceneryTrial&&NV.getSectorBackdropStats().artReady&&NV.getSectorBackdropStats().artFile.startsWith('sky-')"),'trial mobile combat must match the approved sky baseline');
  }
  assert.deepEqual(errors,[]);console.log('PASS '+reports.length+' mobile screen checks across three viewports; scrollable settings remain reachable. Emulation only.');
  }finally{win.destroy();server.close();}

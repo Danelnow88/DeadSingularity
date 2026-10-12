@@ -20,6 +20,12 @@
     Object.freeze({id:'drowned-vault',name:'BÓVEDA SUMERGIDA',background:'#061426',accent:'#63a8cc',secondary:'#455ab0',motif:'flooded-terraces',starfield:false}),
     Object.freeze({id:'glass-desert',name:'DESIERTO DE VIDRIO',background:'#141020',accent:'#c4adcd',secondary:'#748eb6',motif:'crystalline-tectonic-sheets',starfield:false}),
   ]);
+  function activeProfile(index){
+    if(NV.dimensionSceneryLegacy===true)return PROFILES[index];
+    return NV.dimensionSceneryTrial===true&&NV.dimensionSkyTrial
+      ? NV.dimensionSkyTrial.profiles[index]||PROFILES[index]
+      : NV.dimensionSkyBaseline ? NV.dimensionSkyBaseline.profiles[index]||PROFILES[index] : PROFILES[index];
+  }
   function sectorIndex(wave, preview) {
     const safe = Number.isFinite(wave) ? Math.max(1, Math.floor(wave)) : 1;
     return Math.min(preview?PROFILES.length-1:BASE_PROFILES.length-1, Math.floor((safe - 1) / 5));
@@ -32,23 +38,40 @@
   const artBase=typeof document!=='undefined'&&document.currentScript&&document.currentScript.src
     ? new URL('../../assets/scenery/',document.currentScript.src).href : 'assets/scenery/';
   const artCache=new Map();
+  const trialArt=new Map();
   const illustratedIds=new Set(['threshold','void-heart','drowned-vault','ash-moon','jade-basin','glass-desert']);
+  // Future sky assets can replace trial art without changing the published baseline.
+  NV.registerTrialSceneryArt=function(definitions){
+    const entries=Object.entries(definitions||{});
+    for(const [id,file] of entries){
+      if(!PROFILES.some(p=>p.id===id)||typeof file!=='string'||!/^[-a-z0-9_]+\.(webp|png)$/i.test(file))throw new Error('Invalid local trial scenery asset');
+    }
+    trialArt.clear();for(const [id,file] of entries)trialArt.set(id,file);
+    cached=null;
+    if(typeof window.dispatchEvent==='function'&&typeof Event!=='undefined')window.dispatchEvent(new Event('dimension-scenery-loaded'));
+  };
   function requestArt(index){
     if(typeof Image==='undefined')return null;
     const id=PROFILES[index].id;
-    if(!illustratedIds.has(id))return null;
-    let entry=artCache.get(id);
-    if(entry){artCache.delete(id);artCache.set(id,entry);return entry;}
-    const image=new Image();entry={image,ready:false,error:false};artCache.set(id,entry);
+    const file=NV.dimensionSceneryLegacy===true
+      ? (illustratedIds.has(id)?id+'-v1.webp':null)
+      : (NV.dimensionSceneryTrial===true&&trialArt.get(id))
+        ||(NV.dimensionSkyBaseline&&NV.dimensionSkyBaseline.files[id])
+        ||(illustratedIds.has(id)?id+'-v1.webp':null);
+    if(!file)return null;
+    const key=id+'|'+file;
+    let entry=artCache.get(key);
+    if(entry){artCache.delete(key);artCache.set(key,entry);return entry;}
+    const image=new Image();entry={id,file,image,ready:false,error:false};artCache.set(key,entry);
     // The gallery is outside gameplay and explicitly opts into loading all eight.
     const limit=NV.sceneryPreviewGallery?8:2;
     while(artCache.size>limit){const key=artCache.keys().next().value;const old=artCache.get(key);old.image.onload=null;old.image.onerror=null;old.image.src='';artCache.delete(key);}
     image.onload=()=>{entry.ready=image.naturalWidth>0;if(typeof window.dispatchEvent==='function'&&typeof Event!=='undefined')window.dispatchEvent(new Event('dimension-scenery-loaded'));};
     image.onerror=()=>{entry.error=true;if(typeof window.dispatchEvent==='function'&&typeof Event!=='undefined')window.dispatchEvent(new Event('dimension-scenery-loaded'));};
-    image.src=artBase+id+'-v1.webp';return entry;
+    image.src=artBase+file;return entry;
   }
   NV.preloadDimensionScenery=function(indices){for(const index of indices||[])if(Number.isInteger(index)&&PROFILES[index])requestArt(index);};
-  NV.dimensionSceneryStatus=()=>Array.from(artCache.entries(),([id,e])=>({id,ready:e.ready,error:e.error,width:e.image.naturalWidth||0,height:e.image.naturalHeight||0}));
+  NV.dimensionSceneryStatus=()=>Array.from(artCache.values(),e=>({id:e.id,file:e.file,ready:e.ready,error:e.error,width:e.image.naturalWidth||0,height:e.image.naturalHeight||0}));
 
   // Nubes elípticas orgánicas: sus centros/radios nunca dependen de viewX/Y.
   function cloud(ctx, x, y, rx, ry, rotation, rgb, alpha) {
@@ -362,7 +385,8 @@
   function prepare(W, H, index, variant, preview) {
     // Illustrated drafts stay opt-in until validated with the actual combat art.
     const art=preview&&NV.dimensionIllustratedScenery===true?requestArt(index):null,ready=!!(art&&art.ready);
-    if (cached && cached.W === W && cached.H === H && cached.index === index && cached.variant === variant&&cached.preview===!!preview&&cached.artReady===ready) return cached;
+    const artFile=art?art.file:null;
+    if (cached && cached.W === W && cached.H === H && cached.index === index && cached.variant === variant&&cached.preview===!!preview&&cached.artReady===ready&&cached.artFile===artFile) return cached;
     // Memoria acotada: no acumular texturas por run, sector, tier, DPR o cámara.
     cached = null;
     const scale = Math.min(1, 1536 / W, 1024 / H);
@@ -397,7 +421,7 @@
     // Full quality needs one image submission rather than two fullscreen passes.
     const full=surface(width,height);
     if(full){full.ctx.drawImage(core.canvas,0,0);full.ctx.drawImage(detail.canvas,0,0);}
-    cached = { W, H, index, variant, preview:!!preview,artReady:ready,core: core.canvas, detail: detail.canvas, full: full ? full.canvas : null, width, height };
+    cached = { W, H, index, variant, preview:!!preview,artReady:ready,artFile,core: core.canvas, detail: detail.canvas, full: full ? full.canvas : null, width, height };
     builds++; return cached;
   }
   function tierOf(options) {
@@ -407,7 +431,7 @@
 
   NV.SECTOR_VISUALS = BASE_PROFILES;
   NV.DIMENSION_VISUALS = PROFILES;
-  NV.sectorVisualForWave = (wave,options) => PROFILES[sectorIndex(wave,options&&options.preview)];
+  NV.sectorVisualForWave = (wave,options) => activeProfile(sectorIndex(wave,options&&options.preview));
   NV.drawSectorBackdrop = function (ctx, W, H, frame, wave, options) {
     if (!ctx || !Number.isFinite(W) || !Number.isFinite(H) || W <= 0 || H <= 0) return null;
     const variant = options && Number.isFinite(options.variant) ? options.variant >>> 0 : 0;
@@ -430,7 +454,7 @@
   NV.getSectorBackdropStats = () => ({ builds, draws, surfaces: cached ? (cached.full ? 3 : 2) : 0,
     perimeterBuilds, perimeterVertices: perimeterCache ? perimeterCache.outer.length : 0,
     sector: cached ? PROFILES[cached.index].id : null,
-    artReady:!!(cached&&cached.artReady),sourceImages:artCache.size,
+    artReady:!!(cached&&cached.artReady),artFile:cached?cached.artFile:null,sourceImages:artCache.size,
     textureWidth: cached ? cached.width : 0, textureHeight: cached ? cached.height : 0,
     estimatedBytes: cached ? cached.width * cached.height * (cached.full ? 12 : 8) : 0 });
 })();

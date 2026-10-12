@@ -2,8 +2,11 @@
   'use strict';
   const NV=window.NV;
   NV.sceneryPreviewGallery=true;NV.dimensionIllustratedScenery=true;NV.inertiaSpriteBaseUrl='../assets/dimension-cores/';
+  const collection=new URLSearchParams(location.search).get('collection');
+  NV.dimensionSceneryLegacy=collection==='legacy'||collection==='baseline';
+  NV.dimensionSceneryTrial=!NV.dimensionSceneryLegacy;
   NV.settings={graphics:{quality:'high',particles:true,heavyVfx:true},controls:{firePolicy:'manual'},gameplay:{difficulty:'normal'}};
-  const candidates=new Set(['threshold','void-heart','drowned-vault','ash-moon','jade-basin','glass-desert']);
+  const candidates=new Set(NV.DIMENSION_VISUALS.map(p=>p.id));
   const descriptions=['Raíces oscuras dispersas y agua fría sobre suelo azul carbón.','Forja estelar, gigante eclipsado y restos de roca.','Fisura violeta y masas fragmentadas.','Impresiones de arcos orgánicos sobre sombra negra y ciruela apagada.','Ruinas fósiles y ceniza negra con acentos rojizos.','Formas de obsidiana y depósitos de jade con iluminación verde apagada.','Agua azul nocturna, raíces sumergidas y reflejos discretos.','Reliquias de vidrio ahumado sobre arena negra, con bordes azul-violeta.'];
   const selected=new URLSearchParams(location.search).get('map');let showCombat=true;const cards=[];
   if(selected)document.getElementById('places').className='selected';
@@ -41,7 +44,11 @@
     for(let i=0;i<3;i++)NV.drawBulletShape(ctx,{x:600+i*45,y:450,vx:500,vy:0,color:'#fff',radius:3},NV.BULLET_DEFS.pistol,0);
   }
   function drawCard(card){const {c,i}=card,ctx=c.getContext('2d');ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,c.width,c.height);ctx.scale(c.width/1350,c.height/780);NV.drawSectorBackdrop(ctx,1350,780,120,1+i*5,{preview:true,tier:'full'});if(showCombat)combat(ctx);}
-  function redraw(){cards.forEach(drawCard);const status=NV.dimensionSceneryStatus();document.getElementById('status').textContent=status.some(s=>s.error)?'No se pudo cargar una propuesta.':status.length===3&&status.every(s=>s.ready)?'Tres propuestas listas · solo galería.':'Cargando tres propuestas…';}
+  function redraw(){cards.forEach(drawCard);const status=NV.dimensionSceneryStatus();const sky=NV.dimensionSceneryTrial;
+    document.getElementById('status').textContent=status.some(s=>s.error)?'No se pudo cargar un fondo.':sky&&status.filter(s=>s.file.startsWith('sky-')&&s.ready).length===8?'Ocho cielos listos · normal y pruebas':!sky?'Legacy · diseños anteriores':'Cargando los ocho cielos…';
+    cards.forEach(({card,desc,badge,i,p})=>{badge.textContent=sky?'CIELO ESPACIAL · ACTUAL':'LEGACY · RESPALDO';desc.textContent=sky?NV.dimensionSkyBaseline.profiles[i].description:descriptions[i];card.querySelector('a').href='?map='+p.id+(sky?'':'&collection=legacy');});
+    document.getElementById('collection').textContent=sky?'Ver fondos anteriores (legacy)':'Ver cielos actuales';
+  }
   NV.DIMENSION_VISUALS.forEach((p,i)=>{
     if(selected&&selected!==p.id)return;
     const card=document.createElement('article');card.id=p.id;if(candidates.has(p.id))card.className='candidate';
@@ -50,10 +57,11 @@
     const c=document.createElement('canvas');c.width=1080;c.height=624;card.append(c);
     const desc=document.createElement('p');desc.textContent=descriptions[i];card.append(desc);
     const link=document.createElement('a');link.href='?map='+p.id;link.textContent='Ver este mapa ampliado';card.append(link);
-    document.getElementById('places').append(card);cards.push({c,p,i});
+    document.getElementById('places').append(card);cards.push({c,p,i,card,desc,badge});
   });
   document.getElementById('contrast').onclick=e=>{showCombat=!showCombat;e.currentTarget.setAttribute('aria-pressed',String(showCombat));e.currentTarget.textContent=showCombat?'Ocultar combate':'Ver contraste con combate';redraw();};
   document.getElementById('group').onchange=redraw;
+  document.getElementById('collection').onclick=()=>{NV.dimensionSceneryLegacy=!NV.dimensionSceneryLegacy;NV.dimensionSceneryTrial=!NV.dimensionSceneryLegacy;NV.preloadDimensionScenery([0,1,2,3,4,5,6,7]);redraw();};
   window.addEventListener('dimension-scenery-loaded',redraw);window.addEventListener('inertia-sprites-updated',redraw);
-  NV.preloadDimensionScenery([0,3,4,5,6,7]);NV.preloadInertiaSprites();redraw();
+  NV.preloadDimensionScenery([0,1,2,3,4,5,6,7]);NV.preloadInertiaSprites();redraw();
 })();
