@@ -41,7 +41,7 @@ t('radio físico Hydra final = radio de datos × factor RB6 × 0.65; stats semá
   const expectedDamage = (base.damage + Math.min(80, Math.round(3 * 2))) * 0.8;
   if (e.hp !== Math.round((base.hp + 3 * 3 * 1.5) * 0.85) || e.speed !== base.speed + 3 || e.damage !== expectedDamage) throw new Error('HP/speed/damage cambiaron');
   const src = fs.readFileSync('js/engine/enemies.js', 'utf8');
-  for (const invariant of ['const FUSION_RADIUS = 40', 'const SPIT_FAR = 320', 'const SPIT_NEAR = 180', 'dist < 130']) if (!src.includes(invariant)) throw new Error('rango semántico alterado: ' + invariant);
+  for (const invariant of ['const SPIT_FAR = 320', 'const SPIT_NEAR = 180', 'dist < 130']) if (!src.includes(invariant)) throw new Error('rango semántico alterado: ' + invariant);
 });
 
 t('proyectil atraviesa el antiguo shell Hydra pero impacta el cuerpo nuevo', () => {
@@ -79,14 +79,14 @@ t('separación deriva del nuevo cuerpo; no empuja como si ocupara el radio anter
   if (Math.abs(a.x - before[0]) > 0.0001 || Math.abs(b.x - before[1]) > 0.0001) throw new Error('separación conserva huella antigua');
 });
 
-t('fusión conserva radio semántico fijo y crecimiento físico parte del nuevo tamaño', () => {
+t('grupo de hydras mantiene sus cuerpos y radios individuales', () => {
   const NV = setup(), enemies = [spawnHydra(NV), spawnHydra(NV), spawnHydra(NV)];
   enemies.forEach((e, i) => { e.x = 100 + i * 10; e.y = 100; e.speed = 0; e.behavior = 'chase'; e.contactCd = 0; });
   const baseRadius = enemies[0].radius;
   const st = enemyState(enemies[0], { x: 800, y: 500, invuln: 0, stun: 0 }, () => ({ applied: false })); st.enemies = enemies;
   const result = NV.updateEnemies(0, st);
-  if (result.enemies.length !== 1 || result.enemies[0].fusionLevel !== 1) throw new Error('fusión semántica cambió');
-  if (Math.abs(result.enemies[0].radius - baseRadius * 1.36) > 0.001) throw new Error('crecimiento no parte del cuerpo nuevo');
+  if (result.enemies.length !== 3 || result.enemies.some(e=>e.fusionLevel)) throw new Error('fusión semántica cambió');
+  if (result.enemies.some(e=>Math.abs(e.radius-baseRadius)>0.001)) throw new Error('crecimiento no parte del cuerpo nuevo');
 });
 
 t('FULL y CHEAP comparten exactamente la misma huella física', () => {

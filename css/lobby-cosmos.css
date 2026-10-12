@@ -1,4 +1,67 @@
 /* Presentation-only cosmos: isolated from gameplay and the pilot library. */
+/* Removable preview skin: one lobby class, no full-screen filter or extra animation. */
+#startScreen.dimension-test-lobby {
+  background:#100710;
+  box-shadow:inset 0 0 0 3px #ed879377;
+}
+#startScreen.dimension-test-lobby .lobby-atmosphere::after {
+  background:radial-gradient(ellipse at 52% 43%,#a9507033,transparent 65%),
+    linear-gradient(120deg,#50203c40,#160c2320,#73392c30);
+}
+#startScreen.dimension-test-lobby .lobby-masthead,
+#startScreen.dimension-test-lobby .lobby-footer { background:#211120d9; }
+#startScreen.dimension-test-lobby .panel-piloto,
+#startScreen.dimension-test-lobby .card-mode { background:#211222eb; border-color:#a65e7b80; }
+#startScreen.dimension-test-lobby .lobby-online { color:#ffb8c4; }
+#startScreen.dimension-test-lobby #lobbyPlayBtn {
+  background:linear-gradient(115deg,#b75d79,#8b568e);
+  border-color:#f3a5bd; color:#fff5f8; box-shadow:0 0 22px #bb608528;
+}
+#startScreen.dimension-test-lobby #dimensionEventPreviewBtn {
+  border-color:#dd91ac; color:#ffd6e3; background:#422138;
+}
+#startScreen.dimension-test-lobby .btn-mejoras {
+  background:#29162b; border-color:#d790b0; box-shadow:none;
+}
+#startScreen.dimension-test-lobby .btn-mejoras span { color:#efb8d1; }
+#startScreen.dimension-test-lobby .lobby-diff-btn {
+  /* Existing difficulty safety skin uses !important; override only in preview. */
+  background:#211222!important; border-color:#a65e7b80!important; color:#d8b8ca!important; box-shadow:none!important;
+}
+#startScreen.dimension-test-lobby .lobby-diff-btn[aria-pressed=true] {
+  background:#75445f!important; border-color:#e9a9c4!important; color:#fff3f9!important; box-shadow:0 0 12px #bb60852a!important;
+}
+html:not(.nv-mobile) #startScreen.lobby-fit-enabled { overflow:hidden; }
+html:not(.nv-mobile) #startScreen .lobby-fit-content {
+  flex:none; display:flex; flex-direction:column; align-self:center; position:relative; z-index:1;
+}
+html:not(.nv-mobile) #startScreen .main-lobby-panel {
+  width:94%; max-width:1660px; height:auto; max-height:none;
+  grid-template-columns:minmax(250px,1fr) minmax(310px,1.25fr) minmax(260px,1fr);
+  grid-template-rows:auto; gap:clamp(24px,3vw,52px); align-items:center;
+}
+html:not(.nv-mobile) #startScreen :is(.main-lobby-copy,.lobby-center,.lobby-modes) { grid-row:auto; }
+html:not(.nv-mobile) #startScreen .lobby-online { display:inline; }
+html:not(.nv-mobile) #startScreen .lobby-diff-btn { font-size:12px; min-height:36px; }
+html:not(.nv-mobile) #startScreen .lobby-diff-label { font-size:11px; }
+html:not(.nv-mobile) #startScreen :is(.center-heading > span,.mode-label) { font-size:11px; }
+html:not(.nv-mobile) #startScreen .center-heading h2 { font-size:13px; }
+html:not(.nv-mobile) #startScreen .orbit-caption { font-size:10px; }
+html:not(.nv-mobile) #startScreen .panel-top { font-size:11px; }
+html:not(.nv-mobile) #startScreen .panel-top button { font-size:10px; }
+html:not(.nv-mobile) #startScreen .hero-info-identity { display:block; }
+html:not(.nv-mobile) #startScreen .panel-piloto {
+  height:510px; display:grid; gap:14px;
+  grid-template-rows:22px 74px 70px 36px 110px 48px 14px;
+}
+html:not(.nv-mobile) #startScreen .panel-piloto > * { min-height:0; }
+html:not(.nv-mobile) #startScreen .hero-info-name { gap:5px; }
+html:not(.nv-mobile) #startScreen #heroName { font-size:clamp(28px,3vw,42px); line-height:1.3; white-space:nowrap; letter-spacing:0; }
+html:not(.nv-mobile) #startScreen .hero-info-skill { padding:10px; }
+html:not(.nv-mobile) #startScreen .hero-info-skill p { gap:5px; }
+html:not(.nv-mobile) #startScreen .hero-info-skill small { font-size:10px; line-height:1.4; }
+html:not(.nv-mobile) #startScreen .hero-info-identity { font-size:10px; line-height:1.4; }
+#startScreen.dimension-test-lobby #lobbyPlayBtn span:first-child { font-size:22px; letter-spacing:2px; white-space:nowrap; }
 #startScreen { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 #startScreen { background:#02040b; isolation:isolate; --text-muted:#a9b8cb; }
 #startScreen .lobby-atmosphere { opacity:1; z-index:0; overflow:hidden; }

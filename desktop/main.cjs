@@ -2,7 +2,7 @@
 if (!process.versions.electron || process.type !== 'browser') {
   throw new Error('Abrí ABRIR_V1.cmd. ELECTRON_RUN_AS_NODE se usa únicamente para el servidor web.');
 }
-const {app,BrowserWindow,Menu,protocol,net,session}=require('electron');
+const {app,BrowserWindow,Menu,protocol,net,session,desktopCapturer,dialog,ipcMain,shell}=require('electron');
 const path=require('node:path');
 const {pathToFileURL}=require('node:url');
 const {gameFile,CSP}=require('./runtime-policy.cjs');
@@ -18,6 +18,8 @@ const profileRoot=checking?path.join(validationRoot,webChecking?'profile-web':'p
 app.setName('DeadSingularityV1');
 if(!checking&&!app.isPackaged)prepareProfile(path.join(projectRoot,'local','profile'),profileRoot);
 app.setPath('userData',profileRoot);
+const profiling=!checking&&process.argv.includes('--profile-performance');
+const profiler=profiling?require('./performance-profile.cjs').createProfiler(require('electron'),app.isPackaged?path.join(profileRoot,'profiling'):path.join(projectRoot,'local','profiling'),{jsSamples:process.argv.includes('--profile-js')}):null;
 app.setAppUserModelId('com.deadsingularity.v1');
 protocol.registerSchemesAsPrivileged([{scheme:'dsv1',privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
 let window;
@@ -35,13 +37,14 @@ else {
     });
     session.defaultSession.setPermissionRequestHandler((_web,_permission,reply)=>reply(false));
     session.defaultSession.setPermissionCheckHandler(()=>false);
+    if(!checking)require('./system-audio.cjs').installSystemAudio({session:session.defaultSession,desktopCapturer,dialog,ipcMain,shell,getWindow:()=>window});
     session.defaultSession.webRequest.onBeforeRequest((details,reply)=>reply({cancel:!/^(dsv1:|file:|data:|blob:)/.test(details.url)&&!(webChecking&&details.url.startsWith(webOrigin))}));
     session.defaultSession.webRequest.onHeadersReceived((details,reply)=>reply({responseHeaders:{...details.responseHeaders,'Content-Security-Policy':[CSP]}}));
     Menu.setApplicationMenu(null);
-    window=new BrowserWindow({title:'DeadSingularity · V1',icon:path.join(root,'assets','brand','icon.ico'),width:1280,height:800,minWidth:800,minHeight:520,show:!checking,backgroundColor:'#070b15',webPreferences:{nodeIntegration:false,contextIsolation:true,sandbox:true,offscreen:checking,backgroundThrottling:!checking}});
+    window=new BrowserWindow({title:'DEADSINGULARITY · V1',icon:path.join(root,'assets','brand','icon.ico'),width:1280,height:800,minWidth:800,minHeight:520,show:!checking,backgroundColor:'#070b15',webPreferences:{nodeIntegration:false,contextIsolation:true,sandbox:true,preload:path.join(__dirname,'audio-preload.cjs'),offscreen:checking,backgroundThrottling:!checking}});
     window.webContents.setWindowOpenHandler(()=>({action:'deny'}));
-    window.webContents.on('page-title-updated',event=>{event.preventDefault();window.setTitle('DeadSingularity · V1');});
-    window.webContents.on('did-finish-load',()=>window.setTitle('DeadSingularity · V1'));
+    window.webContents.on('page-title-updated',event=>{event.preventDefault();window.setTitle('DEADSINGULARITY · V1');});
+    window.webContents.on('did-finish-load',()=>window.setTitle('DEADSINGULARITY · V1'));
     window.webContents.on('will-navigate',(event,url)=>{if(!url.startsWith('dsv1://project/')&&!(webChecking&&url.startsWith(webOrigin)))event.preventDefault();});
     window.webContents.on('before-input-event',(event,input)=>{
       if(input.type!=='keyDown')return;
@@ -49,6 +52,22 @@ else {
       if(input.key==='Escape'&&window.isFullScreen())window.setFullScreen(false);
     });
     await window.loadURL('dsv1://project/index.html');
+    if(profiler){
+      const {shell,dialog}=require('electron');
+      const safely=fn=>()=>Promise.resolve().then(fn).catch(error=>{profiler.log('command-error',{message:error.message});if(!window.isDestroyed())dialog.showMessageBox(window,{type:'error',message:'No se pudo completar la captura',detail:error.message});});
+      profiler.attach(window,state=>{
+        window.setTitle('DEADSINGULARITY · V1 — '+(state.busy?'PROCESANDO':state.recording?'GRABANDO':state.lastSaved?'TRAZA GUARDADA':'PERFILADO'));
+        Menu.setApplicationMenu(Menu.buildFromTemplate([{label:'Rendimiento',submenu:[
+          {label:state.recording?'Detener y exportar traza':'Iniciar traza',accelerator:'F8',enabled:!state.busy,click:safely(()=>state.recording?profiler.stop():profiler.start())},
+          {label:'Marcar un momento en la línea de tiempo',accelerator:'F7',enabled:state.recording&&!state.busy,click:safely(()=>profiler.mark())},
+          {label:'Incluir muestras de funciones JS (más carga)',type:'checkbox',checked:state.jsSamples,enabled:!state.recording&&!state.busy,click:item=>profiler.setSamples(item.checked)},
+          {label:'Límite de captura',submenu:[60,120,300].map(seconds=>({label:seconds+' segundos',type:'radio',checked:state.maxSeconds===seconds,enabled:!state.recording&&!state.busy,click:()=>profiler.setDuration(seconds)}))},
+          {type:'separator'},
+          {label:'Abrir DevTools en ventana separada',accelerator:'F12',click:()=>window.webContents.openDevTools({mode:'detach'})},
+          {label:'Abrir última captura',accelerator:'F6',click:safely(()=>shell.openPath(profiler.state().lastSaved?path.dirname(profiler.state().lastSaved):profiler.directory))}
+        ]}]));
+      });
+    }
     if(checking){
       await require('./delivery-qa.cjs')(window,{root,webChecking,outRoot:validationRoot,profileRoot,packaged:app.isPackaged});
       if(soakChecking)await require('./soak-qa.cjs')(window,{root,webChecking,outRoot:validationRoot,profileRoot});

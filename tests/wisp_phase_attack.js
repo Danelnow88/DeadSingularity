@@ -124,7 +124,7 @@ t('18-25. producción, regresiones, formato y caps intactos', function () {
     for (const key of Object.keys(expected[id])) if (type[key] !== expected[id][key]) throw new Error(id + '.' + key + '=' + type[key]);
   }
   if (NV.ENEMY_TYPES.find(function (entry) { return entry.id === 'wisp'; }).weight !== undefined) throw new Error('Wisp weight cambió');
-  if (Math.abs(NV.WISP_PHASE_ATTACK.markTime - 0.48) > 1e-9 || Math.abs(NV.WISP_PHASE_ATTACK.pulseRadius - 68) > 1e-9 || NV.formatDamageText(3.5999999999999996) !== '3.6') throw new Error('tuning/formato');
+  if (Math.abs(NV.WISP_PHASE_ATTACK.markTime - 0.48) > 1e-9 || Math.abs(NV.WISP_PHASE_ATTACK.pulseRadius - 68) > 1e-9 || NV.formatDamageText(3.5999999999999996) !== '4') throw new Error('tuning/formato');
   if (NV.WISP_PHASE_ATTACK.phaseOutTime !== 0.30 || NV.WISP_PHASE_ATTACK.recoveryTime !== 0.55 || NV.WISP_PHASE_ATTACK.cooldown !== 2.60 || NV.WISP_PHASE_ATTACK.triggerRange !== 300) throw new Error('timings preservados');
   if (NV.SPECTER_GUARD_PROTECTOR.damageReduction !== 0.90) throw new Error('Guard reduction');
   if (NV.BALANCE.MAX_HOSTILES !== 30 || NV.BALANCE.MAX_HEAVY_HOSTILES !== 7 || NV.BALANCE.SOFT_HEAVY_TARGET !== 4) throw new Error('caps');

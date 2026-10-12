@@ -65,14 +65,14 @@ app.whenReady().then(async()=>{
     if(baseline)await evaluate('document.getElementById("lobbyPlayBtn").click()');
     else {
       // A validated checkpoint in this disposable profile exercises real owned
-      // weapons/items and a live boss, not mocked callbacks or edited gameplay.
+      // weapons/items in the first universe, not mocked callbacks. Bosses now appear only in U4.
       assert(await evaluate(`(()=>{const saved={version:1,character:'boti',wave:1,run:NV.expedition.create('expedition',1337),player:{hp:120,maxHp:180,armor:0,luck:0,level:1,xp:0,xpToNext:100,baseMoveSpeed:195},inventory:['pistol','rifle','laser'],currentWeapon:'pistol',levels:{pistol:1,rifle:1,laser:1},kills:{},fus:{},consumables:[{type:'potion'},{type:'potion'},{type:'shield'},{type:'shield'}],shopBought:{},upgradeSlots:[],score:100,shards:20,difficulty:'easy',savedAt:Date.now()};return NV.expedition.save(saved)&&NV.alpha.resume();})()`));
     }
     await wait(600);
     const geometry=await evaluate(`(()=>{const rect=id=>document.getElementById(id).getBoundingClientRect().toJSON();const m=NV.worldMetrics,l=NV.getBottomCombatHudLayout(m.viewX,m.viewY,m.viewW,m.viewH,true),a=NV.gameToScreen(l.bossBarX,l.bossBarY-14),b=NV.gameToScreen(l.bossBarX+l.bossBarW,l.dashY+l.dashSegmentH);return {width:innerWidth,height:innerHeight,stick:rect('joystickZone'),base:rect('joystickBase'),dash:rect('touchSlideBtn'),special:rect('touchSpecialBtn'),use:rect('touchUseBtn'),weapon:rect('weaponIndicator'),item:rect('consumableIndicator'),bars:{x:a.x,y:a.y,width:b.x-a.x,height:b.y-a.y}};})()`);
     await capture(`${name}-playing${baseline?'-baseline':''}`,width,height);
     if(!baseline){
-      assert(await evaluate('!!NV.getBoss()'),'Fixture must contain the real boss');
+      assert(await evaluate('NV.getRuntimeSnapshot().dimension.depth===0&&!NV.getBoss()'),'Fixture starts in U1; the real boss must wait for U4');
       const targets=['dash','special','use','weapon','item'];
       for(const id of targets){const r=geometry[id];assert(r.width>=44&&r.height>=44&&r.x>=0&&r.y>=0&&r.right<=geometry.width&&r.bottom<=geometry.height,'Target must be reachable '+id);assert(!overlaps(r,geometry.bars),'Controls cover boss/dash bars: '+id);}
       for(let i=0;i<targets.length;i++)for(let j=i+1;j<targets.length;j++)assert(!overlaps(geometry[targets[i]],geometry[targets[j]]),'Targets overlap');
@@ -104,7 +104,7 @@ app.whenReady().then(async()=>{
       assert((await evaluate('NV.lobbyAtmosphere.getSnapshot()')).active===false,'No background work during combat');
       await evaluate('NV.input.togglePause()');assert(await evaluate('document.getElementById("mobileHud").classList.contains("nv-paused")'),'Paused controls are disabled');
       await evaluate('NV.input.togglePause()');
-      console.log('PASS touch gameplay '+name+': layout, real boss, analog movement, multitouch, tap/swipe, consumption, pause.');
+      console.log('PASS touch gameplay '+name+': layout, real U1 combat and reserved boss-bar geometry, analog movement, multitouch, tap/swipe, consumption, pause.');
     }else console.log(JSON.stringify({size:[width,height],before,after,environment,geometry}));
     reports.push({width,height,safeArea:!!safeArea,environment,before,after,geometry});
   }

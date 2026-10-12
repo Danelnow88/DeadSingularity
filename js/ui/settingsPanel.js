@@ -14,6 +14,13 @@
   const firePolicyInputs = [].slice.call(document.querySelectorAll('input[name="firePolicy"]'));
   const particles = document.getElementById('settingsParticles');
   const heavyVfx = document.getElementById('settingsHeavyVfx');
+  const showFPS = document.getElementById('settingsShowFPS');
+  const resolution = document.getElementById('settingsResolution');
+  const reducedEffects = document.getElementById('settingsReducedEffects');
+  const fullscreen = document.getElementById('settingsFullscreen');
+  const graphicsReset = document.getElementById('settingsGraphicsReset');
+  const graphicsHelp = document.getElementById('settingsGraphicsHelp');
+  const resolutionStatus = document.getElementById('settingsResolutionStatus');
   const tabs = [].slice.call(document.querySelectorAll('.settings-tab'));
   const tabPanels = [].slice.call(document.querySelectorAll('.settings-tab-panel'));
   const muteBtn = document.getElementById('settingsMuteToggle');
@@ -51,6 +58,14 @@
     qualityInputs.forEach((input) => { input.checked = input.value === g.quality; });
     if (particles) particles.checked = !!g.particles;
     if (heavyVfx) heavyVfx.checked = !!g.heavyVfx;
+    if (showFPS) showFPS.checked = !!g.showFPS;
+    if (reducedEffects) reducedEffects.checked = !!(NV.settings.gameplay && NV.settings.gameplay.reducedEffects);
+    if (resolution) {
+      const mobile = !!(NV.capabilities && NV.capabilities.isMobile);
+      resolution.disabled = mobile;
+      resolution.value = mobile ? 'native' : (g.resolution || 'native');
+    }
+    syncDisplay();
     firePolicyInputs.forEach((input) => { input.checked = input.value === controls.firePolicy; });
     volumeInputs.forEach((input) => {
       const key = (input.getAttribute && input.getAttribute('data-setting')) || '';
@@ -63,11 +78,26 @@
     });
     syncMute();
   }
+  function syncDisplay() {
+    const vp = NV.viewport;
+    if (!vp) return;
+    const isFullscreen = vp.readFullscreen();
+    if (fullscreen) {
+      fullscreen.textContent = isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa';
+      fullscreen.setAttribute('aria-pressed', String(isFullscreen));
+    }
+    if (resolutionStatus) {
+      const width = Math.round(Math.round(vp.cssW) * vp.getEffectiveDpr());
+      const height = Math.round(Math.round(vp.cssH) * vp.getEffectiveDpr());
+      resolutionStatus.textContent = (vp.isMobile ? 'Resolución móvil automática' : 'Render interno') + ' · ' + width + ' × ' + height + ' px';
+    }
+  }
 
   function showTab(name) {
     const nextTab = tabs.find((tab) => tab.getAttribute && tab.getAttribute('data-tab') === name);
     if (!nextTab) return;
     activeTab = name;
+    if (panel) panel.setAttribute('data-settings-tab', name);
     tabPanels.forEach((p) => {
       const on = p.getAttribute && p.getAttribute('data-tab') === name;
       p.hidden = !on;
@@ -132,6 +162,25 @@
   }));
   if (particles) particles.addEventListener('change', () => NV.setGraphicsOption('particles', particles.checked));
   if (heavyVfx) heavyVfx.addEventListener('change', () => NV.setGraphicsOption('heavyVfx', heavyVfx.checked));
+  if (showFPS) showFPS.addEventListener('change', () => NV.setGraphicsOption('showFPS', showFPS.checked));
+  if (resolution) resolution.addEventListener('change', () => NV.setGraphicsResolution(resolution.value));
+  if (reducedEffects) reducedEffects.addEventListener('change', () => NV.setComfortOption('reducedEffects', reducedEffects.checked));
+  if (graphicsReset) graphicsReset.addEventListener('click', () => NV.resetGraphicsSettings());
+  if (fullscreen) fullscreen.addEventListener('click', async () => {
+    if (!NV.viewport || fullscreen.disabled) return;
+    fullscreen.disabled = true;
+    try {
+      const ok = await NV.viewport.toggleFullscreen();
+      if (!ok && graphicsHelp) graphicsHelp.textContent = 'El navegador no permitió pantalla completa. Podés seguir jugando en la ventana.';
+    } finally { fullscreen.disabled = false; syncDisplay(); }
+  });
+  [].slice.call(document.querySelectorAll('.graphics-help')).forEach((label) => {
+    const explain = () => { if (graphicsHelp) graphicsHelp.textContent = label.getAttribute('data-help'); };
+    label.addEventListener('mouseenter', explain);
+    label.addEventListener('focus', explain);
+    label.addEventListener('click', explain);
+  });
+  if (NV.viewport && typeof NV.viewport.onChange === 'function') NV.viewport.onChange(syncDisplay);
 
   // Navegación por pestañas (click + teclado).
   tabs.forEach((t) => {

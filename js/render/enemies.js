@@ -105,27 +105,70 @@
   }
   function rgba(color, alpha) { return color.rgba[alpha] || ('rgba(' + color.rgb + ',' + alpha + ')'); }
   function neutralShadow(ctx) { ctx.shadowBlur = 0; }
-  function under(ctx, width) {
+  // Stable vector geometry keeps its native path identity between frames. Skia
+  // can reuse tessellation/coverage; curves, animation and all glow layers stay.
+  const commonPaths = new Map();
+  const COMMON_PATH_BUILDERS = {
+    'drone-rotor': p => p.ellipse(0, 0, 8, 8, 0, 0, TAU),
+    'drone-body': p => { p.moveTo(-18, -6); p.quadraticCurveTo(-10, -17, 6, -17); p.quadraticCurveTo(20, -16, 24, -4); p.quadraticCurveTo(25, 0, 24, 4); p.quadraticCurveTo(20, 16, 6, 17); p.quadraticCurveTo(-10, 17, -18, 6); p.quadraticCurveTo(-22, 0, -18, -6); p.closePath(); },
+    'drone-orbit': p => p.arc(0, 0, 11, 0, TAU),
+    'drone-blade-0': p => p.ellipse(0, 0, 9, 2.1, 0, 0, TAU),
+    'drone-blade-1': p => p.ellipse(0, 0, 9, 2.1, Math.PI, 0, TAU),
+    'drone-face': p => p.ellipse(9, 0, 9, 7, 0, 0, TAU),
+    'runner-body': p => { p.moveTo(-22, 0); p.quadraticCurveTo(-10, -13, 14, -14); p.quadraticCurveTo(31, -12, 42, -3); p.quadraticCurveTo(48, 0, 42, 3); p.quadraticCurveTo(31, 12, 14, 14); p.quadraticCurveTo(-10, 13, -22, 0); p.closePath(); },
+    'runner-core': p => { p.moveTo(-6, 0); p.quadraticCurveTo(10, -7, 28, 0); p.quadraticCurveTo(10, 7, -6, 0); p.closePath(); },
+    'runner-nose': p => { p.moveTo(23, -6); p.lineTo(49, -2); p.lineTo(49, 2); p.lineTo(23, 6); p.quadraticCurveTo(30, 0, 23, -6); p.closePath(); },
+    'tank-body': p => { p.moveTo(-38, 6); p.lineTo(-18, -4); p.lineTo(18, -4); p.lineTo(33, 2); p.lineTo(37, 10); p.lineTo(26, 17); p.lineTo(-20, 17); p.lineTo(-36, 12); p.closePath(); },
+    'tank-top': p => { p.moveTo(-8, -9); p.lineTo(12, -9); p.lineTo(24, -4); p.lineTo(22, 3); p.lineTo(2, 4); p.lineTo(-10, 0); p.closePath(); },
+    'tank-turret': p => { p.moveTo(-8, -5); p.lineTo(8, -5); p.lineTo(15, -1); p.lineTo(14, 5); p.lineTo(-2, 6); p.lineTo(-9, 2); p.closePath(); },
+    'tank-barrel': p => { p.moveTo(0, -2.8); p.lineTo(32, -2.8); p.lineTo(40, -1.2); p.lineTo(40, 1.2); p.lineTo(32, 2.8); p.lineTo(0, 2.8); p.closePath(); },
+    'tank-plate': p => { p.moveTo(-24, 0); p.lineTo(-12, -6); p.lineTo(-4, -1); p.lineTo(-8, 8); p.lineTo(-22, 8); p.closePath(); },
+    'shielder-body': p => { p.moveTo(-28, -16); p.quadraticCurveTo(-15, -30, 2, -18); p.quadraticCurveTo(8, 0, 2, 18); p.quadraticCurveTo(-15, 30, -28, 16); p.quadraticCurveTo(-35, 0, -28, -16); p.closePath(); },
+    'swarmlet-body': p => { p.moveTo(-8, -3); p.quadraticCurveTo(0, -7, 8, -2); p.lineTo(12, 0); p.lineTo(8, 2); p.quadraticCurveTo(0, 7, -8, 3); p.closePath(); },
+    'spitter-body': p => { p.moveTo(-30, -2); p.quadraticCurveTo(-23, -27, 0, -31); p.quadraticCurveTo(23, -27, 30, -2); p.quadraticCurveTo(22, 10, 0, 13); p.quadraticCurveTo(-22, 10, -30, -2); p.closePath(); },
+    'spitter-nozzle': p => { p.moveTo(-8, 10); p.quadraticCurveTo(-11, 24, -5, 34); p.quadraticCurveTo(0, 41, 7, 34); p.quadraticCurveTo(13, 24, 9, 10); p.quadraticCurveTo(4, 15, -1, 15); p.quadraticCurveTo(-5, 15, -8, 10); p.closePath(); },
+    'kamikaze-body': p => { p.moveTo(-15, -8); p.quadraticCurveTo(0, -17, 15, -8); p.quadraticCurveTo(18, 4, 7, 13); p.quadraticCurveTo(-7, 16, -16, 4); p.closePath(); },
+  };
+  for (let i = 0; i < DRONE_ROTORS.length; i++) {
+    const [rx, ry] = DRONE_ROTORS[i];
+    COMMON_PATH_BUILDERS['drone-arm-' + i] = p => {
+      p.moveTo(Math.sign(rx) * 8, Math.sign(ry) * 5); p.quadraticCurveTo(rx * .55, ry * .55, rx, ry);
+    };
+  }
+  // Only the three fixed feet: never key this cache by entity, frame or size.
+  for (const x of TANK_FEET) COMMON_PATH_BUILDERS['tank-foot-' + x] = p => {
+    p.moveTo(x - 5, 16); p.lineTo(x + 5, 16); p.lineTo(x + 4, 23); p.lineTo(x - 4, 23); p.closePath();
+  };
+  function commonPath(ctx, key) {
+    const build = COMMON_PATH_BUILDERS[key];
+    if (typeof Path2D !== 'function') { ctx.beginPath(); build(ctx); return undefined; }
+    let path = commonPaths.get(key);
+    if (!path) { path = new Path2D(); build(path); commonPaths.set(key, path); }
+    return path;
+  }
+  function strokePath(ctx, path) { if (path) ctx.stroke(path); else ctx.stroke(); }
+  function fillPath(ctx, path) { if (path) ctx.fill(path); else ctx.fill(); }
+  function under(ctx, width, path) {
     neutralShadow(ctx);
     ctx.strokeStyle = 'rgba(0,0,0,.88)'; ctx.lineWidth = width == null ? 6 : width;
-    ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round'; strokePath(ctx, path);
   }
-  function fauxGlowStroke(ctx, color, width, alpha) {
+  function fauxGlowStroke(ctx, color, width, alpha, path) {
     if (!commonFauxGlowEnabled) return;
     neutralShadow(ctx); ctx.strokeStyle = rgba(color, alpha); ctx.lineWidth = width;
-    ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round'; strokePath(ctx, path);
   }
-  function neon(ctx, color, width, spread, alpha) {
+  function neon(ctx, color, width, spread, alpha, path) {
     const crispWidth = width == null ? 2 : width;
     const crispAlpha = alpha == null ? 0.92 : alpha;
     const glowSpread = spread == null ? 4 : spread;
     const glowAlpha = glowSpread >= 6 ? 0.34 : crispAlpha >= 0.9 ? 0.3 : 0.24;
-    fauxGlowStroke(ctx, color, crispWidth + 1.8 + glowSpread * 0.48, glowAlpha);
+    fauxGlowStroke(ctx, color, crispWidth + 1.8 + glowSpread * 0.48, glowAlpha, path);
     ctx.strokeStyle = rgba(color, crispAlpha);
-    ctx.lineWidth = crispWidth; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
+    ctx.lineWidth = crispWidth; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; strokePath(ctx, path);
     neutralShadow(ctx);
   }
-  function darkFill(ctx) { neutralShadow(ctx); ctx.fillStyle = '#06080d'; ctx.fill(); }
+  function darkFill(ctx, path) { neutralShadow(ctx); ctx.fillStyle = '#06080d'; fillPath(ctx, path); }
   function crack(ctx, points, color, alpha, width) {
     neutralShadow(ctx); ctx.strokeStyle = rgba(color, alpha == null ? 0.6 : alpha);
     ctx.lineWidth = width == null ? 1.3 : width; ctx.lineCap = 'round'; ctx.beginPath();
@@ -177,18 +220,18 @@
   function drawDrone(ctx, e, color, seed, t, target) {
     const bob = Math.sin(t * 2.2 + seed) * 1.1, spin = t * 12;
     ctx.save(); ctx.translate(0, bob); ctx.rotate(Math.sin(t * 1.8 + seed) * 0.04);
-    for (const pos of DRONE_ROTORS) {
-      const rx = pos[0], ry = pos[1]; ctx.beginPath(); ctx.moveTo(Math.sign(rx) * 8, Math.sign(ry) * 5);
-      ctx.quadraticCurveTo(rx * 0.55, ry * 0.55, rx, ry); ctx.strokeStyle = rgba(color, 0.62); ctx.lineWidth = 3.3; ctx.lineCap = 'round'; ctx.stroke();
+    for (let i = 0; i < DRONE_ROTORS.length; i++) {
+      const arm = commonPath(ctx, 'drone-arm-' + i);
+      ctx.strokeStyle = rgba(color, 0.62); ctx.lineWidth = 3.3; ctx.lineCap = 'round'; strokePath(ctx, arm);
     }
     DRONE_ROTORS.forEach((pos, i) => {
-      ctx.save(); ctx.translate(pos[0], pos[1]); ctx.beginPath(); ctx.ellipse(0, 0, 8, 8, 0, 0, TAU); under(ctx, 4.6); darkFill(ctx); neon(ctx, color, 1.55, 3, 0.8);
-      ctx.beginPath(); ctx.arc(0, 0, 11, 0, TAU); ctx.strokeStyle = rgba(color, 0.42); ctx.lineWidth = 1.4; ctx.stroke(); ctx.rotate(spin + i * 0.7);
-      for (let blade = 0; blade < 2; blade++) { ctx.beginPath(); ctx.ellipse(0, 0, 9, 2.1, blade * Math.PI, 0, TAU); ctx.strokeStyle = rgba(color, 0.32); ctx.lineWidth = 1.5; ctx.stroke(); }
+      ctx.save(); ctx.translate(pos[0], pos[1]); const rotor = commonPath(ctx, 'drone-rotor'); under(ctx, 4.6, rotor); darkFill(ctx, rotor); neon(ctx, color, 1.55, 3, 0.8, rotor);
+      const orbit = commonPath(ctx, 'drone-orbit'); ctx.strokeStyle = rgba(color, 0.42); ctx.lineWidth = 1.4; strokePath(ctx, orbit); ctx.rotate(spin + i * 0.7);
+      for (let blade = 0; blade < 2; blade++) { const bladePath = commonPath(ctx, 'drone-blade-' + blade); ctx.strokeStyle = rgba(color, 0.32); ctx.lineWidth = 1.5; strokePath(ctx, bladePath); }
       glowCore(ctx, 0, 0, 1.5, color, 0.42); ctx.restore();
     });
-    ctx.beginPath(); ctx.moveTo(-18, -6); ctx.quadraticCurveTo(-10, -17, 6, -17); ctx.quadraticCurveTo(20, -16, 24, -4); ctx.quadraticCurveTo(25, 0, 24, 4); ctx.quadraticCurveTo(20, 16, 6, 17); ctx.quadraticCurveTo(-10, 17, -18, 6); ctx.quadraticCurveTo(-22, 0, -18, -6); ctx.closePath(); under(ctx, 6); darkFill(ctx); neon(ctx, color, 2.05, 4, 0.92);
-    ctx.beginPath(); ctx.ellipse(9, 0, 9, 7, 0, 0, TAU); ctx.fillStyle = '#010204'; ctx.fill(); ctx.strokeStyle = rgba(color, 0.3); ctx.lineWidth = 1.1; ctx.stroke();
+    const body = commonPath(ctx, 'drone-body'); under(ctx, 6, body); darkFill(ctx, body); neon(ctx, color, 2.05, 4, 0.92, body);
+    const face = commonPath(ctx, 'drone-face'); ctx.fillStyle = '#010204'; fillPath(ctx, face); ctx.strokeStyle = rgba(color, 0.3); ctx.lineWidth = 1.1; strokePath(ctx, face);
     const eyesTarget = localTarget(ctx, target);
     eye(ctx, 6, -1, 3.9, 4.5, eyesTarget, color); eye(ctx, 14, 1, 3.2, 3.8, eyesTarget, color); crack(ctx, DRONE_CRACK, color, 0.34, 1); glowCore(ctx, -6, 0, 1.8, color, 0.36); ctx.restore();
   }
@@ -197,11 +240,11 @@
     const facing = smoothFacing(e, 'runner', runnerFacing(e, facingX, facingY), 0.34);
     ctx.save(); ctx.rotate(facing); ctx.translate(-1, 0); ctx.rotate(Math.sin(t * 4.6 + seed) * 0.018);
     for (let side = -1; side <= 1; side += 2) { ctx.beginPath(); ctx.moveTo(-20, side * 3); ctx.quadraticCurveTo(-34, side * 2, -49, side * (10 + Math.sin(t * 5 + side) * 1.2)); ctx.strokeStyle = rgba(color, 0.64); ctx.lineWidth = 2.7; ctx.lineCap = 'round'; ctx.stroke(); }
-    ctx.beginPath(); ctx.moveTo(-22, 0); ctx.quadraticCurveTo(-10, -13, 14, -14); ctx.quadraticCurveTo(31, -12, 42, -3); ctx.quadraticCurveTo(48, 0, 42, 3); ctx.quadraticCurveTo(31, 12, 14, 14); ctx.quadraticCurveTo(-10, 13, -22, 0); ctx.closePath(); under(ctx, 5.6); darkFill(ctx); neon(ctx, color, 1.95, 3.8, 0.94);
-    ctx.beginPath(); ctx.moveTo(-6, 0); ctx.quadraticCurveTo(10, -7, 28, 0); ctx.quadraticCurveTo(10, 7, -6, 0); ctx.closePath(); under(ctx, 3.8); ctx.fillStyle = '#03060b'; ctx.fill(); neon(ctx, color, 1.2, 2.2, 0.5);
+    const body = commonPath(ctx, 'runner-body'); under(ctx, 5.6, body); darkFill(ctx, body); neon(ctx, color, 1.95, 3.8, 0.94, body);
+    const core = commonPath(ctx, 'runner-core'); under(ctx, 3.8, core); ctx.fillStyle = '#03060b'; fillPath(ctx, core); neon(ctx, color, 1.2, 2.2, 0.5, core);
     for (let side = -1; side <= 1; side += 2) { ctx.beginPath(); ctx.moveTo(-2, side * 4); ctx.quadraticCurveTo(-14, side * (12 + Math.sin(t * 6 + side) * 1.2), -20, side * 21); ctx.quadraticCurveTo(-23, side * 26, -30, side * 15); ctx.strokeStyle = rgba(color, 0.8); ctx.lineWidth = 3.7; ctx.lineCap = 'round'; ctx.stroke(); ctx.beginPath(); ctx.moveTo(-27, side * 15); ctx.lineTo(-37, side * 14); ctx.lineTo(-31, side * 20); ctx.closePath(); ctx.fillStyle = rgba(color, 0.2); ctx.fill(); ctx.strokeStyle = rgba(color, 0.64); ctx.lineWidth = 1.1; ctx.stroke(); }
     for (let side = -1; side <= 1; side += 2) { ctx.beginPath(); ctx.moveTo(14, side * 5); ctx.quadraticCurveTo(19, side * 8, 20, side * 12); ctx.strokeStyle = rgba(color, 0.46); ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.stroke(); }
-    ctx.beginPath(); ctx.moveTo(23, -6); ctx.lineTo(49, -2); ctx.lineTo(49, 2); ctx.lineTo(23, 6); ctx.quadraticCurveTo(30, 0, 23, -6); ctx.closePath(); under(ctx, 4.5); ctx.fillStyle = '#05070d'; ctx.fill(); neon(ctx, color, 1.5, 2.9, 0.8);
+    const nose = commonPath(ctx, 'runner-nose'); under(ctx, 4.5, nose); ctx.fillStyle = '#05070d'; fillPath(ctx, nose); neon(ctx, color, 1.5, 2.9, 0.8, nose);
     const eyesTarget = localTarget(ctx, target);
     eye(ctx, 21, -5, 3.7, 4.1, eyesTarget, color); eye(ctx, 21, 5, 3.7, 4.1, eyesTarget, color); crack(ctx, RUNNER_CRACK_TOP, color, 0.34, 1); crack(ctx, RUNNER_CRACK_BOTTOM, color, 0.24, 1); glowCore(ctx, 0, 0, 1.6, color, 0.32); ctx.restore();
   }
@@ -210,14 +253,14 @@
     // Tanque = silueta pesada y cañón legible. Evitamos halos/telemetría decorativa.
     const bob = Math.sin(t * 0.8 + seed), recoil = Math.sin(t * 2 + seed) * 0.35;
     ctx.save(); ctx.translate(-4, 10 + bob); ctx.fillStyle = 'rgba(0,0,0,.30)'; ctx.beginPath(); ctx.ellipse(4, 18, 40, 7, 0, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(-38, 6); ctx.lineTo(-18, -4); ctx.lineTo(18, -4); ctx.lineTo(33, 2); ctx.lineTo(37, 10); ctx.lineTo(26, 17); ctx.lineTo(-20, 17); ctx.lineTo(-36, 12); ctx.closePath(); under(ctx, 7); darkFill(ctx); neon(ctx, color, 2.25, 4.1, 0.94);
-    ctx.beginPath(); ctx.moveTo(-8, -9); ctx.lineTo(12, -9); ctx.lineTo(24, -4); ctx.lineTo(22, 3); ctx.lineTo(2, 4); ctx.lineTo(-10, 0); ctx.closePath(); under(ctx, 5.3); ctx.fillStyle = '#05070d'; ctx.fill(); neon(ctx, color, 1.75, 3.2, 0.78);
+    const body = commonPath(ctx, 'tank-body'); under(ctx, 7, body); darkFill(ctx, body); neon(ctx, color, 2.25, 4.1, 0.94, body);
+    const top = commonPath(ctx, 'tank-top'); under(ctx, 5.3, top); ctx.fillStyle = '#05070d'; fillPath(ctx, top); neon(ctx, color, 1.75, 3.2, 0.78, top);
     ctx.save(); ctx.translate(8, -10); ctx.rotate(Math.atan2(facingY, facingX));
-    ctx.beginPath(); ctx.moveTo(-8, -5); ctx.lineTo(8, -5); ctx.lineTo(15, -1); ctx.lineTo(14, 5); ctx.lineTo(-2, 6); ctx.lineTo(-9, 2); ctx.closePath(); under(ctx, 4.8); ctx.fillStyle = '#04070c'; ctx.fill(); neon(ctx, color, 1.55, 2.9, 0.72);
-    ctx.save(); ctx.translate(10 - recoil, 0); ctx.beginPath(); ctx.moveTo(0, -2.8); ctx.lineTo(32, -2.8); ctx.lineTo(40, -1.2); ctx.lineTo(40, 1.2); ctx.lineTo(32, 2.8); ctx.lineTo(0, 2.8); ctx.closePath(); under(ctx, 4.2); ctx.fillStyle = '#03060b'; ctx.fill(); neon(ctx, color, 1.45, 2.8, 0.8); ctx.restore();
+    const turret = commonPath(ctx, 'tank-turret'); under(ctx, 4.8, turret); ctx.fillStyle = '#04070c'; fillPath(ctx, turret); neon(ctx, color, 1.55, 2.9, 0.72, turret);
+    ctx.save(); ctx.translate(10 - recoil, 0); const barrel = commonPath(ctx, 'tank-barrel'); under(ctx, 4.2, barrel); ctx.fillStyle = '#03060b'; fillPath(ctx, barrel); neon(ctx, color, 1.45, 2.8, 0.8, barrel); ctx.restore();
     crack(ctx, TANK_CRACK_TURRET, color, 0.18, 1); ctx.restore();
-    ctx.beginPath(); ctx.moveTo(-24, 0); ctx.lineTo(-12, -6); ctx.lineTo(-4, -1); ctx.lineTo(-8, 8); ctx.lineTo(-22, 8); ctx.closePath(); under(ctx, 4.4); ctx.fillStyle = '#04070c'; ctx.fill(); neon(ctx, color, 1.3, 2.6, 0.6);
-    for (const x of TANK_FEET) { ctx.beginPath(); ctx.moveTo(x - 5, 16); ctx.lineTo(x + 5, 16); ctx.lineTo(x + 4, 23); ctx.lineTo(x - 4, 23); ctx.closePath(); under(ctx, 3.8); ctx.fillStyle = '#04070c'; ctx.fill(); neon(ctx, color, 1.1, 2.2, 0.5); }
+    const plate = commonPath(ctx, 'tank-plate'); under(ctx, 4.4, plate); ctx.fillStyle = '#04070c'; fillPath(ctx, plate); neon(ctx, color, 1.3, 2.6, 0.6, plate);
+    for (const x of TANK_FEET) { const foot = commonPath(ctx, 'tank-foot-' + x); under(ctx, 3.8, foot); ctx.fillStyle = '#04070c'; fillPath(ctx, foot); neon(ctx, color, 1.1, 2.2, 0.5, foot); }
     ctx.restore();
   }
 
@@ -225,7 +268,7 @@
     const active = e.shield !== false && !(e.shieldCd > 0), sway = Math.sin(t * 1.6 + seed) * 1.5, pulse = (Math.sin(t * 2.2 + seed) + 1) / 2;
     const bladeOpen = smoothScalar(e, 'shielderBlades', active ? 0 : 1, 0.16);
     const facing = smoothFacing(e, 'shielder', Math.atan2(facingY, facingX), 0.24);
-    ctx.save(); ctx.rotate(facing); ctx.translate(-2, sway); ctx.beginPath(); ctx.moveTo(-28, -16); ctx.quadraticCurveTo(-15, -30, 2, -18); ctx.quadraticCurveTo(8, 0, 2, 18); ctx.quadraticCurveTo(-15, 30, -28, 16); ctx.quadraticCurveTo(-35, 0, -28, -16); ctx.closePath(); under(ctx, 6); darkFill(ctx); neon(ctx, color, 2, 3.8, 0.88); eye(ctx, -15, 0, 5.8, 6.4, localTarget(ctx, target), color);
+    ctx.save(); ctx.rotate(facing); ctx.translate(-2, sway); const body = commonPath(ctx, 'shielder-body'); under(ctx, 6, body); darkFill(ctx, body); neon(ctx, color, 2, 3.8, 0.88, body); eye(ctx, -15, 0, 5.8, 6.4, localTarget(ctx, target), color);
     const shieldAlpha = active ? 0.96 : 0.32;
     ctx.save(); ctx.translate(-7, -4); ctx.rotate(-bladeOpen * 0.32); ctx.translate(7, 4);
     ctx.beginPath(); ctx.moveTo(-7, -4); ctx.quadraticCurveTo(8, -26, 34, -28); ctx.quadraticCurveTo(45, -19 - pulse * 1.5, 45, -8); ctx.quadraticCurveTo(33, -2, 18, -1); ctx.quadraticCurveTo(2, -1, -7, -4); ctx.closePath(); under(ctx, 6.2); ctx.fillStyle = '#05070d'; ctx.fill(); neon(ctx, color, 2.3, active ? 4.6 : 1.5, shieldAlpha);
@@ -246,7 +289,7 @@
       const dirX = e.swarmCommitDirX || 0, dirY = e.swarmCommitDirY || 0;
       ctx.beginPath(); ctx.moveTo(-dirX * 19, -dirY * 19); ctx.lineTo(-dirX * 43, -dirY * 43); ctx.strokeStyle = rgba(color, 0.64); ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.stroke();
     }
-    for (let i = 0; i < 3; i++) { const a = orbit + i * TAU / 3, px = Math.cos(a) * 14, py = Math.sin(a * 1.1) * 9; ctx.save(); ctx.translate(px, py); ctx.rotate(a * 0.25 + i * 0.7); ctx.beginPath(); ctx.moveTo(-8, -3); ctx.quadraticCurveTo(0, -7, 8, -2); ctx.lineTo(12, 0); ctx.lineTo(8, 2); ctx.quadraticCurveTo(0, 7, -8, 3); ctx.closePath(); under(ctx, 4); darkFill(ctx); neon(ctx, color, 1.4, 3, 0.9); eye(ctx, 2, 0, 2.5, 2.7, localTarget(ctx, target), color); ctx.beginPath(); ctx.moveTo(-7, 0); ctx.quadraticCurveTo(-13, 5 * Math.sin(t * 4 + i), -15, 0); ctx.strokeStyle = rgba(color, 0.55); ctx.lineWidth = 2.3; ctx.stroke(); ctx.restore(); }
+    for (let i = 0; i < 3; i++) { const a = orbit + i * TAU / 3, px = Math.cos(a) * 14, py = Math.sin(a * 1.1) * 9; ctx.save(); ctx.translate(px, py); ctx.rotate(a * 0.25 + i * 0.7); const body = commonPath(ctx, 'swarmlet-body'); under(ctx, 4, body); darkFill(ctx, body); neon(ctx, color, 1.4, 3, 0.9, body); eye(ctx, 2, 0, 2.5, 2.7, localTarget(ctx, target), color); ctx.beginPath(); ctx.moveTo(-7, 0); ctx.quadraticCurveTo(-13, 5 * Math.sin(t * 4 + i), -15, 0); ctx.strokeStyle = rgba(color, 0.55); ctx.lineWidth = 2.3; ctx.stroke(); ctx.restore(); }
   }
 
   function drawSpitter(ctx, e, color, seed, t, target) {
@@ -256,12 +299,12 @@
     const firing = state === 'attack' || e.spitFired === true;
     const pulse = clamp((Math.sin(t * 2.1 + seed) + 1) / 2 + windup * 0.7 + (firing ? 0.35 : 0), 0, 1.7);
     ctx.save(); ctx.translate(sway, -3 + driftY);
-    ctx.beginPath(); ctx.moveTo(-30, -2); ctx.quadraticCurveTo(-23, -27, 0, -31); ctx.quadraticCurveTo(23, -27, 30, -2); ctx.quadraticCurveTo(22, 10, 0, 13); ctx.quadraticCurveTo(-22, 10, -30, -2); ctx.closePath(); under(ctx, 6); darkFill(ctx); neon(ctx, color, 2.25, 4.2 + windup * 5, 0.92);
+    const body = commonPath(ctx, 'spitter-body'); under(ctx, 6, body); darkFill(ctx, body); neon(ctx, color, 2.25, 4.2 + windup * 5, 0.92, body);
     ctx.beginPath(); ctx.ellipse(0, -1, 16 + pulse * 2.2, 8 + pulse * 1.1, 0, 0, TAU); ctx.fillStyle = rgba(color, 0.13 + windup * 0.12); ctx.fill(); ctx.strokeStyle = rgba(color, 0.42 + windup * 0.25); ctx.lineWidth = 1.2; ctx.stroke();
     const eyesTarget = localTarget(ctx, target);
     for (const p of SPITTER_EYES) eye(ctx, p[0], p[1], p[2], p[3], eyesTarget, color);
     for (const x of SPITTER_TENTACLES) { ctx.beginPath(); ctx.moveTo(x, 10); ctx.quadraticCurveTo(x + (x < 0 ? -2 : x > 0 ? 2 : 0), 17 + pulse * 2, x + (x < 0 ? -5 : x > 0 ? 5 : 0) + Math.sin(t * 2 + x) * 0.6, 24 + pulse * 0.8); ctx.strokeStyle = rgba(color, 0.48); ctx.lineWidth = 2.8; ctx.lineCap = 'round'; ctx.stroke(); }
-    ctx.beginPath(); ctx.moveTo(-8, 10); ctx.quadraticCurveTo(-11, 24, -5, 34); ctx.quadraticCurveTo(0, 41, 7, 34); ctx.quadraticCurveTo(13, 24, 9, 10); ctx.quadraticCurveTo(4, 15, -1, 15); ctx.quadraticCurveTo(-5, 15, -8, 10); ctx.closePath(); under(ctx, 5.2); ctx.fillStyle = '#05070d'; ctx.fill(); neon(ctx, color, 1.95, 3.9 + windup * 6, 0.86);
+    const nozzle = commonPath(ctx, 'spitter-nozzle'); under(ctx, 5.2, nozzle); ctx.fillStyle = '#05070d'; fillPath(ctx, nozzle); neon(ctx, color, 1.95, 3.9 + windup * 6, 0.86, nozzle);
     ctx.beginPath(); ctx.ellipse(0, 25, 7 + pulse * 2.1, 8 + pulse * 1.3, 0, 0, TAU); ctx.fillStyle = rgba(color, 0.18 + windup * 0.2); ctx.fill(); ctx.strokeStyle = rgba(color, 0.72 + windup * 0.2); ctx.lineWidth = 1.5; ctx.stroke(); glowCore(ctx, 0, 25, 3.1 + pulse, firing ? WARM_CORE : color, 0.78);
     ctx.beginPath(); ctx.ellipse(0, 36, 5.6, 4.6, 0, 0, TAU); ctx.fillStyle = '#010204'; ctx.fill(); ctx.strokeStyle = rgba(color, 0.86); ctx.lineWidth = 1.5; ctx.stroke();
     ctx.beginPath(); ctx.ellipse(0, -37, 14 + pulse * 1.2, 5 + pulse * 0.4, 0, 0, TAU); fauxGlowStroke(ctx, color, 4.2 + windup * 3.2, windup >= 0.66 ? 0.32 : windup > 0 ? 0.24 : 0.18); ctx.strokeStyle = rgba(color, 0.36 + windup * 0.28); ctx.lineWidth = 1.5; ctx.stroke(); neutralShadow(ctx);
@@ -282,8 +325,10 @@
       ctx.globalAlpha = 0.45 + progress * 0.45;
       ctx.strokeStyle = WISP_HOSTILE_MARK_COLOR; ctx.lineWidth = 2.2 * invScale;
       ctx.beginPath(); ctx.arc(0, 0, outer, 0, TAU); ctx.stroke();
-      ctx.globalAlpha = 0.28 + progress * 0.5;
-      ctx.beginPath(); ctx.arc(0, 0, (68 + pulse) * invScale, 0, TAU); ctx.stroke();
+      if(!e.previewMotionPolish){
+        ctx.globalAlpha = 0.28 + progress * 0.5;
+        ctx.beginPath(); ctx.arc(0, 0, (68 + pulse) * invScale, 0, TAU); ctx.stroke();
+      }
       const cross = (81 - progress * 10) * invScale;
       ctx.beginPath(); ctx.moveTo(-cross, 0); ctx.lineTo(-24 * invScale, 0); ctx.moveTo(cross, 0); ctx.lineTo(24 * invScale, 0); ctx.moveTo(0, -cross); ctx.lineTo(0, -24 * invScale); ctx.moveTo(0, cross); ctx.lineTo(0, 24 * invScale); ctx.stroke();
       ctx.restore();
@@ -308,7 +353,7 @@
   function drawKamikaze(ctx, e, color, seed, t, target) {
     const arm = e.armed ? clamp(1 - Math.max(e.fuse || 0, 0) / 0.8, 0, 1) : 0;
     const flash = arm * (0.5 + 0.5 * Math.sin(t * (7 + arm * 10))), spread = 8 + arm * 8;
-    for (let i = 0; i < 3; i++) { const a = -Math.PI / 2 + i * TAU / 3; ctx.save(); ctx.translate(Math.cos(a) * spread, Math.sin(a) * spread); ctx.rotate(a * 0.1); ctx.beginPath(); ctx.moveTo(-15, -8); ctx.quadraticCurveTo(0, -17, 15, -8); ctx.quadraticCurveTo(18, 4, 7, 13); ctx.quadraticCurveTo(-7, 16, -16, 4); ctx.closePath(); under(ctx, 5); darkFill(ctx); neon(ctx, color, 1.9, 3 + arm * 4, 0.95); ctx.restore(); }
+    for (let i = 0; i < 3; i++) { const a = -Math.PI / 2 + i * TAU / 3; ctx.save(); ctx.translate(Math.cos(a) * spread, Math.sin(a) * spread); ctx.rotate(a * 0.1); const body = commonPath(ctx, 'kamikaze-body'); under(ctx, 5, body); darkFill(ctx, body); neon(ctx, color, 1.9, 3 + arm * 4, 0.95, body); ctx.restore(); }
     const coreRadius = 7 + arm * 2 + flash * 1.6;
     ctx.save(); neutralShadow(ctx); if (commonFauxGlowEnabled) { ctx.fillStyle = rgba(color, arm > 0.72 ? 0.36 : arm > 0 ? 0.28 : 0.18); ctx.beginPath(); ctx.arc(0, 0, coreRadius + 4 + arm * 4, 0, TAU); ctx.fill(); } ctx.fillStyle = arm > 0.72 ? 'rgba(255,245,232,' + (0.72 + flash * 0.25) + ')' : rgba(color, 0.78); ctx.beginPath(); ctx.arc(0, 0, coreRadius, 0, TAU); ctx.fill(); ctx.restore(); neutralShadow(ctx);
     const eyesTarget = localTarget(ctx, target), eyeSpread = 1 + arm * 0.05;
@@ -332,7 +377,7 @@
     const facingX = player ? player.x - e.x : 1;
     const facingY = player ? player.y - e.y : 0;
     const isSwarmlet = e.enemyTypeId === 'swarmlet';
-    const seed = isSwarmlet ? stableSwarmletSeed(e) : hash01(e, 5) * TAU;
+    const seed = isSwarmlet || (e.previewMotionPolish&&['spitter','wisp'].includes(e.enemyTypeId)) ? stableSwarmletSeed(e) : hash01(e, 5) * TAU;
     const animationTime = isSwarmlet ? visualTimeSeconds : (frame || 0) / 60;
     const fauxGlowWasEnabled = commonFauxGlowEnabled;
     ctx.save();
@@ -501,28 +546,7 @@
       ctx.beginPath(); ctx.arc(0, 0, r + 4, 0, Math.PI * 2); ctx.stroke();
     }
 
-    // Fusión de enemigos: indicador provisorio MUY explícito para testear lectura.
-    // No toca gameplay; usa e.fusionLevel generado por engine/enemies.js.
-    if ((e.fusionLevel || 0) > 0) {
-      const lvl = e.fusionLevel || 1;
-      const pulse = 0.65 + Math.sin(frame * 0.16 + lvl) * 0.25;
-      ctx.save();
-      ctx.globalAlpha = 0.85;
-      ctx.strokeStyle = e.color || '#ffe04a';
-      ctx.lineWidth = 4;
-      ctx.shadowColor = e.color || '#ffe04a';
-      ctx.shadowBlur = 18;
-      ctx.beginPath(); ctx.arc(0, 0, r + 8 + pulse * 5, 0, Math.PI * 2); ctx.stroke();
-      ctx.shadowBlur = 0;
-      if (ctx.fillText) {
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 11px monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(NV.fusionMilestoneLabel ? NV.fusionMilestoneLabel(lvl) : ('FUSION ' + lvl), 0, -r - 18);
-      }
-      ctx.restore();
-    }
+    // Fusión: sin etiqueta ni aro decorativo; se conserva la escala del cuerpo.
     if ((e.fusionInterruptFlash || 0) > 0) {
       ctx.save();
       ctx.globalAlpha = Math.min(1, e.fusionInterruptFlash / 0.7);
@@ -532,8 +556,7 @@
       ctx.setLineDash([]); ctx.restore();
     }
 
-    // C2 — Dron: el anillo lateral comunica formación; durante la señal, la
-    // trayectoria convergente deja claro que el contacto está por activarse.
+    // La preparación vive en los propulsores; la embestida es el peligro físico.
     if (e.enemyTypeId === 'drone' && e.droneState) {
       const cfg = NV.ENEMY_ROLE_REWORK && NV.ENEMY_ROLE_REWORK.drone;
       ctx.save();
@@ -543,19 +566,19 @@
       if (e.droneState === 'signal' && cfg) {
         const progress = Math.max(0, Math.min(1, 1 - (e.droneTimer || 0) / cfg.signal));
         ctx.globalAlpha = 0.5 + progress * 0.4;
-        ctx.setLineDash([5, 4]);
         const dx = (player ? player.x : e.x) - e.x;
         const dy = (player ? player.y : e.y) - e.y;
-        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(dx, dy); ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.beginPath(); ctx.arc(0, 0, r + 5 + progress * 5, 0, Math.PI * 2 * progress); ctx.stroke();
+        ctx.rotate(Math.atan2(dy, dx));
+        ctx.fillStyle = '#ffd6e7';
+        for (const side of [-1, 1]) {
+          ctx.beginPath(); ctx.moveTo(-r * .5, side * r * .6 - 2);
+          ctx.lineTo(-r * (.7 + progress * .7), side * r * .6);
+          ctx.lineTo(-r * .5, side * r * .6 + 2); ctx.closePath(); ctx.fill();
+        }
       } else if (e.droneState === 'press') {
-        ctx.strokeStyle = 'rgba(255,92,158,.82)';
-        ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(0, 0, r + 5, -0.65, 0.65); ctx.stroke();
-      } else {
-        ctx.globalAlpha = e.droneState === 'recovery' ? 0.28 : 0.42;
-        ctx.beginPath(); ctx.arc(0, 0, r + 5, -1.0, 1.0); ctx.stroke();
+        ctx.rotate(Math.atan2((player ? player.y : e.y) - e.y, (player ? player.x : e.x) - e.x));
+        ctx.fillStyle = '#ffb7d6';
+        ctx.beginPath(); ctx.moveTo(-r * .6, -3); ctx.lineTo(-r * 1.8, 0); ctx.lineTo(-r * .6, 3); ctx.closePath(); ctx.fill();
       }
       ctx.restore();
     }
@@ -574,11 +597,13 @@
         // Carga sólo en el cañón: comunica el ataque sin invadir la pantalla.
         ctx.fillStyle = 'rgba(255,98,104,' + (0.35 + progress * 0.55) + ')';
         ctx.beginPath(); ctx.arc(tx / td * (r * 0.72), ty / td * (r * 0.72), 2 + progress * 2.5, 0, Math.PI * 2); ctx.fill();
-        // Marca compacta donde caerá el tiro; es visible, pero no tapa enemigos.
-        const mark = 5 + progress * 2;
-        ctx.strokeStyle = 'rgba(255,108,116,' + (0.58 + progress * 0.3) + ')';
-        ctx.lineWidth = 1.6;
-        ctx.beginPath(); ctx.moveTo(tx - mark, ty); ctx.lineTo(tx + mark, ty); ctx.moveTo(tx, ty - mark); ctx.lineTo(tx, ty + mark); ctx.stroke();
+      }
+      if(e.atkFlash>0 && player) {
+        const angle=Math.atan2(player.y-e.y,player.x-e.x),flash=Math.min(1,e.atkFlash/.18);
+        ctx.rotate(angle);ctx.translate(r*.95,0);ctx.globalAlpha=flash;
+        ctx.fillStyle='#ffe3ae';ctx.beginPath();ctx.moveTo(-3,-3);
+        ctx.lineTo(12*flash,-5*flash);ctx.lineTo(8*flash,0);ctx.lineTo(12*flash,5*flash);
+        ctx.lineTo(-3,3);ctx.closePath();ctx.fill();
       }
       ctx.restore();
     }
@@ -652,7 +677,7 @@
 
     // Legibilidad del atacante (daño de contacto): halo blanco de selección +
     // anillo rojo reforzado -> se lee por encima de los superpuestos. Solo visual.
-    if (e.atkFlash > 0 && player) {
+    if (e.atkFlash > 0 && player && e.enemyTypeId !== 'tank') {
       const atk = Math.min(1, Math.max(0, (e.atkFlash || 0) / 0.45));
       const fwd = Math.atan2(player.y - e.y, player.x - e.x);
 

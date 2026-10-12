@@ -24,7 +24,8 @@
     button.onclick=async()=>{try{await NV.loadOptional('content');NV.openContentPanel();}catch(error){status.textContent=error.message;}};
     host.append(button,status);
     const graphics=document.getElementById('panelGraphics');
-    if(graphics){
+    // El compositor experimental pertenece al diagnóstico, no al menú habitual.
+    if(graphics && new URLSearchParams(window.location.search).get('devGraphics')==='1'){
       const label=document.createElement('label');label.className='settings-toggle';
       const input=document.createElement('input');input.type='checkbox';
       const text=document.createElement('span');text.textContent='Presentación GPU experimental (Canvas2D vuelve automáticamente si falla)';

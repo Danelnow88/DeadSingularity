@@ -23,8 +23,8 @@ t('NV.resetMeta borra localStorage', () => {
   if (!g.includes("localStorage.removeItem('deadSingularityMeta')")) throw new Error('no borra la clave');
 });
 
-t('tope de consumibles: cap 3 por visita, reset al preparar contenido del shop', () => {
-  if (!g.includes('const CONSUMABLE_CAP = 3;')) throw new Error('cap ausente');
+t('tope de consumibles: cap 1 por visita, reset al preparar contenido del shop', () => {
+  if (!g.includes('const CONSUMABLE_CAP = 1;')) throw new Error('cap ausente');
   if (!/let consumableBought = \{\};/.test(g)) throw new Error('contador ausente');
   const i = g.indexOf('function prepareShopContent()');
   if (!g.slice(i, i + 300).includes('consumableBought = {};')) throw new Error('no se resetea por visita');
@@ -38,7 +38,7 @@ t('tope de consumibles: cap 3 por visita, reset al preparar contenido del shop',
 });
 
 t('tope acumulado por tipo: cap 10 y tienda deshabilitada con indicador visual', () => {
-  if (!c.includes('NV.CONSUMABLE_STACK_CAP = 10;')) throw new Error('stack cap no centralizado');
+  if (!c.includes('NV.CONSUMABLE_STACK_CAP = 3;')) throw new Error('stack cap no centralizado');
   if (!c.includes('NV.CONSUMABLE_TYPE_SLOT_CAP = 6;')) throw new Error('type slot cap no centralizado');
   if (!g.includes('const CONSUMABLE_STACK_CAP = NV.CONSUMABLE_STACK_CAP;')) throw new Error('game no lee stack cap');
   if (!g.includes('const CONSUMABLE_TYPE_SLOT_CAP = NV.CONSUMABLE_TYPE_SLOT_CAP;')) throw new Error('game no lee type slot cap');
@@ -47,7 +47,7 @@ t('tope acumulado por tipo: cap 10 y tienda deshabilitada con indicador visual',
   if (!g.includes('disabled: stackFull')) throw new Error('oferta no marca disabled');
   if (!g.includes("'Límite ' + CONSUMABLE_STACK_CAP + '/' + CONSUMABLE_STACK_CAP")) throw new Error('sin texto de límite');
   if (!g.includes("'Slots ' + CONSUMABLE_TYPE_SLOT_CAP + '/' + CONSUMABLE_TYPE_SLOT_CAP")) throw new Error('sin texto de slots');
-  if (!g.includes('Stock x') || !g.includes('Sin stock') || !g.includes('compras ')) throw new Error('tienda no indica stock/compras');
+  if (!g.includes('En mochila x') || !g.includes('En mochila: 0') || !g.includes('compras ')) throw new Error('tienda no indica stock/compras');
   if (!g.includes('item.disabled')) throw new Error('render/click no respeta disabled');
   const css = fs.readFileSync('css/styles.css', 'utf8');
   if (!css.includes('.offer.disabled')) throw new Error('sin estilo disabled');

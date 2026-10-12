@@ -24,6 +24,21 @@ function enemyState(NV, enemies, player, hit) {
 }
 
 console.log('enemy_director_c2:');
+t('refills libres: posiciones coherentes, separadas y seguras sin decidir tipos', () => {
+  const NV = setup();
+  for (const [W,H] of [[900,520],[1350,780],[360,240]]) for (let cycle=0;cycle<12;cycle++) {
+    const st={W,H,player:{x:W/2,y:H/2},enemies:[],ENEMY_TYPES:NV.ENEMY_TYPES,cycle};
+    const points=NV.waveDistributedPositions(5,st);
+    ok(points.length===5,'se perdió un integrante');
+    for(let i=0;i<points.length;i++) {
+      const p=points[i];
+      ok(p.x>=p.margin&&p.x<=W-p.margin&&p.y>=p.margin&&p.y<=H-p.margin,'fuera de arena');
+      if(W>=900)ok(Math.hypot(p.x-st.player.x,p.y-st.player.y)>100,'aparición sobre jugador');
+      for(let j=0;j<i;j++)ok(Math.hypot(p.x-points[j].x,p.y-points[j].y)>18,'avisos superpuestos');
+    }
+    ok(Math.max(...points.map(p=>Math.hypot(p.x-points[0].x,p.y-points[0].y)))<140,'lote disperso al azar');
+  }
+});
 
 t('director conserva dos refills libres e intercala una escuadra legal', () => {
   const NV = setup();
@@ -100,29 +115,8 @@ t('Tanque puede anunciar artillería frente a armas de media/larga distancia', (
   ok(e.tankCannonTargetX===aimX,'puntería fijada');
 });
 
-t('derribar una fusión siempre paga bonus acotado y nombre de hito', () => {
-  const NV = setup(), pickups = [], texts = [];
-  const e = { x: 10, y: 20, hp: 0, maxHp: 100, score: 100, xp: 5, color: '#fff', isElite: false, fusionLevel: 3, dead: false, behavior: 'chase' };
-  const score = NV.killEnemy({ e, score: 0, player: { xp: 0, xpToNext: 100, level: 1, maxHp: 100, hp: 100, luck: 0, permGreed: 0, bounty: 0 },
-    weaponLevels: {}, weaponKills: {}, currentWeapon: { id: 'pistol' }, damageSource: null, WEAPON_KILLS_PER_LEVEL: 6,
-    weaponKillProgress: () => 1, pickups, waveEvent: null, W: 900,
-    addFloatText(_x, _y, text) { texts.push(text); }, spawnExplosion() {}, triggerFlash() {}, applyPlayerDamage() { return {}; },
-    sfx: { playerLevelUp() {}, levelup() {}, fuse() {}, enemyDeath() {} } });
-  ok(NV.fusionMilestoneLabel(3) === 'SINGULARIDAD', 'hito incorrecto');
-  ok(pickups.some((item) => item.type === 'shard' && item.value === 3), 'sin recompensa garantizada');
-  ok(score === 130 && texts.some((text) => text.includes('SINGULARIDAD')), 'score/feedback incorrecto');
-});
-
-t('pulso fusionado se interrumpe con daño concentrado, no con tiempo', () => {
-  const NV = setup(), texts = []; let hits = 0;
-  const e = { hp: 100, maxHp: 100, radius: 20, x: 200, y: 200, fusionLevel: 2 };
-  const st = { enemies: [e], player: { x: 200, y: 200 }, addFloatText(_x, _y, text) { texts.push(text); }, spawnExplosion() {},
-    applyPlayerDamage() { hits++; return { applied: true, killed: false }; } };
-  NV.updateFusionThreats(3.6, st);
-  ok(e.fusionPulse.stage === 'windup' && e.fusionPulse.startHp === 100, 'sin ventana interrumpible');
-  e.hp = 91; NV.updateFusionThreats(0.01, st);
-  ok(e.fusionPulse.stage === 'cooldown' && hits === 0 && e.fusionInterruptFlash > 0, 'no interrumpió');
-  ok(texts.includes('PULSO INTERRUMPIDO'), 'sin feedback de interrupción');
+t('fusión enemiga retirada sin alterar fusión de armas', () => {
+ const NV=setup(); ok(NV.fusionRewardValue===undefined && NV.updateFusionThreats===undefined,'API retirada persiste');
 });
 
 console.log('\nRESULT enemy_director_c2: pass=' + pass + ' fail=' + fail);

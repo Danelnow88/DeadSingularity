@@ -210,11 +210,37 @@
   };
 
   // Shockwave genérico: doble anillo (frontal brillante + estela interna que se desvanece).
+  NV.drawPlasmaBlasts = function(ctx,shockwaves) {
+    for(const s of shockwaves) {
+      if(s.style!=='plasmaTrial')continue;
+      const progress=1-s.life,radius=s.maxRadius*Math.min(1,progress*3);
+      ctx.save();ctx.globalCompositeOperation='lighter';
+      ctx.fillStyle=s.innerColor||'#8be9ff';ctx.globalAlpha=Math.max(0,1-progress*5)*.42;
+      ctx.beginPath();ctx.arc(s.x,s.y,Math.max(1,radius*.65),0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=s.color;ctx.globalAlpha=Math.max(0,1-progress*2)*.30;
+      for(let i=0;i<6;i++) {
+        const a=i*Math.PI/3+progress*.5;
+        ctx.beginPath();ctx.arc(s.x+Math.cos(a)*radius*.46,s.y+Math.sin(a)*radius*.46,
+          Math.max(1,radius*(.36+.04*Math.sin(i*2))),0,Math.PI*2);ctx.fill();
+      }
+      ctx.strokeStyle=s.color;ctx.lineWidth=1.5+2*s.life;ctx.globalAlpha=s.life*.75;
+      ctx.beginPath();ctx.arc(s.x,s.y,Math.max(1,radius),0,Math.PI*2);ctx.stroke();
+      ctx.strokeStyle=s.innerColor||'#8be9ff';ctx.lineWidth=1.5;ctx.globalAlpha=s.life*.7;
+      ctx.beginPath();
+      for(let i=0;i<6;i++) {
+        const a=i*Math.PI/3+progress*.5;
+        ctx.arc(s.x,s.y,Math.max(1,radius*.78),a,a+.20);
+        ctx.moveTo(s.x+Math.cos(a+Math.PI/3)*radius*.78,s.y+Math.sin(a+Math.PI/3)*radius*.78);
+      }
+      ctx.stroke();ctx.restore();
+    }
+  };
   NV.drawShockwaves = function (ctx, shockwaves) {
     for (const s of shockwaves) {
-      if (NV.drawSpecialShockwave && NV.drawSpecialShockwave(ctx, s)) continue;
+      if(s.style==='plasmaTrial')continue; // Required feedback uses the experimental overlay.
       const ease = 1 - s.life;              // ease-out cuadrático
       const radius = s.maxRadius * (1 - (1 - ease) * (1 - ease));
+      if (NV.drawSpecialShockwave && NV.drawSpecialShockwave(ctx, s)) continue;
       // Anillo frontal
       ctx.strokeStyle = s.color;
       ctx.lineWidth = s.width;

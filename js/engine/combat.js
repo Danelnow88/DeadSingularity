@@ -99,7 +99,8 @@
     };
     if (st.addFloatText) {
       const style = NV.damageFloatStyle ? NV.damageFloatStyle(damage, !!hit.crit) : { color: hit.crit ? '#FF2A4B' : '#FFFFFF', size: hit.crit ? 17 : 13 };
-      st.addFloatText(player.x, player.y - 20, '-' + damage, style.color, style.size);
+      const text = NV.formatDamageText ? NV.formatDamageText(damage) : String(Math.max(1, Math.round(damage)));
+      if (text !== null) st.addFloatText(player.x, player.y - 20, '-' + text, style.color, style.size);
     }
     if (st.onPlayerDamaged) st.onPlayerDamaged(Object.assign({}, st.event || {}, result));
     if (st.sfx && st.sfx.playerHit && !result.killed) st.sfx.playerHit();

@@ -134,7 +134,7 @@ t('boss center uses runtime arena center', () => {
 t('enemy spawn dimensions use runtime arena W/H', () => {
   const g = fs.readFileSync('js/game.js', 'utf8');
   if (!g.includes('function arenaW()')) throw new Error('arenaW accessor ausente');
-  if (!g.includes('NV.spawnEnemy({ enemies, player, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES, wave, ENEMY_TYPES, W: arenaW(), H: arenaH()')) throw new Error('spawnEnemy no recibe arena runtime W/H');
+  if (!/NV\.spawnEnemy\(\{[^}]+W: arenaW\(\), H: arenaH\(\)/.test(g)) throw new Error('spawnEnemy no recibe arena runtime W/H');
 });
 
 t('projectile bounds use runtime arena W/H', () => {

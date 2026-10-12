@@ -92,7 +92,7 @@
     }
     seeded = true;
   }
-  NV.drawStarfield = function (ctx2, W, H, frame, px, py, rhythm) {
+  NV.drawStarfield = function (ctx2, W, H, frame, px, py, rhythm, camera) {
     if (!seeded) seedStars();
     const rr = (rhythm && rhythm.enabled && rhythm.state === 'listening') ? rhythm : null;
     const bassPulse = rr ? Math.min(0.55, Math.max(0, rr.bass || 0, rr.kick || 0)) : 0;
@@ -101,8 +101,10 @@
     for (const s of STARS) {
       const depth = (s.layer + 1) / 3;              // 0.33 / 0.66 / 1
       const drift = sparkle * (0.9 + s.layer * 0.45);
-      const x = ((s.fx * W - (px || 0) * 0.04 * depth + Math.sin(frame * (0.018 + sparkle * 0.04) + s.tw) * drift) % W + W) % W;
-      const y = ((s.fy * H - (py || 0) * 0.04 * depth + Math.cos(frame * (0.014 + sparkle * 0.035) + s.tw) * drift) % H + H) % H;
+      const parallax = camera ? .18+s.layer*.3+(s.layer===2 ? .07 : 0) : .04*depth;
+      const offsetX=camera?(camera.x||0):(px||0),offsetY=camera?(camera.y||0):(py||0);
+      const x = ((s.fx * W - offsetX * parallax + Math.sin(frame * (0.018 + sparkle * 0.04) + s.tw) * drift) % W + W) % W;
+      const y = ((s.fy * H - offsetY * parallax + Math.cos(frame * (0.014 + sparkle * 0.035) + s.tw) * drift) % H + H) % H;
       const r = (0.34 + s.layer * 0.28) * (1 + bassPulse * (0.28 + depth * 0.34));
       const twinkle = 0.7 + Math.sin(frame * (0.02 + sparkle * 0.045) + s.tw) * (0.3 + sparkle * 0.18);
       const alpha = Math.min(0.95, (0.25 + depth * 0.45) * twinkle + onset * 0.18 + sparkle * 0.12);

@@ -21,6 +21,31 @@
 #shop .offer { height:104px; min-height:104px; max-height:104px; padding:8px; border-radius:12px; background:linear-gradient(145deg,rgba(30,35,59,.82),rgba(10,12,24,.92)); border-color:rgba(174,187,224,.2); box-shadow:inset 0 1px rgba(255,255,255,.055); transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease,background .16s ease,filter .16s ease; transform-origin:center; }
 #shop .offer:hover,#shop .offer:focus-visible { z-index:2; transform:scale(1.025); border-color:#d6cbff; background:linear-gradient(145deg,rgba(56,48,94,.88),rgba(14,16,31,.96)); box-shadow:0 8px 20px rgba(0,0,0,.22),0 0 0 1px rgba(213,200,255,.18),inset 0 1px rgba(255,255,255,.1); outline:none; filter:brightness(1.04); }
 #shop .shop-upgrade-dock { position:relative; z-index:2; }
+#shop .shop-upgrade-dock.hidden { display:none !important; }
+/* Saldo central independiente: conserva el hueco y posición del botón derecho. */
+#shop .shop-terminal-head { position:relative; min-height:68px; }
+#shop .shop-terminal-head > .shard-bar { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); margin:0; }
+#shop .shop-terminal-head::after { content:''; width:90px; flex:0 0 90px; }
+#shop .offer.has-restriction::after { display:none; }
+#shop .offer-restriction { position:absolute; top:5px; right:5px; width:18px; height:18px; color:#ffc99d; pointer-events:none; }
+#shop .offer-restriction svg { width:100%; height:100%; fill:rgba(8,10,20,.9); stroke:currentColor; stroke-width:1.5; }
+#shop .upgrade-loadout .loadout-slot.blocked { border-color:#b8f2d6; background:rgba(51,129,95,.18); }
+#shop .upgrade-loadout .loadout-slot.blocked::after { display:none; }
+#shop .upgrade-loadout .loadout-slot.blocked .slot-badge { color:#b8f2d6; }
+#shop .offer.is-maxed .offer-restriction,#shop .offer.is-maxed .offer-price { color:#b8f2d6; }
+@media (min-aspect-ratio:4/3) {
+  html.nv-mobile #shop .shop-terminal-head { min-height:50px !important; }
+  html.nv-mobile #shop .shop-terminal-head::after { width:66px; flex-basis:66px; }
+}
+/* Los paneles conservan sus medidas aunque una visita traiga menos stock. */
+#shop .offer.offer-reserved { cursor:default; border-style:dashed; background:linear-gradient(145deg,rgba(30,35,59,.82),rgba(10,12,24,.92)); }
+#shop .offer.offer-reserved::after { display:none; }
+#shop .offer.offer-reserved:hover { transform:none; filter:none; }
+#shop .offer-reserved .offer-icon { color:#ffd09a; }
+#shop .offer-reserved .offer-icon svg { width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:1.7; }
+#shop .offer-locked .offer-icon,#shop .offer-locked .offer-price { color:#d6bdff; }
+#shop .shop-fusion-offers { flex:0 0 auto; grid-template-columns:minmax(0,1fr); margin-top:8px; }
+#shop .shop-fusion-offers.hidden { display:none !important; }
 #shop .shop-weapon-dock,#shop .shop-section-protocols .protocol-loadout { position:relative; z-index:2; }
 #shop .offers-upgrades { position:relative; z-index:3; overflow:visible; }
 #shop .offer:hover,#shop .offer:focus-visible { z-index:6; }

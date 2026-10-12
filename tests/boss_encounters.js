@@ -201,9 +201,5 @@ assert(NV.bossEncounterHp(NV.BOSS_TYPES[9], 20, 1) < 6000);
   dodge.st.player.x += 100;
   for (let i = 0; i < 65; i++) NV.updateBossEncounter(dodge.b, 1 / 60, dodge.st);
 }
-let hits = 0; const enemy = { hp: 100, x: 200, y: 200, fusionLevel: 3 };
-const f = { enemies: [enemy], player: { x: 200, y: 200 }, applyPlayerDamage(d) { hits++; assert(d <= 22); return {}; } };
-NV.updateFusionThreats(3.6, f); assert.equal(hits, 0); assert.equal(enemy.fusionPulse.stage, 'windup');
-f.player.x = 300; NV.updateFusionThreats(.86, f); assert.equal(hits, 0, 'salir del aviso evita todo el daño');
-NV.updateFusionThreats(4.6, f); f.player.x = 200; NV.updateFusionThreats(.86, f); assert.equal(hits, 1);
-console.log('RESULT boss_encounters: diez identidades, aviso, puntería, recuperación, caps, fase 2 y fusión OK');
+assert.equal(NV.updateFusionThreats, undefined);
+console.log('RESULT boss_encounters: diez identidades y fusión enemiga retirada OK');

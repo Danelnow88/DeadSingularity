@@ -9,6 +9,7 @@
   // un efecto posible. Buffs temporales sí pueden renovarse deliberadamente.
   NV.canUseConsumable = function (type, ctx) {
     if (!CONSUMABLES[type]) return { ok: false, reason: 'Objeto desconocido' };
+    if(type==='bounty' && ctx.player.bounty>0)return {ok:false,reason:'Recompensa activa · carga conservada'};
     const live = (ctx.enemies || []).some(e => !e.dead && !e.arrival && !e.waveCleanup && !e.killResolved);
     if (type === 'potion' && ctx.player.hp >= ctx.player.maxHp) return { ok: false, reason: 'Vida completa · poción conservada' };
     if (type === 'bomb' && !live && (!ctx.boss || ctx.boss.dead || ctx.boss.hp <= 0)) return { ok: false, reason: 'Sin blancos · bomba conservada' };
@@ -71,9 +72,10 @@
       ctx.triggerFlash('#7cf8ff');
     },
     bounty(ctx) {
-      ctx.player.bounty = 10;
+      ctx.player.bounty = (NV.ECONOMY && NV.ECONOMY.bountyDuration) || 4;
+      ctx.player.bountyKills = 0; ctx.player.bountyTokens = 0;
       if (ctx.spawnShockwave) ctx.spawnShockwave(ctx.player.x, ctx.player.y, { maxRadius: 75, color: '#ffd700', width: 3 });
-      ctx.addFloatText(ctx.player.x, ctx.player.y, 'RECOMPENSA 10s', '#ffd700');
+      ctx.addFloatText(ctx.player.x, ctx.player.y, 'RECOMPENSA 4s', '#ffd700');
       ctx.triggerFlash('#ffd700');
       if (ctx.spawnConsumableVfx) ctx.spawnConsumableVfx('bounty', { x: ctx.player.x, y: ctx.player.y });
     },
@@ -81,6 +83,7 @@
 
   NV.applyConsumable = function (item, ctx) {
     if (!item || !ctx) return false;
+    if(item.type==='bounty' && ctx.player.bounty>0)return false;
     const handler = NV.CONSUMABLE_HANDLERS[item.type];
     if (!handler) return false;
     handler(ctx);

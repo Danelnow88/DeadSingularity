@@ -241,17 +241,15 @@ html[data-game-state="shop_enter"] .touch-options {
   padding: 4px;
   background: rgba(124, 248, 255, .04);
   border: 1px solid rgba(124, 248, 255, .22);
-  border-bottom: none;
-  border-radius: 10px 10px 0 0;
-  margin: 0 0 0px;
+  border-radius: 10px;
+  margin: 0 0 16px;
 }
 .settings-tab {
   flex: 1 1 auto;
   min-width: 4px;
   padding: 10px 6px;
   border: 1px solid transparent;
-  border-bottom: none;
-  border-radius: 8px 8px 0 0;
+  border-radius: 7px;
   background: transparent;
   color: #8e93ad;
   font: 700 12px/1 system-ui, sans-serif;
@@ -284,6 +282,15 @@ html[data-game-state="shop_enter"] .touch-options {
   overscroll-behavior: contain;
 }
 .settings-tab-panel[hidden] { display: none !important; }
+#panelControls .quality-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 16px;
+}
+#panelControls .quality-options label { min-width: 0; padding: 14px; border-radius: 12px; }
+#panelControls .quality-options small { display: block; margin-top: 8px; line-height: 1.5; }
+#panelControls .settings-note { line-height: 1.55; }
 .settings-tab-panel .settings-range { margin-top: 0; }
 .settings-tab-panel .settings-range + .settings-range { margin-top: 4px; }
 .settings-mute-row {
@@ -312,6 +319,29 @@ html[data-game-state="shop_enter"] .touch-options {
 .settings-mute-btn.off,
 .settings-mute-btn[aria-pressed="false"] { color: #ff6b81; }
 .settings-mute-note { font-size: 10px; color: #8e93ad; }
+.fps-counter {
+  position: fixed;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  right: max(14px, env(safe-area-inset-right));
+  z-index: 200;
+  padding: 4px 7px;
+  border: 1px solid rgba(174, 196, 210, .22);
+  border-radius: 5px;
+  color: #cad6de;
+  background: rgba(5, 10, 18, .82);
+  font: 600 11px/1.2 ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  user-select: none;
+}
+.fps-counter[hidden] { display: none; }
+html[data-game-state="shop"] .fps-counter,
+html[data-game-state="shop_enter"] .fps-counter { bottom: 76px; }
+html.nv-mobile .fps-counter {
+  top: max(17px, env(safe-area-inset-top));
+  bottom: auto;
+  right: max(68px, calc(env(safe-area-inset-right) + 68px));
+}
 @media (pointer: coarse) {
   .settings-tabs { padding: 2px; }
   .settings-tab { padding: 12px 4px; font-size: 11px; }

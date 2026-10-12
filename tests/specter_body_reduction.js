@@ -200,8 +200,8 @@ t('fusión conserva su distancia semántica (40px) y crece desde el cuerpo nuevo
   const baseRadius = enemies[0].radius;
   const st = enemyState(enemies[0], { x: 800, y: 500, invuln: 0, stun: 0 }, () => ({ applied: false })); st.enemies = enemies;
   const result = NV.updateEnemies(0, st);
-  if (result.enemies.length !== 1 || result.enemies[0].fusionLevel !== 1) throw new Error('fusión semántica cambió');
-  if (Math.abs(result.enemies[0].radius - baseRadius * 1.36) > 0.001) throw new Error('crecimiento no parte del cuerpo nuevo');
+  if (result.enemies.length !== 3 || result.enemies.some(e=>e.fusionLevel)) throw new Error('se perdieron cuerpos individuales');
+  if (result.enemies.some(e=>e.radius!==baseRadius)) throw new Error('radio individual alterado');
 });
 
 t('semántica intacta: HP/damage/speed/pesos/minWave/comportamientos y rangos de ataque', () => {
@@ -227,11 +227,11 @@ t('semántica intacta: HP/damage/speed/pesos/minWave/comportamientos y rangos de
   }
   // Rangos/distancias semánticos del motor intactos (world-space, sin tocar).
   const engine = fs.readFileSync('js/engine/enemies.js', 'utf8');
-  for (const invariant of ['const FUSION_RADIUS = 40', 'const FUSION_MIN = 3', 'const SPIT_FAR = 320', 'const SPIT_NEAR = 180', 'const SPIT_BAND_MID = 250', 'dist < 130', 'inContact = d < e.radius + 20']) {
+  for (const invariant of ['const SPIT_FAR = 320', 'const SPIT_NEAR = 180', 'const SPIT_BAND_MID = 250', 'dist < 130', 'inContact = d < e.radius + 20']) {
     if (!engine.includes(invariant)) throw new Error('rango semántico alterado: ' + invariant);
   }
   const bullets = fs.readFileSync('js/engine/bullets.js', 'utf8');
-  if (!bullets.includes('d < e.radius + 4')) throw new Error('umbral de proyectil alterado');
+  if (!bullets.includes("e.radius + (b.impactType === 'sustain' ? (b.splashRadius || 18) : 4)") || !bullets.includes('dx*dx+dy*dy < contactRadius*contactRadius')) throw new Error('umbral de proyectil alterado');
 });
 
 t('Hydra/RB6 permanece intacta: tabla, hitbox, render y spawn de élites', () => {

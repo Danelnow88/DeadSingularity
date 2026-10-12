@@ -162,11 +162,14 @@
 
   // === ENEMIGOS BÁSICOS (7 tipos) ===
   NV.ENEMY_TYPES = NV.Content ? NV.Content.read('enemies').map(e => e.data) : [
+    { id: 'rift_weaver', name: 'COSTURERO', hp: 90, speed: 100, radius: 16, color: '#f1b377', shape: 'diamond', score: 28, xp: 30, behavior: 'ranged', damage: 16, minWave: 2, weight: .5, hostileClass: 'light' },
+    { id: 'void_devourer', name: 'DEVORADOR DE ESPACIO', hp: 130, speed: 70, radius: 22, color: '#b49cff', shape: 'hex', score: 42, xp: 46, behavior: 'ranged', damage: 15, minWave: 4, weight: .4, hostileClass: 'medium' },
+    { id: 'dimension_sniper', name: 'FRANCOTIRADOR DIMENSIONAL', hp: 80, speed: 110, radius: 15, color: '#6fe3e7', shape: 'triangle', score: 30, xp: 34, behavior: 'ranged', damage: 19, minWave: 3, weight: .45, hostileClass: 'light' },
     { id: 'drone', name: 'DRON', hp: 25, speed: 75, radius: 11, color: '#f07bad', shape: 'circle', score: 10, xp: 10, behavior: 'chase', knockbackRes: 0, damage: 12, minWave: 1 },
     { id: 'runner', name: 'CORREDOR', hp: 15, speed: 145, radius: 9, color: '#ffcf76', shape: 'triangle', score: 15, xp: 15, behavior: 'flank', knockbackRes: 0.3, damage: 10, minWave: 1 },
     { id: 'tank', name: 'TANQUE', hp: 60, speed: 40, radius: 20, color: '#ef9d49', shape: 'hex', score: 30, xp: 35, behavior: 'chase', knockbackRes: 0.8, damage: 18, minWave: 3, resist: 3 },
     { id: 'shielder', name: 'ESCUDO', hp: 35, speed: 65, radius: 14, color: '#caa7ff', shape: 'diamond', score: 25, xp: 30, behavior: 'shield', knockbackRes: 0.6, damage: 8, minWave: 6, shield: true },
-    { id: 'swarmlet', name: 'ENJAMBITO', hp: 10, speed: 115, radius: 7, color: '#22d3ee', shape: 'atom', score: 8, xp: 8, behavior: 'swarm', knockbackRes: 0.1, damage: 8, minWave: 9 },
+    { id: 'swarmlet', name: 'EJAMBRITO', hp: 10, speed: 115, radius: 7, color: '#22d3ee', shape: 'atom', score: 8, xp: 8, behavior: 'swarm', knockbackRes: 0.1, damage: 8, minWave: 9 },
     { id: 'spitter', name: 'ESCOPURAS', hp: 22, speed: 50, radius: 13, color: '#6dc4c0', shape: 'rock', score: 18, xp: 25, behavior: 'ranged', knockbackRes: 0.4, damage: 15, minWave: 12, stunChance: 0.5, stunDuration: 1.25 },
     { id: 'wisp', name: 'ESPÍRITU', hp: 12, speed: 160, radius: 6, color: '#4ade80', shape: 'dot', score: 6, xp: 6, behavior: 'erratic', knockbackRes: 0.2, damage: 6, minWave: 15 },
     { id: 'kamikaze', name: 'KAMIKAZE', hp: 20, speed: 125, radius: 10, color: '#ff5f3d', shape: 'triangle', score: 22, xp: 22, behavior: 'kami', knockbackRes: 0.2, damage: 14, minWave: 10 },
@@ -186,7 +189,7 @@
   ];
   // Clasificación mecánica de presupuesto. Medium no consume heavy slot.
   for (const type of NV.ENEMY_TYPES) {
-    type.hostileClass = type.id && type.id.indexOf('specter_') === 0 ? 'medium' : 'light';
+    type.hostileClass = type.hostileClass || (type.id && type.id.indexOf('specter_') === 0 ? 'medium' : 'light');
   }
 
   // === ÉLITES (8 tipos) ===
@@ -258,6 +261,7 @@
     payday:  { name: 'DÍA DE PAGO',      color: '#7cf8ff', desc: 'Drops de shards x2' },
     fog:     { name: 'NEBLINA',          color: '#caa7ff', desc: 'Visibilidad reducida' },
     mines:   { name: 'CAMPO MINADO',     color: '#ff5f9b', desc: 'Minas parlantes con telegraph · enemigos acelerados' },
+    'museum-time': { name: 'CÁMARA DE INERCIA', color: '#a8dfff', desc: 'Un núcleo evasivo · inercia · respeta descanso y cupo de encuentros', stage: 'preview', durationMultiplier: 1 },
   };
 
   // Presentation-only signatures for player_dying and wave_end.
@@ -291,4 +295,17 @@
       flourish: 'orbit-sync', accent: '#8dfaff'
     })
   });
+  // Approved baseline (2026-10-12). Legacy catalog stays available for reference.
+  // Future trial-only changes must extend dimensionTrialRoster, not this baseline.
+  NV.dimensionBaselineRoster = function () {
+    const removed = new Set(['drone', 'shielder', 'specter_lite', 'specter_grunt']);
+    const enemies = NV.ENEMY_TYPES.filter(t => !removed.has(t.id)).map(t => {
+      if(t.id === 'swarmlet') return Object.assign({},t,{minWave:1,speed:140,weight:1.6,previewAgileSwarm:true});
+      if(t.id === 'specter_archer') return Object.assign({},t,{rosterVisualId:'specter_lite',previewHook:true});
+      if(['spitter','wisp'].includes(t.id)) return Object.assign({},t,{previewMotionPolish:true});
+      return Object.assign({},t);
+    });
+    return {enemies,elites:NV.ELITE_TYPES.filter(t=>!['elite_velocity','elite_specter_void'].includes(t.visualId)).map(t=>Object.assign({},t))};
+  };
+  NV.dimensionTrialRoster = function () { return NV.dimensionBaselineRoster(); };
 })();

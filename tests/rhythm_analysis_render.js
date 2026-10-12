@@ -377,13 +377,13 @@ t('game.js usa fondo sectorial oscuro con fallback galaxia sin aclarar combate',
   if (!g.includes(fill)) throw new Error('fondo sectorial/fallback no aplicado');
   if (!g.includes('NV.drawSectorBackdrop(ctx, arenaW(), arenaH()')) throw new Error('identidad sectorial no integrada en mundo real');
   const bg = g.indexOf(fill);
-  const star = g.indexOf('NV.drawStarfield(ctx, cameraW, cameraH, frame, player.x - cameraLeft, player.y - cameraTop, frameVisualRhythm)', bg);
+  const star = g.indexOf('NV.drawStarfield(ctx, cameraW, cameraH, frame, player.x - cameraLeft, player.y - cameraTop, frameVisualRhythm,dimensionContentEnabled?starCamera:null)', bg);
   if (!(star > bg)) throw new Error('fondo no precede starfield');
 });
 
 t('game.js integra drawRhythmLayer después del starfield y antes de gameplay/HUD', () => {
   const g = fs.readFileSync('js/game.js', 'utf8');
-  const star = g.indexOf('NV.drawStarfield(ctx, cameraW, cameraH, frame, player.x - cameraLeft, player.y - cameraTop, frameVisualRhythm)');
+  const star = g.indexOf('NV.drawStarfield(ctx, cameraW, cameraH, frame, player.x - cameraLeft, player.y - cameraTop, frameVisualRhythm,dimensionContentEnabled?starCamera:null)');
   const rhythm = g.indexOf('NV.drawRhythmLayer(ctx, cameraW, cameraH, frame)');
   const bounds = g.indexOf('NV.drawSectorPerimeter(ctx', rhythm);
   const special = g.indexOf('if (specialVFX)', rhythm);

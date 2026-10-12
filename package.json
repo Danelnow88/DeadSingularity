@@ -1,10 +1,10 @@
 {
   "name": "deadsingularity",
-  "productName": "DeadSingularity",
+  "productName": "DEADSINGULARITY",
   "version": "1.1.0-alpha.1",
   "private": true,
   "license": "UNLICENSED",
-  "description": "DeadSingularity: arcade para Windows, web y Android",
+  "description": "DEADSINGULARITY: arcade para Windows, web y Android",
   "main": "desktop/main.cjs",
   "scripts": {
     "check:syntax": "node tools/check-syntax.cjs",
@@ -27,19 +27,23 @@
     "check:motion": "node tools/check-motion.cjs",
     "check:world": "node tools/check-world.cjs",
     "measure:performance": "node tools/performance/stress_harness.js --frames 600 --json local/validation/performance-stress.json",
+    "measure:overlap": "node tools/performance/run_overlap.cjs",
+    "measure:economy": "node tools/performance/economy_simulation.cjs",
     "content:build": "node tools/content-catalog.cjs --build",
     "check:content": "node tools/content-catalog.cjs",
     "inventory:modules": "node tools/inventory-modules.cjs",
     "release:manifest": "node tools/release-manifest.cjs",
     "qa:alpha": "node tools/qa-alpha.cjs",
+    "qa:dimension-lab": "electron tools/qa-dimension-lab.cjs",
+    "qa:dimension-events": "electron tools/qa-dimension-events.cjs",
     "build:android:assets": "node tools/build-android-assets.cjs",
     "postinstall": "install-electron",
     "runtime:install": "install-electron"
   },
   "build": {
     "appId": "com.deadsingularity.v1",
-    "productName": "DeadSingularity",
-    "copyright": "DeadSingularity — Proprietary",
+    "productName": "DEADSINGULARITY",
+    "copyright": "DEADSINGULARITY — Proprietary",
     "electronVersion": "44.5.0",
     "files": [
       "desktop/*.cjs",
@@ -77,6 +81,7 @@
       }
     ],
     "win": {
+      "executableName": "DeadSingularity",
       "target": [
         {
           "target": "nsis",
@@ -94,7 +99,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "DeadSingularity",
+      "shortcutName": "DEADSINGULARITY",
       "installerIcon": "assets/brand/icon.ico",
       "uninstallerIcon": "assets/brand/icon.ico",
       "installerHeaderIcon": "assets/brand/icon.ico",

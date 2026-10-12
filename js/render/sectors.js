@@ -1,28 +1,54 @@
 // Escenarios cósmicos en coordenadas de MUNDO. Decoración sin simulación:
 // no lee entidades, cambia métricas, usa Math.random ni decide progresión.
-// Dos superficies del sector ACTUAL; gradients/polvo se hornean sólo al cambiar
+// Tres superficies del sector ACTUAL; gradients/polvo se hornean sólo al cambiar
 // sector o dimensiones. La cámara/zoom existentes transforman el drawImage.
 (() => {
   'use strict';
   const NV = window.NV;
   const TAU = Math.PI * 2;
 
-  const PROFILES = NV.Content ? Object.freeze(NV.Content.read('sectors').map(e => Object.freeze(e.data))) : Object.freeze([
+  const BASE_PROFILES = NV.Content ? Object.freeze(NV.Content.read('sectors').map(e => Object.freeze(e.data))) : Object.freeze([
     Object.freeze({ id: 'threshold', name: 'UMBRAL', background: '#020714', accent: '#63e8ff', secondary: '#8095ff', motif: 'nebula-and-moon' }),
     Object.freeze({ id: 'foundry', name: 'FUNDICIÓN', background: '#08070b', accent: '#ff9a4d', secondary: '#ff405d', motif: 'stellar-forge-and-debris' }),
     Object.freeze({ id: 'fracture', name: 'FRACTURA', background: '#07051a', accent: '#b989ff', secondary: '#4ce7ff', motif: 'rift-and-shattered-mass' }),
     Object.freeze({ id: 'void-heart', name: 'CORAZÓN DEL VACÍO', background: '#08030f', accent: '#ff4fa8', secondary: '#9d63ff', motif: 'singularity-and-accretion' }),
   ]);
 
-  function sectorIndex(wave) {
+  const PROFILES=Object.freeze([...BASE_PROFILES,
+    Object.freeze({id:'ash-moon',name:'MAR DE CENIZA',background:'#101218',accent:'#b9c9d8',secondary:'#71869d',motif:'lunar-crater-plain',starfield:false}),
+    Object.freeze({id:'jade-basin',name:'JARDÍN MINERAL',background:'#051811',accent:'#81c6a1',secondary:'#386857',motif:'mineral-roots-and-islands',starfield:false}),
+    Object.freeze({id:'drowned-vault',name:'BÓVEDA SUMERGIDA',background:'#061426',accent:'#63a8cc',secondary:'#455ab0',motif:'flooded-terraces',starfield:false}),
+    Object.freeze({id:'glass-desert',name:'DESIERTO DE VIDRIO',background:'#141020',accent:'#c4adcd',secondary:'#748eb6',motif:'crystalline-tectonic-sheets',starfield:false}),
+  ]);
+  function sectorIndex(wave, preview) {
     const safe = Number.isFinite(wave) ? Math.max(1, Math.floor(wave)) : 1;
-    return Math.min(3, Math.floor((safe - 1) / 5));
+    return Math.min(preview?PROFILES.length-1:BASE_PROFILES.length-1, Math.floor((safe - 1) / 5));
   }
   function hash(i, salt) {
     const value = Math.sin(i * 91.733 + salt * 37.719) * 43758.5453;
     return value - Math.floor(value);
   }
   let cached = null, builds = 0, draws = 0;
+  const artBase=typeof document!=='undefined'&&document.currentScript&&document.currentScript.src
+    ? new URL('../../assets/scenery/',document.currentScript.src).href : 'assets/scenery/';
+  const artCache=new Map();
+  const illustratedIds=new Set(['threshold','void-heart','drowned-vault','ash-moon','jade-basin','glass-desert']);
+  function requestArt(index){
+    if(typeof Image==='undefined')return null;
+    const id=PROFILES[index].id;
+    if(!illustratedIds.has(id))return null;
+    let entry=artCache.get(id);
+    if(entry){artCache.delete(id);artCache.set(id,entry);return entry;}
+    const image=new Image();entry={image,ready:false,error:false};artCache.set(id,entry);
+    // The gallery is outside gameplay and explicitly opts into loading all eight.
+    const limit=NV.sceneryPreviewGallery?8:2;
+    while(artCache.size>limit){const key=artCache.keys().next().value;const old=artCache.get(key);old.image.onload=null;old.image.onerror=null;old.image.src='';artCache.delete(key);}
+    image.onload=()=>{entry.ready=image.naturalWidth>0;if(typeof window.dispatchEvent==='function'&&typeof Event!=='undefined')window.dispatchEvent(new Event('dimension-scenery-loaded'));};
+    image.onerror=()=>{entry.error=true;if(typeof window.dispatchEvent==='function'&&typeof Event!=='undefined')window.dispatchEvent(new Event('dimension-scenery-loaded'));};
+    image.src=artBase+id+'-v1.webp';return entry;
+  }
+  NV.preloadDimensionScenery=function(indices){for(const index of indices||[])if(Number.isInteger(index)&&PROFILES[index])requestArt(index);};
+  NV.dimensionSceneryStatus=()=>Array.from(artCache.entries(),([id,e])=>({id,ready:e.ready,error:e.error,width:e.image.naturalWidth||0,height:e.image.naturalHeight||0}));
 
   // Nubes elípticas orgánicas: sus centros/radios nunca dependen de viewX/Y.
   function cloud(ctx, x, y, rx, ry, rotation, rgb, alpha) {
@@ -139,7 +165,49 @@
     fragment(ctx, W * .71, H * .53, H * .045, 132, '84,65,106');
     fragment(ctx, W * .14, H * .81, H * .06, 137, '84,65,106');
   }
-  const PAINTERS = [threshold, foundry, fracture, voidHeart];
+  function ashMoon(ctx,W,H){
+    cloud(ctx,W*.55,H*.4,W*.7,H*.55,-.2,'69,78,92',.55);
+    for(let i=0;i<38;i++){
+      const x=hash(i,530)*W,y=hash(i,531)*H,r=H*(.016+hash(i,532)*.06);
+      cloud(ctx,x+r*.2,y+r*.2,r*1.4,r*1.1,0,'0,1,5',.7);
+      ctx.strokeStyle='rgba(162,177,195,.13)';ctx.lineWidth=Math.max(1,r*.09);
+      ctx.beginPath();ctx.ellipse(x,y,r,r*.72,-.25,0,TAU);ctx.stroke();
+      cloud(ctx,x-r*.1,y-r*.1,r*.72,r*.5,0,'38,43,51',.6);
+    }
+  }
+  function jadeBasin(ctx,W,H){
+    cloud(ctx,W*.3,H*.65,W*.55,H*.5,.4,'27,79,56',.65);
+    for(let i=0;i<22;i++){
+      const x=hash(i,570)*W,y=hash(i,571)*H,r=H*(.025+hash(i,572)*.08);
+      cloud(ctx,x,y,r*2,r,hash(i,573)*TAU,'39,90,64',.25);
+      fragment(ctx,x,y,r,i+570,'75,127,94');
+      ctx.strokeStyle='rgba(93,144,112,.12)';ctx.lineWidth=3;
+      ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(x+r*2,y-r,x+r*3,y+r);ctx.stroke();
+    }
+  }
+  function drownedVault(ctx,W,H){
+    cloud(ctx,W*.6,H*.55,W*.8,H*.6,-.1,'27,68,113',.6);
+    for(let i=0;i<12;i++){
+      const x=hash(i,610)*W,y=hash(i,611)*H,r=H*(.06+hash(i,612)*.09);
+      ctx.save();ctx.translate(x,y);ctx.rotate(hash(i,613)*.8);
+      for(let j=0;j<3;j++){
+        ctx.strokeStyle='rgba(91,136,177,'+(.14-j*.035)+')';ctx.lineWidth=2;
+        ctx.beginPath();ctx.ellipse(0,0,r*(1+j*.25),r*.33*(1+j*.25),0,.12,5.9);ctx.stroke();
+      }
+      ctx.restore();fragment(ctx,x-r*.4,y,r*.35,i+610,'83,119,156');
+    }
+  }
+  function glassDesert(ctx,W,H){
+    cloud(ctx,W*.5,H*.6,W*.7,H*.45,-.25,'78,59,91',.55);
+    for(let i=0;i<26;i++){
+      const x=hash(i,650)*W,y=hash(i,651)*H,r=H*(.025+hash(i,652)*.07);
+      ctx.save();ctx.translate(x,y);ctx.rotate(hash(i,653)*TAU);
+      ctx.fillStyle='rgba(74,79,104,.20)';ctx.strokeStyle='rgba(169,165,192,.15)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(-r,-r*.25);ctx.lineTo(r*.3,-r*.65);ctx.lineTo(r,r*.15);ctx.lineTo(-r*.4,r*.65);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.beginPath();ctx.moveTo(-r,-r*.25);ctx.lineTo(r*.15,0);ctx.lineTo(r,r*.15);ctx.stroke();ctx.restore();
+    }
+  }
+  const PAINTERS = [threshold, foundry, fracture, voidHeart, ashMoon, jadeBasin, drownedVault, glassDesert];
 
   // Perímetro común, material por sector. El corte interior EXACTO es x=0/W,
   // y=0/H. Toda irregularidad se extiende HACIA FUERA: nunca sugiere terreno
@@ -149,6 +217,10 @@
     { exterior: '#040307', rim: '#1c1719', seam: '#8b7556', dust: '#856b4d' },
     { exterior: '#020209', rim: '#171429', seam: '#776890', dust: '#6b618c' },
     { exterior: '#020108', rim: '#181025', seam: '#796080', dust: '#6b5477' },
+    { exterior:'#030509',rim:'#1b2029',seam:'#86929e',dust:'#727e8c'},
+    { exterior:'#020705',rim:'#10281e',seam:'#587d67',dust:'#4f705f'},
+    { exterior:'#02050c',rim:'#101e33',seam:'#567795',dust:'#45677e'},
+    { exterior:'#06030b',rim:'#25202f',seam:'#898299',dust:'#716c83'},
   ];
   let perimeterCache = null, perimeterBuilds = 0;
   function trace(target, points) {
@@ -204,7 +276,7 @@
     if (!ctx || !Number.isFinite(W) || !Number.isFinite(H) || W <= 0 || H <= 0) return null;
     const padding = NV.viewport ? NV.viewport.cameraExteriorPadding : 0;
     if (!(padding > 0)) return null;
-    const index = sectorIndex(wave), p = preparePerimeter(W, H, index, padding);
+    const index = sectorIndex(wave,options&&options.preview), p = preparePerimeter(W, H, index, padding);
     const material = EDGE_MATERIALS[index];
     ctx.save();
     // Exterior sólo fuera de bounds. Sobrescribe fog/starfield de pantalla, no
@@ -236,7 +308,9 @@
       ctx.globalAlpha *= .35; ctx.fillStyle = material.dust;
       for (const point of p.dust) ctx.fillRect(point[0], point[1], 1, 1);
     }
-    ctx.restore(); return PROFILES[index];
+    ctx.restore();
+    if(NV.AudioPerimeter)NV.AudioPerimeter.draw(ctx,W,H,wave,options);
+    return PROFILES[index];
   };
 
   function starDust(ctx, W, H, salt, detail) {
@@ -256,10 +330,10 @@
     const g = ctx.createLinearGradient(0, 0, W * .73, H);
     g.addColorStop(0, PROFILES[index].background); g.addColorStop(1, '#01030b');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    PAINTERS[index](ctx, W, H); starDust(ctx, W, H, 160 + index * 11, false);
+    PAINTERS[index](ctx, W, H); if(PROFILES[index].starfield!==false)starDust(ctx, W, H, 160 + index * 11, false);
   }
   function paintDetail(ctx, W, H, index) {
-    starDust(ctx, W, H, 212 + index * 19, true);
+    if(PROFILES[index].starfield!==false)starDust(ctx, W, H, 212 + index * 19, true);
     // Polvo cerca de las formaciones, no un ruido global ni puntos equidistantes.
     ctx.save(); ctx.fillStyle = index === 1 ? '#b48a52' : '#687aab';
     for (let i = 0; i < 650; i++) {
@@ -285,8 +359,10 @@
     const ctx = canvas.getContext('2d');
     return ctx ? { canvas, ctx } : null;
   }
-  function prepare(W, H, index) {
-    if (cached && cached.W === W && cached.H === H && cached.index === index) return cached;
+  function prepare(W, H, index, variant, preview) {
+    // Illustrated drafts stay opt-in until validated with the actual combat art.
+    const art=preview&&NV.dimensionIllustratedScenery===true?requestArt(index):null,ready=!!(art&&art.ready);
+    if (cached && cached.W === W && cached.H === H && cached.index === index && cached.variant === variant&&cached.preview===!!preview&&cached.artReady===ready) return cached;
     // Memoria acotada: no acumular texturas por run, sector, tier, DPR o cámara.
     cached = null;
     const scale = Math.min(1, 1536 / W, 1024 / H);
@@ -294,8 +370,34 @@
     const core = surface(width, height), detail = surface(width, height);
     if (!core || !detail) return null; // harnesses sin Canvas: mismo arte por vía directa.
     core.ctx.scale(width / W, height / H); detail.ctx.scale(width / W, height / H);
-    paintCore(core.ctx, W, H, index); paintDetail(detail.ctx, W, H, index);
-    cached = { W, H, index, core: core.canvas, detail: detail.canvas, width, height };
+    if (variant) {
+      for (const layer of [core.ctx, detail.ctx]) {
+        if (variant & 1) { layer.translate(W, 0); layer.scale(-1, 1); }
+        if (variant & 2) { layer.translate(0, H); layer.scale(1, -1); }
+        if(!ready)layer.filter = 'hue-rotate(' + ((variant % 41) - 20) + 'deg)';
+      }
+    }
+    if(ready){
+      const image=art.image,ratio=Math.max(W/image.naturalWidth,H/image.naturalHeight);
+      const sw=W/ratio,sh=H/ratio;
+      core.ctx.drawImage(image,(image.naturalWidth-sw)/2,(image.naturalHeight-sh)/2,sw,sh,0,0,W,H);
+      // Readability is baked once, not a live filter or an additional frame pass.
+      core.ctx.fillStyle='rgba(1,3,10,.18)';core.ctx.fillRect(0,0,W,H);
+    }else{paintCore(core.ctx, W, H, index);paintDetail(detail.ctx,W,H,index);}
+    if (variant&&!ready) {
+      const rgb = index === 1 ? '116,73,40' : index === 2 ? '65,57,124' : index === 3 ? '104,42,90' : '35,84,119';
+      for (let i = 0; i < 9; i++) {
+        cloud(core.ctx, W * hash(i, variant), H * hash(i, variant + 13),
+          W * (.055 + hash(i, variant + 29) * .14), H * (.04 + hash(i, variant + 41) * .13),
+          hash(i, variant + 59) * TAU, rgb, .09 + hash(i, variant + 71) * .14);
+      }
+      if(PROFILES[index].starfield!==false)starDust(detail.ctx, W, H, variant, true);
+    }
+    // Precompose the opaque background and its complete fine detail once.
+    // Full quality needs one image submission rather than two fullscreen passes.
+    const full=surface(width,height);
+    if(full){full.ctx.drawImage(core.canvas,0,0);full.ctx.drawImage(detail.canvas,0,0);}
+    cached = { W, H, index, variant, preview:!!preview,artReady:ready,core: core.canvas, detail: detail.canvas, full: full ? full.canvas : null, width, height };
     builds++; return cached;
   }
   function tierOf(options) {
@@ -303,12 +405,17 @@
     return value === 'minimal' ? 'minimal' : value === 'reduced' || value === 'performance' || value === 'medium' ? 'reduced' : 'full';
   }
 
-  NV.SECTOR_VISUALS = PROFILES;
-  NV.sectorVisualForWave = wave => PROFILES[sectorIndex(wave)];
+  NV.SECTOR_VISUALS = BASE_PROFILES;
+  NV.DIMENSION_VISUALS = PROFILES;
+  NV.sectorVisualForWave = (wave,options) => PROFILES[sectorIndex(wave,options&&options.preview)];
   NV.drawSectorBackdrop = function (ctx, W, H, frame, wave, options) {
     if (!ctx || !Number.isFinite(W) || !Number.isFinite(H) || W <= 0 || H <= 0) return null;
-    const index = sectorIndex(wave), tier = tierOf(options), texture = prepare(W, H, index);
+    const variant = options && Number.isFinite(options.variant) ? options.variant >>> 0 : 0;
+    const index = sectorIndex(wave,options&&options.preview), tier = tierOf(options), texture = prepare(W, H, index, variant,options&&options.preview);
     ctx.save();
+    if(tier==='full'&&texture&&texture.full){
+      ctx.drawImage(texture.full,0,0,W,H);ctx.restore();draws++;return PROFILES[index];
+    }
     if (texture) ctx.drawImage(texture.core, 0, 0, W, H);
     else paintCore(ctx, W, H, index);
     if (tier !== 'minimal') {
@@ -320,9 +427,10 @@
     return PROFILES[index];
   };
   // Sólo diagnóstico de decoración; nunca escribe worldMetrics ni entidades.
-  NV.getSectorBackdropStats = () => ({ builds, draws, surfaces: cached ? 2 : 0,
+  NV.getSectorBackdropStats = () => ({ builds, draws, surfaces: cached ? (cached.full ? 3 : 2) : 0,
     perimeterBuilds, perimeterVertices: perimeterCache ? perimeterCache.outer.length : 0,
     sector: cached ? PROFILES[cached.index].id : null,
+    artReady:!!(cached&&cached.artReady),sourceImages:artCache.size,
     textureWidth: cached ? cached.width : 0, textureHeight: cached ? cached.height : 0,
-    estimatedBytes: cached ? cached.width * cached.height * 8 : 0 });
+    estimatedBytes: cached ? cached.width * cached.height * (cached.full ? 12 : 8) : 0 });
 })();

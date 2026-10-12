@@ -1,5 +1,42 @@
 # Arquitectura
 
+**Despliegue temporal (08-10, regla vigente):** el tiempo de cada campo gobierna
+el despliegue; al llegar a cero cesa el refill normal/élite y los drops periódicos.
+La victoria exige sólo reloj agotado y cero hostiles vivos (incluye avisos de
+llegada). `waveClearObjective.total` es referencia histórica de diagnóstico,
+no cuota de bajas. Boss conserva soporte e invocaciones durante su combate.
+La barra muestra despliegue temporal y luego limpieza de los hostiles reales.
+
+Presencia: `fieldHostileTarget` añade hasta 3 al objetivo blando original, sin
+exceder SOFT_DENSITY_MAX; `fieldSpawnBatch` añade uno al lote, techo 5. Cadencia,
+HP/daño/velocidad, armas, calendario de jefes y cap30/heavy7 permanecen en sus
+autoridades anteriores. El usuario acepta una pequeña subida de presión.
+Lotes libres usan `waveDistributedPositions`, pequeños enjambres con separación
+y rotación; la selección ponderada de tipos no cambia. Cartas y posiciones de
+escuadras tácticas originales se conservan para protección y sinergias. Todos
+los integrantes reservan presupuesto y respetan aviso/puff antes de combatir.
+Esta sección supera las referencias anteriores a objetivos finitos por campo.
+
+**Dimensiones (08-10, revisión de densidad):** `engine/dimensions.js` conserva
+el tiempo mínimo y el objetivo completo de la oleada en CADA campo; no dividirlos
+por cantidad de universos. Spawner, soft target, caps, stats y dificultad siguen
+en sus autoridades originales. Los tres cruces producen cuatro campos; la tienda
+y recompensa de cierre aparecen sólo al terminar el cuarto. Los bosses conservan
+su calendario y combaten al final. Apertura de 1.2s antes del contacto habilitado;
+tránsito de 1.15s con fundido y llegada de .8s. Son tiempos de simulación por dt.
+
+**Regla permanente de destinos, solicitada por el autor:** atravesar cualquier
+agujero negro debe llevar a un background claramente diferente. No repetir el
+ambiente inicial en el tercero ni cualquier otro ambiente dentro del recorrido.
+`dimensionRun.environments` contiene una permutación de cuatro perfiles únicos.
+El wave visual es independiente del wave de combate: jamás pasar el índice visual
+a spawns, dificultad, boss, hazards o recompensas. `render/sectors.js` hornea
+variantes de geometría, nebulosas, polvo y color por semilla cosmética, conservando
+sólo dos superficies del campo actual. `render/blackHoles.js` remuestrea fondo y
+dibuja estrellas tangenciales acotadas; no crea entidades ni consume RNG de combate.
+Las variantes son combinaciones procedurales de cuatro familias, no mundos
+literalmente infinitos. Contratos: `tests/dimensions.js`, `tests/sector_visuals.js`.
+
 **Jefes V11:** `NV.BOSS_DESIGNS` conserva las diez entradas exactas del laboratorio
 autorizado. `NV.attachBossDesign` adjunta metadata al jefe creado por el coordinator;
 no sustituye radius, shape, pattern, attack, hp ni color de combate. El renderer
@@ -433,3 +470,30 @@ Estos puntos requieren una tarea aislada porque pueden cambiar balance o comport
 6. Comprar un arma con el inventario lleno puede equiparla sin almacenarla.
 
 No resolver estos puntos como efecto lateral de documentación, viewport, UI o refactors visuales.
+## Amenazas dimensionales — 08/10/2026
+
+El roster productivo ahora tiene 16 enemigos normales, 8 élites y 10 bosses.
+Costurero (oleada 2), Francotirador dimensional (3) y Devorador de espacio (4)
+son incorporaciones, no reemplazos de las rutinas anteriores. Su geometría fija
+se comparte entre IA/colisión y Canvas2D; hay reservas acotadas de ataque/zona,
+cap de dos familias nuevas vivas y exclusión de soporte de boss. No agregan
+partículas, HUD, inversión de controles ni búsquedas enemigo×proyectil.
+Contrato y verificación: `docs/DIMENSIONAL_THREATS_2026-10-08.md`.
+
+## Contratos de presentación y rendimiento — 09/10/2026
+
+Dirección cromática: `docs/ART_DIRECTION.md`. Materiales y luces tienen papeles
+distintos; las advertencias comparten geometría autoritativa con las colisiones.
+El tejido se rasteriza una vez por geometría y se revela mediante clipping.
+Cuatro texturas como máximo; detalles y chispas conservados.
+
+Separación reutiliza buckets de grilla. Proyectiles usan broad phase espacial
+cuando hay al menos 2048 pares potenciales, mantienen el orden original y vuelven
+al recorrido lineal después de un impacto con callbacks (índice potencialmente
+obsoleto). No se presume O(n) para todo: densidad extrema en una misma celda y
+callbacks mantienen un peor caso cuadrático. Las colisiones exactas no cambian.
+
+El monitor agrega percentiles cada 250 ms, no cada frame. Herramientas aisladas:
+`tools/performance/electron_overlap.cjs`, `tools/performance/economy_simulation.cjs`.
+Los FPS offscreen no son FPS de presentación. Registrar calidad efectiva y
+percentiles, no sólo el mejor frame ni únicamente el tiempo CPU de dibujo.

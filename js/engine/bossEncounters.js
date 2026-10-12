@@ -301,41 +301,6 @@
     if (e.pulses > 0) e.t = .20;
     else { e.stage = 'recovery'; e.t = p.recovery * timing.recovery * (b.phase2 ? .82 : 1); e.cast++; }
   };
-  // Evolución de fusiones: un pulso anunciado y fijo, con daño acotado. No crea
-  // proyectiles ni nuevas entidades; sigue los topes de la simulación original.
-  NV.updateFusionThreats = function (dt, st) {
-    for (const e of st.enemies) {
-      if (e.dead || e.arrival || e.waveCleanup || !(e.fusionLevel >= 2)) continue;
-      if (!e.fusionPulse) e.fusionPulse = { stage: 'cooldown', t: 3.5, x: e.x, y: e.y };
-      const p = e.fusionPulse;
-      // Si el círculo aparece al desplazar la cámara, conservar una ventana
-      // visible antes de detonar. La entidad y su IA siguen simulándose fuera.
-      const cameraReady = !NV.cameraThreatReady || NV.cameraThreatReady(p, dt,
-        { x: p.x - 65, y: p.y - 65, w: 130, h: 130 }, .55);
-      if (p.stage === 'windup') {
-        const required = Math.max(8, (e.maxHp || e.hp || 0) * 0.08);
-        if (Number.isFinite(p.startHp) && p.startHp - e.hp >= required) {
-          p.stage = 'cooldown'; p.t = 5.5; p.startHp = null;
-          e.fusionInterruptFlash = 0.7;
-          if (st.addFloatText) st.addFloatText(e.x, e.y - e.radius - 22, 'PULSO INTERRUMPIDO', '#7cf8ff');
-          if (st.spawnExplosion) st.spawnExplosion(e.x, e.y, 8, '#7cf8ff', .25);
-          continue;
-        }
-      }
-      p.t -= dt;
-      if (p.t > 0) continue;
-      if (p.stage === 'cooldown') { p.stage = 'windup'; p.t = .85; p.x = e.x; p.y = e.y; p.startHp = e.hp; }
-      else {
-        // Un círculo entero coherente con su dibujo; no se usa el radio visual del enemigo.
-        if (cameraReady && Math.hypot(st.player.x - p.x, st.player.y - p.y) < 65) {
-          const hit = st.applyPlayerDamage(Math.min(22, 10 + e.fusionLevel * 3), { cause: 'fusion-pulse', enemy: e, allowCrit: false, allowDodge: false });
-          if (hit && hit.killed && st.onPlayerKilled) st.onPlayerKilled();
-        }
-        if (st.spawnExplosion) st.spawnExplosion(p.x, p.y, 12, '#ff766f', .4);
-        p.stage = 'cooldown'; p.t = 4.5; p.startHp = null;
-      }
-    }
-  };
   NV.drawEncounterWarnings = function (ctx, boss, enemies) {
     const signals = NV.HOSTILE_SIGNALS;
     const warningColor = signals ? signals.warning : '#ff6474';
@@ -347,13 +312,6 @@
       ctx.beginPath(); ctx.arc(target.x, target.y, boss.radius + 8, 0, TAU); ctx.stroke();
       ctx.setLineDash([]);
       ctx.beginPath(); ctx.arc(target.x, target.y, (boss.radius + 8) * Math.max(.1, 1 - move.elapsed / .5), 0, TAU); ctx.stroke();
-    }
-    for (const e of enemies) {
-      const p = e.fusionPulse;
-      if (e.dead || !p || p.stage !== 'windup') continue;
-      ctx.strokeStyle = warningColor; ctx.fillStyle = 'rgba(255,72,64,.13)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(p.x, p.y, 65, 0, TAU); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.arc(p.x, p.y, 65 * Math.max(0, 1 - p.t / .85), 0, TAU); ctx.stroke();
     }
     if (boss && !boss.dead && boss.encounter && boss.encounter.stage === 'windup') {
       const e = boss.encounter;

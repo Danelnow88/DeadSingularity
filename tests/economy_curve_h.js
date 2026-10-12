@@ -59,7 +59,7 @@ assert.equal(NV.planWaveSpawnBatch(16, 3, 1, NV.ENEMY_TYPES, 'hard').length, 3);
 assert.equal(NV.planWaveSpawnBatch(16, 3, 1, NV.ENEMY_TYPES, 'easy').length, 0);
 
 const game = fs.readFileSync('js/game.js', 'utf8');
-assert(game.includes('NV.runUpgradePrice'));
+assert(game.includes('NV.ECONOMY.passivePrice'));
 assert(game.includes('NV.weaponFusionShopPrice'));
 assert(game.includes('ENEMY_TYPES, NV.runDifficulty'));
 assert(game.includes('run: combatLabMode ? null : expeditionRun'),'ruta conectada al boss de producción');

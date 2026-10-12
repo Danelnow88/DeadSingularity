@@ -14,6 +14,7 @@ html,body,.shell { width:100%; height:100%; margin:0; overflow:hidden; }
 .system-vitals-bar span { position:absolute; inset:0; display:grid; place-items:center; font:900 14px/1 system-ui,sans-serif; color:#fff; letter-spacing:.02em; text-shadow:0 1px 3px #000,1px 0 2px #000,-1px 0 2px #000; }
 .system-menu-toggle { top:max(12px,env(safe-area-inset-top,0px)); right:max(12px,env(safe-area-inset-right,0px)); display:none; width:42px; height:42px; border:1px solid rgba(124,248,255,.52); border-radius:12px; color:#dffcff; background:rgba(3,9,22,.86); box-shadow:0 6px 22px rgba(0,0,0,.32),inset 0 1px rgba(255,255,255,.1); cursor:pointer; font:700 20px/1 system-ui,sans-serif; }
 .system-menu-toggle:hover,.system-menu-toggle:focus-visible { border-color:#7cf8ff; background:rgba(16,50,65,.94); outline:none; }
+.system-menu-toggle[data-audio-active="true"]::after { content:''; position:absolute; right:5px; top:5px; width:6px; height:6px; border-radius:50%; background:#ffd27d; }
 html[data-game-state="playing"] .system-vitals,html[data-game-state="playing"] .system-menu-toggle,html[data-game-state="wave_end"] .system-vitals,html[data-game-state="wave_end"] .system-menu-toggle { display:flex; }
 html[data-game-state="playing"] .system-menu-toggle,html[data-game-state="wave_end"] .system-menu-toggle { display:grid; place-items:center; }
 .system-menu { top:max(10px,env(safe-area-inset-top,0px)); right:max(10px,env(safe-area-inset-right,0px)); width:min(360px,calc(100vw - 20px)); max-height:calc(100dvh - 20px); overflow:auto; padding:12px; border:1px solid rgba(124,248,255,.5); border-radius:16px; color:#eaffff; background:linear-gradient(145deg,rgba(8,20,37,.98),rgba(12,10,31,.98)); box-shadow:0 24px 80px rgba(0,0,0,.55),0 0 28px rgba(124,248,255,.11); }
@@ -36,6 +37,16 @@ html[data-game-state="playing"] .system-menu-toggle,html[data-game-state="wave_e
 .system-experimental summary span { margin-left:5px; color:#91a5b9; font-size:8px; }
 .system-experimental p { margin:8px 0; color:#aebfd0; font:11px/1.4 system-ui,sans-serif; }
 .system-experimental .rhythm-widget { position:static !important; display:flex; width:max-content; max-width:100%; transform:none !important; }
+.system-experimental .native-music-sources { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:8px 0; }
+.system-experimental .native-music-sources button { min-height:40px; border:1px solid #7cf8ff40; border-radius:7px; background:#132332; color:#dffcff; font:700 11px/1.3 system-ui; cursor:pointer; }
+.system-experimental .native-music-controls { width:100%; gap:6px; }
+.system-experimental .native-music-controls .rw-btn { width:auto; min-height:32px; padding:7px 10px; font:700 11px/1.3 system-ui; }
+.system-experimental #nativeMusicStatus { padding:7px; border-left:2px solid #b5a5e8; background:#060c1880; }
+.system-experimental .native-music-style { display:grid; grid-template-columns:auto minmax(0,1fr); gap:6px 12px; align-items:center; margin:10px 0; }
+.native-music-style label { color:#d9cbff; font:700 11px/1.3 system-ui,sans-serif; }
+.native-music-style select { min-width:0; min-height:34px; padding:6px 9px; border:1px solid #b5a5e850; border-radius:7px; color:#eaffff; background:#10172a; font:700 12px/1.3 system-ui,sans-serif; cursor:pointer; color-scheme:dark; }
+.native-music-style select:focus-visible { outline:2px solid #7cf8ff; outline-offset:2px; }
+.system-experimental .native-music-style p { grid-column:1/-1; margin:0; font-size:10px; color:#9eb0c5; }
 @media (pointer:coarse) {
   .system-vitals { top:max(7px,env(safe-area-inset-top,0px)); left:max(7px,env(safe-area-inset-left,0px)); padding:5px 6px; }
   .system-vitals-bar { width:148px; height:27px; }

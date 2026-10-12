@@ -28,7 +28,10 @@ for (const state of ['telegraph', 'active', 'recovery']) {
       const radii = c.calls.filter(call => call[0] === 'arc').map(call => call[3]);
       assert(radii.includes(90) && radii.includes(150), 'borde interior y exterior de la banda real');
     }
-    const label = c.calls.filter(call => call[0] === 'fillRect').at(-1);
+    assert(!c.calls.some(call => call[0] === 'fillText'), 'telemetría visible en producción');
+    const diagnostic = context();
+    NV.drawHazards(diagnostic.ctx, [hazard], null, { tier: 'minimal' }, true);
+    const label = diagnostic.calls.filter(call => call[0] === 'fillRect').at(-1);
     assert(label[1] >= 0 && label[1] + label[3] <= hazard.W, 'cartel dentro del arena');
     assert(label[2] >= 0 && label[2] + label[4] <= hazard.H);
   }

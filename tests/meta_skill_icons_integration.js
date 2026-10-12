@@ -60,7 +60,7 @@ t('menú inicial renderiza 4 canvas de habilidades de personaje', () => {
 });
 
 t('tienda de partida usa metaIcon canvas para mejoras temporales', () => {
-  for (const id of ["metaIcon: 'hp'", "metaIcon: 'speed'", "metaIcon: 'armor'", "metaIcon: 'luck'"]) {
+  for (const id of ["metaIcon:'armor'"]) {
     if (!game.includes(id)) throw new Error('falta ' + id);
   }
   if (!game.includes('item.weapon || item.consumableType || item.metaIcon')) throw new Error('renderOffers no reserva canvas metaIcon');

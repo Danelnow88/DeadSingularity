@@ -5,6 +5,46 @@
 (() => {
   'use strict';
   const NV = window.NV;
+  // Broad phase rebuilt after enemy movement. Reuse buckets and candidates;
+  // keep original array order for shields, finite pierce and shotgun budgets.
+  const collisionCells=new Map(),collisionBuckets=[],collisionCandidates=[];
+  const CELL=96, byIndex=(a,b)=>a-b;
+  let collisionMaxRadius=0;
+  function cellKey(x,y){
+    const a=x<0?-2*x-1:2*x,b=y<0?-2*y-1:2*y;
+    return (a+b)*(a+b+1)/2+b;
+  }
+  function buildCollisionCells(enemies){
+    collisionCells.clear();collisionMaxRadius=0;
+    for(const bucket of collisionBuckets)bucket.length=0;
+    let used=0;
+    for(let i=0;i<enemies.length;i++){
+      const e=enemies[i];
+      if(!Number.isFinite(e.x)||!Number.isFinite(e.y)||!Number.isFinite(e.radius))return false;
+      collisionMaxRadius=Math.max(collisionMaxRadius,e.radius);
+      const key=cellKey(Math.floor(e.x/CELL),Math.floor(e.y/CELL));
+      let bucket=collisionCells.get(key);
+      if(!bucket){bucket=collisionBuckets[used]||(collisionBuckets[used]=[]);used++;collisionCells.set(key,bucket);}
+      bucket.push(i);
+    }
+    return true;
+  }
+  function collisionQuery(b,oldX,oldY){
+    const pad=collisionMaxRadius+(b.impactType==='sustain'?(b.splashRadius||18):4);
+    const swept=b.impactType==='pellet';
+    const x0=Math.floor(((swept?Math.min(oldX,b.x):b.x)-pad)/CELL);
+    const x1=Math.floor(((swept?Math.max(oldX,b.x):b.x)+pad)/CELL);
+    const y0=Math.floor(((swept?Math.min(oldY,b.y):b.y)-pad)/CELL);
+    const y1=Math.floor(((swept?Math.max(oldY,b.y):b.y)+pad)/CELL);
+    if(!Number.isFinite(x0+x1+y0+y1)||(x1-x0+1)*(y1-y0+1)>collisionCells.size*2)return null;
+    collisionCandidates.length=0;
+    for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++){
+      const bucket=collisionCells.get(cellKey(x,y));
+      if(bucket)for(let k=0;k<bucket.length;k++)collisionCandidates.push(bucket[k]);
+    }
+    collisionCandidates.sort(byIndex);
+    return collisionCandidates;
+  }
 
   function hasHitTarget(b, target) {
     return Array.isArray(b.hitTargets) && b.hitTargets.indexOf(target) !== -1;
@@ -168,12 +208,14 @@
     return visualRadius * scale;
   };
 
-  NV.hostileProjectileHitsPlayer = function (projectile, oldX, oldY, player, characterSize) {
+  NV.hostileProjectileHitsPlayer = function (projectile, oldX, oldY, player, characterSize, previousPlayer) {
     if (!projectile || !player) return false;
     // Hurtbox algo menor que el arte del personaje: los bordes luminosos y
     // accesorios siguen siendo visuales, no dano invisible.
     const playerRadius = Math.max(4, (Number(characterSize) || 20) * 0.38);
     const hitRadius = playerRadius + NV.hostileProjectileCollisionRadius(projectile);
+    if(previousPlayer) return segmentHitsCircle(oldX-previousPlayer.x,oldY-previousPlayer.y,
+      projectile.x-player.x,projectile.y-player.y,0,0,hitRadius);
     return segmentHitsCircle(oldX, oldY, projectile.x, projectile.y, player.x, player.y, hitRadius);
   };
 
@@ -209,22 +251,46 @@
     b.shotgunBloom = bloom;
   }
 
+  function plasmaBossDamageMultiplier(b, st) {
+    const multiplier = st && st.plasmaExperiment && b && b.wid === 'plasma'
+      ? st.plasmaExperiment.bossDamageMultiplier : null;
+    return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1;
+  }
+
   function explodeSplash(b, st, directTarget) {
     const radius = b.splashRadius || 0;
     if (radius <= 0) return;
     const { enemies, boss, spawnExplosion } = st;
-    spawnExplosion(b.x, b.y, 18, b.color, 0.75);
+    const plasmaTrial = b.wid === 'plasma' && st.plasmaExperiment;
+    const splashDamage = target => {
+      if(!plasmaTrial)return b.damage;
+      const distance=Math.max(0,Math.hypot(target.x-b.x,target.y-b.y)-(target.radius||0));
+      const fraction=Math.min(1,distance/radius);
+      return b.damage*(plasmaTrial.splashCenterMultiplier+
+        (plasmaTrial.splashEdgeMultiplier-plasmaTrial.splashCenterMultiplier)*fraction);
+    };
+    spawnExplosion(b.x, b.y, plasmaTrial ? 25 : 18, b.color, plasmaTrial ? 0.82 : 0.75);
+    if (plasmaTrial && st.spawnShockwave) {
+      st.spawnShockwave(b.x, b.y, {
+        maxRadius: b.splashRadius || st.plasmaExperiment.blast.radius,
+        color: st.plasmaExperiment.blast.color,
+        innerColor: st.plasmaExperiment.blast.innerColor,
+        width: st.plasmaExperiment.blast.width,
+        style: 'plasmaTrial',
+      });
+    }
     for (const other of enemies) {
       if (!isTargetable(other) || hasHitTarget(b, other)) continue;
       if (Math.hypot(other.x - b.x, other.y - b.y) > radius + other.radius) continue;
       rememberHitTarget(b, other);
-      applyPlayerBulletDamage(b, other, st, 'splash');
+      applyPlayerBulletDamage(b, other, st, 'splash', splashDamage(other));
     }
     if (boss && boss !== directTarget && !boss.dead && Math.hypot(boss.x - b.x, boss.y - b.y) <= radius + boss.radius) {
-      boss.hp -= b.damage;
-      if (NV.playtest && NV.playtest.enabled) NV.playtest.bossHit(b.wid, b.damage, 'splash');
+      const bossDamage = splashDamage(boss) * plasmaBossDamageMultiplier(b, st);
+      boss.hp -= bossDamage;
+      if (NV.playtest && NV.playtest.enabled) NV.playtest.bossHit(b.wid, bossDamage, 'splash');
       boss.hitFlash = Math.max(boss.hitFlash, 0.10);
-      NV.bossHitReaction(boss, b.damage, st.addFloatText);
+      NV.bossHitReaction(boss, bossDamage, st.addFloatText);
     }
   }
 
@@ -234,10 +300,15 @@
     let shake = st.shake || 0;
     let hitstop = st.hitstop || 0;
     let over = false;
+    if (st.inertia && NV.InertiaChamber) NV.InertiaChamber.prepareShots(bullets,st.inertia);
+    // Small scenes are cheaper as linear scans. After a hit, callbacks may move
+    // or spawn entities: fall back for the rest of this update (no stale index).
+    let collisionGridValid=bullets.length*enemies.length>=2048 && buildCollisionCells(enemies);
 
     for (const b of bullets) {
       if (b.dead) continue;
       if (!b.isEnemy && b.wid === 'bow' && b.state === 'chain' && b.chainTargets && b.chainIndex < b.chainTargets.length) {
+        collisionGridValid=false;
         if (dt <= 0) {
           while (b.chainIndex < b.chainTargets.length) {
             const target = b.chainTargets[b.chainIndex++];
@@ -274,36 +345,39 @@
 
       updateShotgunPelletVelocity(b, dt);
       const oldX = b.x, oldY = b.y;
+      // Inertia slows hostile shots to a crawl; it never freezes them in place.
+      const bulletDt = b.isEnemy && st.inertia && st.inertia.held ? dt * .15 : dt;
       const cameraReady = !b.isEnemy || !NV.cameraThreatReady || NV.cameraThreatReady(b, dt,
         { x:oldX-5, y:oldY-5, w:10, h:10 }, .30);
-      let travelStep = Math.hypot(b.vx, b.vy) * dt;
+      let travelStep = Math.hypot(b.vx, b.vy) * bulletDt;
       let expiresAfterStep = false;
       if (!b.isEnemy && b.maxTravelDistance > 0) {
         const remaining = Math.max(0, b.maxTravelDistance - (b.traveledDistance || 0));
         if (travelStep >= remaining) {
           const ratio = travelStep > 0 ? remaining / travelStep : 0;
-          b.x += b.vx * dt * ratio;
-          b.y += b.vy * dt * ratio;
+          b.x += b.vx * bulletDt * ratio;
+          b.y += b.vy * bulletDt * ratio;
           travelStep = remaining;
           expiresAfterStep = true;
         } else {
-          b.x += b.vx * dt;
-          b.y += b.vy * dt;
+          b.x += b.vx * bulletDt;
+          b.y += b.vy * bulletDt;
         }
         b.traveledDistance = (b.traveledDistance || 0) + travelStep;
       } else {
-        b.x += b.vx * dt;
-        b.y += b.vy * dt;
+        b.x += b.vx * bulletDt;
+        b.y += b.vy * bulletDt;
       }
       if (b.x < -10 || b.x > W + 10 || b.y < -10 || b.y > H + 10) {
-        if (!b.isEnemy && b.impactType === 'splash') explodeSplash(b, st);
+        if (!b.isEnemy && b.impactType === 'splash') { collisionGridValid=false;explodeSplash(b, st); }
         b.dead = true;
         continue;
       }
 
       if (b.isEnemy) {
         const character = CHARACTERS[player.character] || {};
-        if (cameraReady && NV.hostileProjectileHitsPlayer(b, oldX, oldY, player, character.size || 20)) {
+        if (cameraReady && !(st.inertia && b.inertiaReleaseGrace > 0) && NV.hostileProjectileHitsPlayer(b, oldX, oldY, player, character.size || 20, st.playerPrevious)) {
+          collisionGridValid=false;
           if (player.bulwark > 0) {
             // Muralla: refleja la bala enemiga hacia el enemigo
             b.isEnemy = false;
@@ -332,16 +406,25 @@
           }
         }
       } else {
-        let hitCount = 0;
-        for (const e of enemies) {
+        // Penetración finita durante TODA la vida, no un presupuesto nuevo por frame.
+        let hitCount = Array.isArray(b.hitTargets) ? b.hitTargets.length : 0;
+        let candidates=collisionGridValid?collisionQuery(b,oldX,oldY):null,cursor=0,scanIndex=0;
+        while(candidates?cursor<candidates.length:scanIndex<enemies.length){
+          const enemyIndex=candidates?candidates[cursor++]:scanIndex++;
+          const e=enemies[enemyIndex];
           if (!isTargetable(e)) continue;
           if (hasHitTarget(b, e)) continue;
-          const d = Math.hypot(b.x - e.x, b.y - e.y);
+          const dx = b.x-e.x, dy = b.y-e.y;
+          const contactRadius = e.radius + (b.impactType === 'sustain' ? (b.splashRadius || 18) : 4);
+          // Cheap exact broad phase before swept pellets; preserve original target order.
+          if (b.impactType === 'pellet' &&
+            (e.x < Math.min(oldX,b.x)-e.radius-3 || e.x > Math.max(oldX,b.x)+e.radius+3 ||
+             e.y < Math.min(oldY,b.y)-e.radius-3 || e.y > Math.max(oldY,b.y)+e.radius+3)) continue;
           const collided = b.impactType === 'pellet'
             ? segmentHitsCircle(oldX, oldY, b.x, b.y, e.x, e.y, e.radius + 3)
-            : ((b.impactType === 'sustain' && d < e.radius + (b.splashRadius || 18)) ||
-              (b.impactType !== 'sustain' && d < e.radius + 4));
+            : dx*dx+dy*dy < contactRadius*contactRadius;
           if (collided) {
+            collisionGridValid=false;candidates=null;scanIndex=enemyIndex+1;
             if (b.impactType === 'splash' && !b.guardProtectionSnapshot && NV.getGuardProtectionSource) {
               b.guardProtectionSnapshot = new Set();
               for (const candidate of enemies) {
@@ -389,7 +472,8 @@
             : d < boss.radius + contactRadius;
           const shotgunBossDamageAllowed = bossCollision && shotgunCanDamage(b, boss, true);
           if (shotgunBossDamageAllowed) {
-            const bossDamage = b.specialId ? b.damage * (b.bossDamageMult || 1) : b.damage;
+            collisionGridValid=false;
+            const bossDamage = (b.specialId ? b.damage * (b.bossDamageMult || 1) : b.damage) * plasmaBossDamageMultiplier(b, st);
             boss.hp -= bossDamage;
             if (NV.playtest && NV.playtest.enabled) NV.playtest.bossHit(b.specialId ? ('special:' + b.specialId) : b.wid, bossDamage, b.specialId ? 'special' : 'direct');
             boss.hitFlash = Math.max(boss.hitFlash, 0.10);

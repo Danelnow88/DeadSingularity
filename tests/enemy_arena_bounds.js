@@ -34,5 +34,5 @@ assert(NV.spawnMinion(-50, 900, summons));
 assert(summons.enemies[0].x > 0 && summons.enemies[0].y < 520);
 const game = fs.readFileSync('js/game.js', 'utf8');
 assert(game.includes('keepInsideArena: !combatLabMode'));
-assert(fs.readFileSync('js/ui/alpha.js','utf8').includes('s.showHUD === false'));
+assert(!fs.readFileSync('js/ui/alpha.js','utf8').includes('alpha-run-strip'),'desafío no debe montar HUD persistente');
 console.log('OK enemy_arena_bounds: spawn normal/élite/esbirro, tres arenas y empuje');

@@ -1,0 +1,32 @@
+'use strict';
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const game=fs.readFileSync('js/game.js','utf8'),box={window:{NV:{}},console};
+vm.runInNewContext(fs.readFileSync('js/data/gameData.js','utf8'),box);
+const NV=box.window.NV,before=JSON.stringify([NV.ENEMY_TYPES,NV.ELITE_TYPES]);
+const baseline=NV.dimensionBaselineRoster(),trial=NV.dimensionTrialRoster();
+assert.equal(JSON.stringify(baseline),JSON.stringify(trial));
+assert.equal(baseline.enemies.length,12);assert.equal(baseline.elites.length,6);
+for(const id of ['drone','shielder','specter_lite','specter_grunt'])assert(!baseline.enemies.some(t=>t.id===id));
+assert(baseline.enemies.find(t=>t.id==='swarmlet').previewAgileSwarm);
+assert(baseline.enemies.find(t=>t.id==='specter_archer').previewHook);
+assert.equal(before,JSON.stringify([NV.ENEMY_TYPES,NV.ELITE_TYPES]),'historical catalog mutated');
+trial.enemies.find(t=>t.id==='swarmlet').speed=999;
+assert.equal(NV.dimensionBaselineRoster().enemies.find(t=>t.id==='swarmlet').speed,140,'future trial edits leaked to baseline');
+assert(game.includes('const dimensionContentEnabled = !isolatedMode;'));
+assert(game.includes('sceneryOptions={preview:dimensionContentEnabled}'));
+assert(game.includes('plasmaTrialProfile(dimensionContentEnabled)'));
+assert(game.includes('preview:dimensionContentEnabled'));
+assert(game.includes('isolatedMode || dimensionEventPreview ||'),'trial persistence gate removed');
+const events=require('../js/engine/dimensionEvents.js');
+for(const mode of ['expedition','endless']){
+ const original=events.createCoreSchedule(()=>.4);
+ for(let wave=1;wave<=9;wave++)original.pick({wave,mode,bossWave:wave%2===0});
+ const resumed=events.createCoreSchedule(()=>.4,original.snapshot());
+ for(let wave=10;wave<=30;wave++)assert.deepEqual(resumed.pick({wave,mode,bossWave:wave%2===0}),original.pick({wave,mode,bossWave:wave%2===0}));
+}
+const capped=events.createCoreSchedule(()=>0);
+for(let wave=1;wave<=40;wave++)capped.pick({wave,mode:'expedition',bossWave:wave%2===0});
+assert(events.normalizeCoreSchedule(capped.snapshot()),'finished story schedule must survive save');
+assert.equal(events.createCoreSchedule(()=>0,capped.snapshot()).pick({wave:41,mode:'expedition'}),null,'story cap reset after resume');
+for(const invalid of [null,{}, {nextWave:NaN,count:0,lastPattern:-1,lastWave:0},{nextWave:1,count:-1,lastPattern:9,lastWave:0}])assert.equal(events.normalizeCoreSchedule(invalid),null);
+console.log('PASS promoted baseline parity, trial extension isolation, persistence separation and resumed core schedule');

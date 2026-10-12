@@ -4,6 +4,10 @@ local/
 previews/*
 !previews/enemy-roster-canonical.html
 !previews/consumable-icons-integration-preview.html
+!previews/dimension-environments.html
+!previews/scenery-gallery.js
+# Bocetos de trabajo: no pertenecen al código ni al paquete publicable.
+/MUESTRA BOCETO DE SPEAKER DANEL.txt
 *.log
 *.tmp
 .DS_Store

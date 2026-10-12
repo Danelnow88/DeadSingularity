@@ -88,7 +88,7 @@ function bossLabHarness(production = false) {
   const vm = require('vm');
   const silent = () => {};
   const context = vm.createContext({ window: { NV: {} }, console: { log: silent }, Math, Number, Object, Array, Map, Set, JSON });
-  for (const file of ['js/data/gameData.js', 'js/data/balance.js', 'js/core/inputIntent.js', 'js/engine/movement.js', 'js/engine/hostileBudget.js', 'js/engine/enemySpawnRegistry.js', 'js/engine/enemies.js', 'js/engine/boss.js', 'js/engine/playtestTelemetry.js']) {
+  for (const file of ['js/data/gameData.js', 'js/data/balance.js', 'js/core/inputIntent.js', 'js/engine/dimensions.js', 'js/engine/pickups.js', 'js/render/blackHoles.js', 'js/engine/movement.js', 'js/engine/hostileBudget.js', 'js/engine/enemySpawnRegistry.js', 'js/engine/enemies.js', 'js/engine/boss.js', 'js/engine/playtestTelemetry.js']) {
     vm.runInContext(fs.readFileSync(file, 'utf8'), context, { filename: file });
   }
   const src = game.replace(/\r\n/g, '\n');
@@ -101,11 +101,16 @@ function bossLabHarness(production = false) {
   vm.runInContext(`
     const NV = window.NV;
     const combatLabMode = ${!production};
+    const isolatedMode=combatLabMode, dimensionLabMode=false, dimensionEventPreview=false;
+    const dimensionContentEnabled=!isolatedMode,sceneryOptions={preview:dimensionContentEnabled};
+    let coreEncounterSchedule=null;
+    let fieldEventSession=null;
+    let dimensionExperiment=null, dimensionPursuit=null, experimentPreviousPlayer=null, experimentSerial=0;
     const expeditionRun = null; // El fixture productivo de este test conserva ruta legacy.
     const CHARACTERS = NV.CHARACTERS, WEAPONS = NV.WEAPONS, BOSS_TYPES = NV.BOSS_TYPES, ENEMY_TYPES = NV.ENEMY_TYPES, WAVE_EVENTS = NV.WAVE_EVENTS;
     const MAX_HOSTILES = NV.BALANCE.MAX_HOSTILES, MAX_HEAVY_HOSTILES = NV.BALANCE.MAX_HEAVY_HOSTILES, MAX_BULLETS = 400, MAX_ENEMY_BULLETS = 120, MAX_PARTICLES = 400;
     let ${arrayNames.map((name) => name + ' = []').join(', ')};
-    let wave = 1, score = 0, shards = 0, waveTimer = 0, spawnTimer = 0, boss = null, transition = 0, hookSystem = null, minefieldState = {};
+    let wave = 1, score = 0, shards = 0, waveTimer = 0, spawnTimer = 0, boss = null, transition = 0, hookSystem = null, minefieldState = {}, dimensionRun = null, sectorEncounterState = {};
     let state = 'menu', paused = false, fireTimer = 0, shake = 0, hitstop = 0, flashAlpha = 0, currentAutoTarget = null, specialVFX = null;
     let heartbeatTimer = 0, heartbeatWasCritical = false, countdownLastSecond = 0, waveEvent = null, metaShards = 0, permUpgrades = {}, consumSel = 0;
     let currentWeapon = NV.starterWeapon(), weaponLevels = {}, weaponKills = {}, weaponFus = {}, shopBought = {}, killCombo = {};
@@ -128,6 +133,7 @@ function bossLabHarness(production = false) {
     function initAudio() {} function resetPresentation() {} function clearEspectroBridge() {} function syncGameState() {}
     function updateHUD() {} function notifyMobileWeapon() {} function notifyMobileConsumable() {}
     function spawnExplosion() {} function showBanner() {} function triggerFlash() {} function addFloatText() {}
+    function stopCurrentWeaponAudio() {} function followPlayerCamera() {}
     function applyPlayerDamage() { return { applied: false, killed: false }; }
     function gameOver() { state = 'gameover'; } function enemyBulletCount() { return bullets.filter((b) => b.enemy).length; }
     function currentWeaponLevel() { return weaponLevels[currentWeapon.id] || 1; }
@@ -137,6 +143,7 @@ function bossLabHarness(production = false) {
     ${section('  NV.initializeRunPlayer = function', '\n  function changePilot')}
     ${section('  function hideCombatLabOverlays()', '\n  function startGame()')}
     ${section('  function buildBossForWave(', '\n  // Elige un evento')}
+    ${section('  function enterDimensionField()', '\n  function pickWaveEvent()')}
     ${section('  function triggerWaveVictory(', '\n  function triggerFlash(')}
     ${section('  function updateBoss(dt)', '\n  function updateBossChests(')}
     ${section('  function spawnBossProj(', '\n  function updateBullets(')}
@@ -144,7 +151,7 @@ function bossLabHarness(production = false) {
     installCombatLabRuntime();
     globalThis.inspect = () => ({ boss, enemies, bullets, bossChests, hazards, pickups, inventory, currentWeapon, weaponLevels, weaponFus, wave, state, paused, combatIntent });
     globalThis.tick = (dt) => { updateTime(dt); if (!paused && state === 'playing') updateBoss(dt); };
-    globalThis.spawnProduction = (value, difficulty) => { wave = value; NV.settings.gameplay.difficulty = difficulty; nextWave(); };
+    globalThis.spawnProduction = (value, difficulty) => { wave = value; NV.settings.gameplay.difficulty = difficulty; nextWave(); if (boss !== null) throw new Error('boss prematuro'); dimensionRun.depth = 3; enterDimensionField(); };
     globalThis.triggerVictory = triggerWaveVictory;
   `, context);
   return { NV: context.window.NV, runtime: context.window.NV.combatLabRuntime, inspect: context.inspect, tick: context.tick, spawnProduction: context.spawnProduction, triggerVictory: context.triggerVictory };

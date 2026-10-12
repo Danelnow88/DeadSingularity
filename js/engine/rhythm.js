@@ -61,6 +61,7 @@
     onset: 0, kick: 0, snare: 0, hats: 0, spectralFlux: 0, tempoBpm: 0,
     onsetRate: 0,            // eventos percusivos por segundo (ventana 2s)
     onsetEvt: 0, kickEvt: 0, snareEvt: 0, // score del último pick (sin decay)
+    analysisRevision:0,kickId:0,snareId:0,onsetId:0,hatId:0,lastKickAt:0,lastSnareAt:0,lastHatAt:0,
     // "Carácter" musical (Bloque 3): densidad percusiva, punch de graves y
     // acento de downbeat. Alimentan la ganancia de render.
     density: 0,              // onsetRate suavizado (~5s de integración)
@@ -284,6 +285,7 @@
   }
   // Convierte un Uint8Array de frecuencias (getByteFrequencyData) en valores de banda.
   NV.rhythmAnalyze = function (state, data, nowSec) {
+    state.analysisRevision=(state.analysisRevision||0)+1;
     const len = data.length;
     // Bin 0 INCLUIDO (antes arrancaba en 1): con fftSize 512 el bin 0 cubre
     // 0-93.75Hz, justo el fundamental del bombo. Excluirlo dejaba la detección
@@ -313,7 +315,7 @@
     // mismo golpe disparaba scores en varios frames consecutivos (inflando la
     // media que alimenta el umbral adaptativo) y a densidad extrema los
     // envelopes nunca bajaban entre golpes.
-    const pp = state._pp || (state._pp = { flux: [], kick: [], snare: [], lastFlux: -9, lastKick: -9, lastSnare: -9 });
+    const pp = state._pp || (state._pp = { flux: [], kick: [], snare: [], hats:[],lastHat:-9,lastFlux: -9, lastKick: -9, lastSnare: -9 });
     const now = nowSec || 0;
     const onsetFloor = 0.018;
     let freshOnset = 0, freshKick = 0, freshSnare = 0;
@@ -337,6 +339,14 @@
     if (freshOnset > 0) state.onsetEvt = freshOnset;
     if (freshKick > 0) state.kickEvt = freshKick;
     if (freshSnare > 0) state.snareEvt = freshSnare;
+    // Event serials preserve fast percussion separately from the slower tempo
+    // grid. Consumers reuse this analysis; no additional FFT or media source.
+    if(freshOnset>0)state.onsetId=(state.onsetId||0)+1;
+    if(freshKick>0){state.kickId=(state.kickId||0)+1;state.lastKickAt=now;}
+    if(freshSnare>0){state.snareId=(state.snareId||0)+1;state.lastSnareAt=now;}
+    if(peakPick(pp.hats||(pp.hats=[]),highFlux)!=null&&highFlux>.025&&now-(pp.lastHat??-9)>.045){
+      pp.lastHat=now;state.hatId=(state.hatId||0)+1;state.lastHatAt=now;
+    }
     // onsetRate: densidad percusiva real (eventos/segundo en ventana de 2s).
     const evt = state._evtTimes || (state._evtTimes = []);
     if (freshOnset > 0 || freshKick > 0 || freshSnare > 0) evt.push(now);
@@ -406,6 +416,7 @@
   // Inicia la captura. source: 'tab' (getDisplayMedia) | 'mic' (getUserMedia).
   // Retorna una Promise que SIEMPRE resuelve (nunca rechaza): el estado queda en
   // 'listening' si funcionó, o 'denied'/'unsupported' si no, sin romper nada.
+  let captureEpoch=0;
   NV.rhythmStart = function (source) {
     // Re-entrada: si ya hay captura activa o está arrancando, no volvemos a pedir
     // permiso (evita leaks y doble diálogo).
@@ -413,6 +424,7 @@
       return Promise.resolve(NV.rhythm);
     }
     const src = (source === 'mic') ? 'mic' : 'tab';
+    const epoch=++captureEpoch;
     NV.rhythm.source = src;
     NV.rhythm.mode = src;
     NV.rhythm.error = null;
@@ -434,13 +446,20 @@
     const constraints = src === 'mic'
       ? { audio: true }
       : { video: true, audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } };
+    if(src==='tab'&&window.deadSingularityDesktopAudio?.systemAudio){
+      constraints.audio.restrictOwnAudio=true;
+      constraints.video={frameRate:1,width:{max:320},height:{max:180}};
+    }
     const acquire = src === 'mic'
       ? () => md.getUserMedia(constraints)
       : () => md.getDisplayMedia(constraints);
 
     return acquire().then((stream) => {
-      return _attachStream(stream);
+      if(epoch!==captureEpoch){stream.getTracks().forEach(t=>t.stop&&t.stop());return NV.rhythm;}
+      try{return _attachStream(stream);}
+      catch(error){stream.getTracks().forEach(t=>t.stop&&t.stop());throw error;}
     }).catch(() => {
+      if(epoch!==captureEpoch)return NV.rhythm;
       // Permiso denegado o abortado por el usuario.
       NV.rhythm.state = 'denied';
       NV.rhythm.error = 'permission-denied';
@@ -465,6 +484,13 @@
       NV.rhythm.error = 'no-audio-track';
       _notify();
       return NV.rhythm;
+    }
+    if(window.deadSingularityDesktopAudio?.systemAudio&&stream.getVideoTracks){
+      // Native API obtains a temporary video track; keep and analyse audio only.
+      for(const track of stream.getVideoTracks()){
+        if(stream.removeTrack)stream.removeTrack(track);
+        if(track.stop)track.stop();
+      }
     }
     const ctx = new AC();
     const src = ctx.createMediaStreamSource(stream);
@@ -493,9 +519,9 @@
     // Si el usuario cierra la pestaña/ventana de origen (getDisplayMedia) o detiene
     // el compartir, se detiene la captura limpiamente.
     for (const t of stream.getTracks()) {
-      if (t.addEventListener) t.addEventListener('ended', () => NV.rhythmStop({ streamEnded: true }));
+      if (t.addEventListener) t.addEventListener('ended', () => {if(NV.rhythm.stream===stream)NV.rhythmStop({ streamEnded: true });});
     }
-    if (stream.addEventListener) stream.addEventListener('inactive', () => NV.rhythmStop({ streamEnded: true }));
+    if (stream.addEventListener) stream.addEventListener('inactive', () => {if(NV.rhythm.stream===stream)NV.rhythmStop({ streamEnded: true });});
 
     Object.assign(NV.rhythm, { stream, audioCtx: ctx, sourceNode: src, analyser, data, state: 'listening', active: true, error: null });
     savePref();
@@ -505,6 +531,7 @@
 
   // Detiene la captura y libera recursos (stream, sourceNode, AudioContext).
   NV.rhythmStop = function (opts) {
+    captureEpoch++;
     opts = opts || {};
     const r = NV.rhythm;
     r.state = 'stopping';

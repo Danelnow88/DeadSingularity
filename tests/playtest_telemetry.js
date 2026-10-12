@@ -97,7 +97,7 @@ t('integración estática: carga previa, disparo real, rutas de daño y finaliza
   assert.strictEqual((game.match(/NV\.playtest\.bossEnd\(/g) || []).length, 2);
   assert(game.includes('function playtestWeaponStates()'));
   assert(bullets.includes("NV.playtest.bossHit(b.specialId ? ('special:' + b.specialId) : b.wid, bossDamage, b.specialId ? 'special' : 'direct')"));
-  assert(bullets.includes("NV.playtest.bossHit(b.wid, b.damage, 'splash')"));
+  assert(bullets.includes("NV.playtest.bossHit(b.wid, bossDamage, 'splash')"));
   assert(flame.includes('NV.playtest.bossBurnHit(e, dealt)'));
 });
 function bulletSandbox() {

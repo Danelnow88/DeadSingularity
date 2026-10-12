@@ -1,63 +1,31 @@
-// Ataque coordinado de la primera zona. Un enemigo fija el punto de impacto,
-// muestra un aviso y deja tiempo para esquivarlo. No mide pasos ni daña fuera
-// del círculo visible; el dash y la invulnerabilidad siguen funcionando.
+// Artillería temprana: proyectil físico de tanque, sin marcas ni daño de área.
 (() => {
   'use strict';
   const NV = window.NV;
-  const PROFILES = Object.freeze({
-    easy: Object.freeze({ first: 1.9, interval: 2.15, warning: 1.10, radius: 49, damage: 28 }),
-    normal: Object.freeze({ first: 1.8, interval: 2.0, warning: 0.95, radius: 53, damage: 34 }),
-    hard: Object.freeze({ first: 1.7, interval: 1.85, warning: 0.85, radius: 56, damage: 40 }),
-  });
-  NV.WAVE_PRESSURE_PROFILES = PROFILES;
-  NV.createWavePressure = function () { return { timer: null, mark: null }; };
+  const profiles = { easy: {first:1.9, interval:2.15, damage:28}, normal:{first:1.8,interval:2,damage:34}, hard:{first:1.7,interval:1.85,damage:40} };
+  NV.createWavePressure = () => ({ timer: null, mark: null, serial:0 });
   NV.updateWavePressure = function (dt, st) {
-    const state = st.state;
-    if (!state || !st.player || st.wave >= 5 || st.boss || !st.active || st.player.hp <= 0) return;
-    const difficulty = NV.difficultyGet(st.difficulty).id;
-    const profile = PROFILES[difficulty];
-    if (state.timer == null) state.timer = profile.first;
-    if (state.mark) {
-      state.mark.t = Math.max(0, state.mark.t - dt);
-      if (state.mark.t > 0) return;
-      const mark = state.mark;
-      state.mark = null;
-      state.timer = profile.interval;
-      if (Math.hypot(st.player.x - mark.x, st.player.y - mark.y) > mark.radius + (st.player.radius || 9)) return;
-      if (st.applyPlayerDamage) {
-        const hit = st.applyPlayerDamage(profile.damage, {
-          cause: 'wave-targeted-pulse', enemy: mark.source,
-          allowCrit: false, allowDodge: false,
-        });
-        if (hit && hit.killed && st.onPlayerKilled) st.onPlayerKilled(hit);
-      }
-      return;
-    }
-    const source = st.enemies.find(enemy => enemy && !enemy.dead && !enemy.arrival && !enemy.waveCleanup && !enemy.killResolved);
-    if (!source) { state.timer = profile.first; return; }
-    state.timer -= dt;
-    if (state.timer > 0) return;
-    state.mark = { source, sx: source.x, sy: source.y,
-      x: st.player.x, y: st.player.y, radius: profile.radius,
-      t: profile.warning, duration: profile.warning };
+    if (!st || !st.state || !(dt>0)) return;
+    const s=st.state; s.mark=null;
+    if(!st.active || st.wave>=5 || st.boss || !st.player || st.player.hp<=0) return;
+    const cfg=profiles[st.difficulty] || profiles.normal;
+    if(s.timer==null)s.timer=cfg.first;
+    s.timer=Math.max(0,s.timer-dt);
+    if(s.timer>0)return;
+    // Una única descarga global y sólo de artillería visible, nunca de perseguidores.
+    const v=st.threatView;
+    const sources=st.enemies.filter(e=>e.enemyTypeId==='tank' && !e.isElite && !e.dead && !e.arrival && !e.waveCleanup && !e.killResolved && !(e.stun>0)
+      && (!v || e.x>=v.x+20 && e.x<=v.x+v.width-20 && e.y>=v.y+20 && e.y<=v.y+v.height-20));
+    if(!sources.length)return;
+    if(!st.bullets || st.bullets.length>=st.MAX_BULLETS || st.enemyBulletCount()>=st.MAX_ENEMY_BULLETS)return;
+    const e=sources[(s.serial||0)%sources.length],dx=st.player.x-e.x,dy=st.player.y-e.y,d=Math.max(1,Math.hypot(dx,dy));
+    // Si están cuerpo a cuerpo, dejar espacio de reacción a la bala viajera.
+    if(d<100)return;
+    st.bullets.push({x:e.x,y:e.y,vx:dx/d*280,vy:dy/d*280,damage:cfg.damage,radius:7,
+      color:'#ff956c',isEnemy:true,dead:false,sourceEnemy:e,sourceType:'tank',projectileStyle:'tankShell',stunChance:0,stunDuration:0});
+    e.atkFlash=.18;
+    if(st.sfx && st.sfx.enemyAttack)st.sfx.enemyAttack('tank',{x:e.x,worldWidth:st.W});
+    s.serial=(s.serial||0)+1;s.timer=cfg.interval;
   };
-  NV.drawWavePressure = function (ctx, state) {
-    const mark = state && state.mark;
-    if (!mark) return;
-    const progress = Math.max(0, Math.min(1, 1 - mark.t / mark.duration));
-    ctx.save();
-    ctx.strokeStyle = NV.HOSTILE_SIGNALS ? NV.HOSTILE_SIGNALS.warning : '#ff6474';
-    ctx.fillStyle = 'rgba(255,58,78,0.17)';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 5]);
-    ctx.beginPath(); ctx.moveTo(mark.sx, mark.sy); ctx.lineTo(mark.x, mark.y); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.beginPath(); ctx.arc(mark.x, mark.y, mark.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.arc(mark.x, mark.y, mark.radius * (1 - progress * 0.8), 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = '#ffdce2';
-    ctx.font = '800 11px system-ui';
-    ctx.textAlign = 'center';
-    ctx.fillText('¡SALÍ!', mark.x, mark.y - mark.radius - 8);
-    ctx.restore();
-  };
+  NV.drawWavePressure = function () {};
 })();

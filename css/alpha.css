@@ -12,7 +12,7 @@
 .alpha-links { justify-content:space-between; }
 .alpha-note { color:#a3b6ca; font:12px/1.5 system-ui,sans-serif; margin:0; }
 .alpha-launch .alpha-note { font-size:10px; }
-.alpha-launch [hidden],.alpha-route[hidden],.alpha-run-strip[hidden] { display:none; }
+.alpha-launch [hidden],.alpha-route[hidden] { display:none; }
 .alpha-preps { margin-top:10px; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
 .alpha-prep { display:flex; flex-direction:column; gap:5px; text-align:left; flex:1; min-width:0; }
 .alpha-prep b { color:#dceff7; font-size:11px; }
@@ -39,11 +39,9 @@
 .alpha-result { font:13px/1.5 system-ui; color:#bbccdf; padding:10px 0; }
 .alpha-result p { margin:3px 0; }
 .alpha-result::before,.alpha-result::after { content:none !important; }
-.alpha-run-strip { position:fixed; z-index:4; bottom:5px; left:50%; transform:translateX(-50%); color:#abc3d5; background:#05101bd9; border:1px solid #31485d; padding:3px 10px; border-radius:20px; pointer-events:none; white-space:nowrap; font:10px/1.4 monospace; letter-spacing:1px; }
 .alpha-button:focus-visible,.alpha-prep:focus-visible,.offer:focus-visible { outline:2px solid #ffe196; outline-offset:3px; }
 @media (max-height:560px) { .alpha-launch { bottom:8px; gap:5px; padding:8px; } .alpha-launch .alpha-kicker,.alpha-launch .alpha-note { display:none; } .alpha-launch .alpha-button { padding:5px; font-size:9px; } .alpha-dialog { padding:15px; max-height:92vh; } }
 @media (max-width:600px) { .alpha-preps { grid-template-columns:1fr; } .alpha-manual-grid { grid-template-columns:1fr; } .alpha-prep-trigger { font-size:9px; padding:5px; } }
-.nv-mobile .alpha-run-strip { display:none; }
 /* El render ocupa el padding lateral/inferior de la shell; el HUD mantiene
    EXACTAMENTE su caja y separación superior. Sin borde CSS ni recorte de esquinas.
    No reemplaza métricas de canvas: el resize controller existente lo mide. */

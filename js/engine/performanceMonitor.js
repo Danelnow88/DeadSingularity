@@ -67,7 +67,6 @@
       if (frameMs > worstFrame) worstFrame = frameMs;
       if (updateMs > worstUpdate) worstUpdate = updateMs;
       if (drawMs > worstDraw) worstDraw = drawMs;
-      cached = null;
       if (debugOn) {
         const now = Date.now();
         if (now - lastDebugLog >= 2000) { // log throttleado, nunca por frame

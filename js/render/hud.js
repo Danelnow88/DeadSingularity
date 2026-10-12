@@ -494,6 +494,31 @@ NV.drawCombo = function (ctx, W, H, combo, opts) {
     ctx.restore();
   };
   // Panel TAB de estadÃ­sticas.
+  // Sólo presentación: lee el contrato sin mutar progreso ni pagar recompensas.
+  NV.optionalChallengeStatus = function (run,wave) {
+    if(!run || !run.contract)return null;
+    const boss=NV.expedition.isBossWave(run,wave);
+    const count=boss?(run.waveHits||0):Object.values(run.waveKills||{}).filter(n=>n>=3).length;
+    const fulfilled=boss?count<=2:count>=2;
+    return {boss,count,fulfilled,reward:30+wave*2,lines:[
+      boss?'Golpes recibidos: '+count+'/2':'Armas con 3 bajas: '+Math.min(count,2)+'/2',
+      boss?(fulfilled?'Hasta 2 golpes permitidos':'Límite superado'):(fulfilled?'Objetivo cumplido':'Usá dos armas diferentes'),
+      '+'+(30+wave*2)+' ◆ al cerrar la oleada'
+    ]};
+  };
+  NV.drawPauseChallenge = function (ctx,vx,vy,vw,vh,challenge) {
+    if(!challenge)return;
+    const width=Math.min(340,vw-32),height=96;
+    const x=vx+(vw-width)/2,y=vy+vh/2-Math.min(45,vh*.1)+78;
+    ctx.save();ctx.textAlign='left';ctx.shadowBlur=0;
+    ctx.fillStyle='#101824';roundedFill(ctx,x,y,width,height,12);
+    ctx.strokeStyle='#435364';ctx.lineWidth=1;roundedStroke(ctx,x,y,width,height,12);
+    ctx.fillStyle='#c4cbd5';ctx.font='bold 12px system-ui';
+    ctx.fillText('DESAFÍO OPCIONAL',x+14,y+21);
+    ctx.font='12px system-ui';ctx.fillStyle='#aebbc9';
+    challenge.lines.forEach((line,i)=>ctx.fillText(line,x+14,y+43+i*18));
+    ctx.restore();
+  };
   NV.drawStats = function (ctx, CHARACTERS, RARITY_COLORS, player, currentWeapon, currentWeaponLevel, weaponVisualTier, BULLET_TIER_COLORS, permUpgrades, inventory, INVENTORY_SLOTS, consumableItems) {
     const char = CHARACTERS[player.character];
     const weapon = currentWeapon;

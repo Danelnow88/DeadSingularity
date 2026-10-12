@@ -88,7 +88,7 @@
     ctx.globalAlpha = fade * (arming ? 0.68 : 0.90);
     ctx.strokeStyle = arming ? '#ff6474' : '#ff3b4f';
     ctx.lineWidth = arming ? 2.5 : 3.5;
-    ctx.setLineDash(arming ? [7, 6] : []);
+    ctx.setLineDash([]);
     ctx.beginPath(); ctx.arc(zone.x, zone.y, r, 0, Math.PI * 2); ctx.stroke();
     ctx.setLineDash([]);
     ctx.globalAlpha = fade * (0.30 + pulse * 0.30);
@@ -142,7 +142,8 @@
       const endX=vertical?x:hazard.side==='right'?0:hazard.W,endY=vertical?hazard.H:y;
       const line=()=>{ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(endX,endY);ctx.stroke();};
       ctx.strokeStyle='#ff6474';ctx.globalAlpha=active?1:.55;ctx.lineWidth=active?hazard.width:1;
-      ctx.setLineDash(active?[]:[3,9]);line();ctx.setLineDash([]);
+      // La carga se lee en el emisor físico; el haz sólo existe al disparar.
+      if(active)line();ctx.setLineDash([]);
       if(active){ctx.strokeStyle='#fff0ed';ctx.lineWidth=1.5;line();}
       if(debugHitbox){ctx.strokeStyle='#ffffff';ctx.lineWidth=hazard.width;ctx.globalAlpha=.2;line();}
       ctx.restore();return;
@@ -159,7 +160,7 @@
     ctx.save();
     ctx.fillStyle = damageColor; ctx.strokeStyle = edge;
     ctx.lineWidth = warning ? 3 : 4;
-    ctx.setLineDash(warning ? [12, 9] : []);
+    ctx.setLineDash([]);
     ctx.globalAlpha = alpha;
     if (hazard.kind === 'vent') {
       ctx.fillRect(hazard.x - hazard.width * 0.5, 0, hazard.width, hazard.H);
@@ -188,6 +189,7 @@
     ctx.fillStyle = '#07101b';
     const preferredX = hazard.kind === 'vent' ? hazard.x : hazard.kind === 'rift' ? 72 : hazard.x;
     const preferredY = hazard.kind === 'vent' ? 34 : hazard.kind === 'rift' ? hazard.y : hazard.y - hazard.radius - hazard.width * 0.6;
+    if (debugHitbox) {
     const text = warning ? (hazard.hint || ('SALÍ DE LA ZONA · ' + hazard.label)) : hazard.label + ' ACTIVO · NO TOCAR';
     ctx.font = '700 12px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const textW = Math.max(110, Math.min(hazard.W - 20, text.length * 7.2));
@@ -196,6 +198,7 @@
     ctx.fillRect(labelX - textW * 0.5, labelY - 12, textW, 24);
     ctx.strokeStyle = edge; ctx.lineWidth = 1.5; ctx.strokeRect(labelX - textW * 0.5, labelY - 12, textW, 24);
     ctx.fillStyle = edge; ctx.fillText(text, labelX, labelY + 1);
+    }
     if (debugHitbox) {
       ctx.globalAlpha = 1; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
       if (hazard.kind === 'vent') ctx.strokeRect(hazard.x - hazard.width * 0.5, 0, hazard.width, hazard.H);

@@ -830,6 +830,22 @@
     }
     return best;
   };
+  // Refill libre: misma selección ponderada; sólo organiza dónde nace el lote.
+  // Alterna sectores con microvariación y conserva el aviso completo de llegada.
+  NV.waveDistributedPositions = function (count, st) {
+    const plan = Array.from({ length: Math.max(0, Math.min(5, count | 0)) }, () => null);
+    if (!plan.length) return [];
+    const positions = NV.waveSquadPositions(plan, st);
+    const cycle = st.cycle || 0;
+    const W = st.W || 900, H = st.H || 520;
+    const bounds = NV.enemyArenaPosition({ radius: 20 }, W, H);
+    const radius = Math.min(50, Math.max(12, (Math.min(W,H) - bounds.margin * 2) * .3));
+    const centerX = Math.max(bounds.margin + radius, Math.min(W - bounds.margin - radius, positions.reduce((sum,p)=>sum+p.x,0)/positions.length));
+    const centerY = Math.max(bounds.margin + radius, Math.min(H - bounds.margin - radius, positions.reduce((sum,p)=>sum+p.y,0)/positions.length));
+    return positions.map((p, i) => NV.enemyArenaPosition({ radius: 20,
+      x: centerX + Math.cos(i * Math.PI * 2 / positions.length + cycle * .37) * radius + Math.sin(cycle * 1.71 + i * 2.3) * 4,
+      y: centerY + Math.sin(i * Math.PI * 2 / positions.length + cycle * .37) * radius + Math.cos(cycle * 1.13 + i * 2.7) * 4 }, W, H));
+  };
   function resolveSpawnPosition(st, options, radius) {
     const explicit = (options && options.position) || st.spawnPosition;
     if (explicit && Number.isFinite(explicit.x) && Number.isFinite(explicit.y)) {
@@ -955,6 +971,10 @@
 
   function constructNormalEnemy(st, type, position) {
     const entity = NV.buildEnemyEntityFromResolved(resolveNormalEnemyState(st, type, position));
+    if (type.rosterVisualId) entity.rosterVisualId = type.rosterVisualId;
+    if (type.previewHook) entity.previewHook = true;
+    if (type.previewMotionPolish) entity.previewMotionPolish = true;
+    if (type.previewAgileSwarm) entity.previewAgileSwarm = true;
     reportSpawnCandidate(st, NV.describeEnemySpawnCandidate(type, position.x, position.y, false));
     st.enemies.push(entity);
     if (NV.beginEnemyArrival) NV.beginEnemyArrival(entity, st);
@@ -1023,7 +1043,8 @@
       // desbloqueo escalonado original (slice por índice); kamikaze entra desde la 10.
       // F1 composición: los roles tácticos ganan peso con la oleada (techo 2.0),
       // con UNA sola llamada a Math.random (misma firma que weightedRandom).
-      const available = enabledTypes.filter((t) => (t.minWave || 1) <= st.wave);
+      const available = enabledTypes.filter((t) => (t.minWave || 1) <= st.wave
+        && (!NV.dimensionalSpawnAllowed || NV.dimensionalSpawnAllowed(t, st)));
       const boost = (typeof NV.tacticalWeightBoost === 'function') ? NV.tacticalWeightBoost(st.wave) : 1;
       const tactical = NV.TACTICAL_ENEMY_IDS || {};
       // F3 presencia: el specter_archer (única fuente del Hook) pesa 0.12 en datos,
@@ -1133,17 +1154,16 @@
     }
     // C2 — una fusión es una amenaza voluntariamente más exigente, por lo que su
     // derribo siempre devuelve valor. Se suma al drop normal/élite, con tope bajo.
-    const fusionReward = NV.fusionRewardValue ? NV.fusionRewardValue(e.fusionLevel) : 0;
-    if (fusionReward > 0) {
-      st.pickups.push({ x: e.x - 6, y: e.y + 6, type: 'shard', value: fusionReward, dead: false });
-      score += Math.round(e.score * Math.min(0.5, fusionReward * 0.1));
-      st.addFloatText(e.x, e.y - 22, '+' + fusionReward + ' SHD · ' + NV.fusionMilestoneLabel(e.fusionLevel), '#ffe66d');
-    }
+
     // Consumible RECOMPENSA: +1 shard y score doble por derribo durante su duración.
     if (st.player.bounty > 0) {
-      score += e.score; // doble (ya sumamos el base arriba)
-      st.pickups.push({ x: e.x, y: e.y, type: 'shard', value: 1, dead: false });
-      st.addFloatText(e.x, e.y - 20, '+1 SHD BONUS', '#ffd700');
+      st.player.bountyKills=(st.player.bountyKills||0)+1;
+      const every=(NV.ECONOMY && NV.ECONOMY.bountyEveryKills)||4;
+      const cap=(NV.ECONOMY && NV.ECONOMY.bountyTokenCap)||3;
+      if(st.player.bountyKills%every===0 && (st.player.bountyTokens||0)<cap) {
+        st.player.bountyTokens=(st.player.bountyTokens||0)+1;
+        st.pickups.push({ x: e.x, y: e.y, type: 'shard', value: 1, dead: false });
+      }
     }
     // Evento DÍA DE PAGO: cada derribo suelta además un shard extra de valor 2.
     if (st.waveEvent === 'payday') {
@@ -1231,17 +1251,31 @@
   // búsqueda y las fórmulas de empuje EXACTAS, solo cambia la forma de hallar
   // vecinos. CELL_SIZE fijo >= máximo radio de separación (GOLIATH 36*2+6=78).
   const SEP_CELL = 96;
+  const separationGrid = new Map(), separationBuckets = [];
+  function separationKey(x, y) {
+    // Signed Cantor pairing: no string allocations or wraparound at arena edges.
+    const a = x < 0 ? -2*x-1 : 2*x, b = y < 0 ? -2*y-1 : 2*y;
+    return (a+b)*(a+b+1)/2+b;
+  }
   function gridCellX(x) { return Math.floor(x / SEP_CELL); }
   function gridCellY(y) { return Math.floor(y / SEP_CELL); }
   function buildSpatialGrid(enemies) {
-    const grid = new Map();
+    const grid = separationGrid;
+    grid.clear();
+    for (const bucket of separationBuckets) bucket.length = 0;
+    let used = 0;
     for (let i = 0; i < enemies.length; i++) {
       const it = enemies[i];
       if (!NV.isEnemyCombatActive(it) || it.phantomStalkPhased === true) continue;
       const cx = gridCellX(it.x), cy = gridCellY(it.y);
-      const key = cx + ',' + cy;
-      if (!grid.has(key)) grid.set(key, []);
-      grid.get(key).push(it);
+      const key = separationKey(cx, cy);
+      let bucket = grid.get(key);
+      if (!bucket) {
+        bucket = separationBuckets[used] || (separationBuckets[used] = []);
+        used++;
+        grid.set(key, bucket);
+      }
+      bucket.push(it);
     }
     return grid;
   }
@@ -1251,7 +1285,7 @@
     const cx = gridCellX(e.x), cy = gridCellY(e.y);
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
-        const cell = grid.get((cx + dx) + ',' + (cy + dy));
+        const cell = grid.get(separationKey(cx + dx, cy + dy));
         if (!cell) continue;
         for (let k = 0; k < cell.length; k++) {
           const other = cell[k];
@@ -1266,7 +1300,7 @@
     const cells = Math.ceil(radius / SEP_CELL);
     for (let dx = -cells; dx <= cells; dx++) {
       for (let dy = -cells; dy <= cells; dy++) {
-        const cell = grid.get((cx + dx) + ',' + (cy + dy));
+        const cell = grid.get(separationKey(cx + dx, cy + dy));
         if (!cell) continue;
         for (let k = 0; k < cell.length; k++) {
           const other = cell[k];
@@ -1296,18 +1330,6 @@
     return best;
   }
 
-  // ---- Fusión de enemigos: misma especie que se tocan se fusionan en uno más fuerte ----
-  // fusionLevel: 0 = normal, 1+ = fusionado (más HP, daño, tamaño). Indicador visual en render.
-  const FUSION_MIN = 3;       // enemigos mínimos para fusionar
-  const FUSION_RADIUS = 40;   // distancia para considerarse "juntos"
-  NV.FUSION_MILESTONES = Object.freeze(['NORMAL', 'ENLAZADO', 'INESTABLE', 'SINGULARIDAD', 'NÚCLEO EXTREMO']);
-  NV.fusionMilestoneLabel = function (level) {
-    const value = Math.max(0, Math.floor(level || 0));
-    return NV.FUSION_MILESTONES[Math.min(value, NV.FUSION_MILESTONES.length - 1)];
-  };
-  NV.fusionRewardValue = function (level) {
-    return Math.max(0, Math.min(4, Math.floor(level || 0)));
-  };
   // ---- SPITTER (F07): banda de rango y tiempos ----
   // too far -> approach · en banda -> strafe/reposición · too close -> retreat.
   // WINDUP real (cero spawn, aim snapshot legible) -> ATTACK (1 disparo de la
@@ -1323,66 +1345,6 @@
   const SPIT_LEAD_FACTOR = 0.5;
   const SPIT_LEAD_CAP = 60;
   const SPIT_STRAFE_HOLD = 1.6;
-  function enemyFusionKey(e) {
-    // "Especie" estable: los espectrales usan enemyTypeId; los legacy caen a
-    // visualId/shape/behavior para NO fusionar cualquier enemigo undefined con otro.
-    return e.enemyTypeId || e.visualId || ((e.shape || 'enemy') + '|' + (e.behavior || 'chase') + '|' + (e.isElite ? 'elite' : 'normal'));
-  }
-  function canFuseEntity(e) {
-    return e.noFuse !== true;
-  }
-  function fuseEnemies(enemies, st) {
-    const grid = buildSpatialGrid(enemies);
-    const fused = new Set();
-    for (const e of enemies) {
-      if (!NV.isEnemyCombatActive(e) || fused.has(e) || !canFuseEntity(e)) continue;
-      const key = enemyFusionKey(e);
-      // Buscar mismos de su especie cercanos (excluye él mismo).
-      const sameType = [];
-      forEachGridNeighbor(e, grid, (other) => {
-        if (!NV.isEnemyCombatActive(other) || fused.has(other) || other === e || !canFuseEntity(other)) return;
-        if (enemyFusionKey(other) !== key) return;
-        if (Math.hypot(other.x - e.x, other.y - e.y) < FUSION_RADIUS) sameType.push(other);
-      });
-      if (sameType.length + 1 < FUSION_MIN) continue; // +1 por e mismo
-      // Fusionar: e es el "anfitrión", los demás mueren y le transfieren poder.
-      const group = [e, ...sameType];
-      let totalHp = 0, totalMaxHp = 0, totalDmg = 0, cx = 0, cy = 0, maxLevel = e.fusionLevel || 0;
-      for (const g of group) {
-        totalHp += g.hp;
-        totalMaxHp += g.maxHp;
-        totalDmg += g.damage;
-        cx += g.x; cy += g.y;
-        maxLevel = Math.max(maxLevel, g.fusionLevel || 0);
-        if (g !== e) { g.dead = true; fused.add(g); }
-      }
-      const n = group.length;
-      e.x = cx / n; e.y = cy / n; // centróide del grupo
-      e.hp = totalHp;
-      e.maxHp = totalMaxHp;
-      // La amenaza crece con identidad y pulso anunciado; sumar el daño de todos
-      // los cuerpos convertía una fusión tardía en un golpe mortal inevitable.
-      e.damage = Math.min(45, Math.round(totalDmg / n * (1 + .28 * Math.min(3, maxLevel + 1))));
-      e.radius = Math.min(60, e.radius * (1 + 0.18 * (n - 1))); // crece con tope
-      e.fusionLevel = maxLevel + 1;
-      // La fusión conserva su renderer, pero su clasificación mecánica puede escalar.
-      // Extrema (nivel 3+ o radio 45+) consume heavy sólo si queda presupuesto; de
-      // lo contrario permanece medium para no violar el cap autoritativo.
-      if (hostileClass(e) !== 'heavy') {
-        const extreme = e.fusionLevel >= 3 || e.radius >= 45;
-        e.hostileClass = extreme && canSpawn(st, 0, 1) ? 'heavy' : 'medium';
-      }
-      e.color = fusionColor(e.fusionLevel);
-      e.fusionFlash = 0.9;
-      if (st && st.addFloatText) st.addFloatText(e.x, e.y - e.radius - 16, NV.fusionMilestoneLabel(e.fusionLevel), e.color);
-      if (st && st.spawnExplosion) st.spawnExplosion(e.x, e.y, Math.max(18, e.radius * 0.8), e.color, 0.55);
-      fused.add(e);
-    }
-  }
-  function fusionColor(level) {
-    // Progresión visual: normal → amarillo → naranja → rojo → blanco (fusión extrema).
-    return ['#d8f6ff', '#ffe04a', '#ff9a24', '#ff3a24', '#ffffff'][Math.min(level, 4)];
-  }
     // ===== F3: Hook/Pull system (specter_archer only, wave >= 15) =====
   // El hookSystem es GLOBAL (game-owned, creado en game.js via NV.createHookSystem).
   // Fases: idle -> windup -> projectile -> tether -> idle (+ lockoutTimer).
@@ -1472,7 +1434,7 @@
           const pdx = player.x - src.x, pdy = player.y - src.y;
           const dist = Math.hypot(pdx, pdy);
           const invD = Math.max(dist, 1);
-          const spd = B.HOOK_PROJECTILE_SPEED;
+          const spd = B.HOOK_PROJECTILE_SPEED * (src.previewHook ? 1.08 : 1);
           hookSystem.projectile = {
             x: src.x, y: src.y,
             vx: pdx / invD * spd, vy: pdy / invD * spd,
@@ -1498,7 +1460,7 @@
       }
       // hit: distancia al jugador < radio
       const d = Math.hypot(p.x - player.x, p.y - player.y);
-      if (cameraReady && d < (player.radius || 20)) {
+      if (cameraReady && d < (player.radius || 20) + (src.previewHook ? 4 : 0)) {
         // Hit: crear tether (snapshot posicion del source)
         hookSystem.tether = { srcX: src.x, srcY: src.y };
         hookSystem.tetherTimer = B.HOOK_PULL_DURATION;
@@ -1569,10 +1531,14 @@
     const { enemies, player, bullets, MAX_BULLETS, MAX_ENEMY_BULLETS, enemyBulletCount, applyPlayerDamage, addFloatText, wave, hookSystem } = st;
     let shake = st.shake || 0;
     let gameOver = false;
+    // Retención temporal: mismo retroceso legacy a 60 Hz; dt=0 no lo consume.
+    // Una potencia por update, no por enemigo. No cambia el renderer.
+    const knockbackDecay = Math.pow(0.92, Math.max(0, dt) * 60);
     // Cuadrícula espacial de vecinos (una pasada O(n)) — reutilizada por las 3
     // separaciones (común, swarm, ranged) y el chequeo de contacto posterior.
     const grid = buildSpatialGrid(enemies);
     guardFrame++;
+    if (NV.prepareDimensionalThreats) NV.prepareDimensionalThreats(st);
     for (let i = 0; i < enemies.length; i++) {
       const member = enemies[i];
       if (NV.isEnemyCombatActive(member)) guardLiveFrames.set(member, guardFrame);
@@ -1622,8 +1588,6 @@
             if (e.shieldCd > 0) e.shieldCd = Math.max(0, e.shieldCd - dt);
             if (e.contactCd > 0) e.contactCd = Math.max(0, e.contactCd - dt);
             if (e.atkFlash > 0) e.atkFlash = Math.max(0, e.atkFlash - dt);
-            if (e.fusionFlash > 0) e.fusionFlash = Math.max(0, e.fusionFlash - dt);
-            if (e.fusionInterruptFlash > 0) e.fusionInterruptFlash = Math.max(0, e.fusionInterruptFlash - dt);
       if (e.hitFlash > 0) e.hitFlash = Math.max(0, e.hitFlash - dt);
       if (e.predatorExecutionImpactTimer > 0) e.predatorExecutionImpactTimer = Math.max(0, e.predatorExecutionImpactTimer - dt);
       if (e.goliathImpactVfxTimer > 0) e.goliathImpactVfxTimer = Math.max(0, e.goliathImpactVfxTimer - dt);
@@ -1786,7 +1750,9 @@
             }
           }
       } else if (!stunned) {
-        if (isElitePredator(e)) {
+        if (NV.isDimensionalThreat && NV.isDimensionalThreat(e)) {
+          if (NV.updateDimensionalThreat(e, dt, st, spd)) gameOver = true;
+        } else if (isElitePredator(e)) {
           initElitePredator(e);
           e.predatorAttackCooldown = Math.max(0, (e.predatorAttackCooldown || 0) - dt);
           if (e.predatorEvadeCharges < PREDATOR_EVADE_MAX_CHARGES) {
@@ -2024,8 +1990,15 @@
             } else {
               e.erraticTimer -= dt;
               if (e.erraticTimer <= 0) { e.erraticTargetAngle = Math.random() * Math.PI * 2; e.erraticTimer = 0.5; }
-              e.x += Math.cos(e.erraticTargetAngle) * spd * dt + kbx * dt;
-              e.y += Math.sin(e.erraticTargetAngle) * spd * dt + kby2 * dt;
+              let driftAngle=e.erraticTargetAngle;
+              if(e.previewMotionPolish){
+                if(!Number.isFinite(e.wispDriftAngle))e.wispDriftAngle=driftAngle;
+                const delta=Math.atan2(Math.sin(driftAngle-e.wispDriftAngle),Math.cos(driftAngle-e.wispDriftAngle));
+                e.wispDriftAngle+=delta*(1-Math.exp(-3*dt));
+                driftAngle=e.wispDriftAngle;
+              }
+              e.x += Math.cos(driftAngle) * spd * dt + kbx * dt;
+              e.y += Math.sin(driftAngle) * spd * dt + kby2 * dt;
             }
           }
         } else if (e.enemyTypeId === 'specter_core') {
@@ -2607,7 +2580,10 @@
             e.swarmRegroupDirY = 0;
             e.swarmCommitContactSpent = false;
           }
-          const hasCollective = e.swarmInLocalGroup && localSwarmCount >= MIN_SWARM_FOR_FORMATION;
+          const formationTime = e.previewAgileSwarm ? .70 : SWARM_FORMATION_TIME;
+          const regroupTime = e.previewAgileSwarm ? .55 : SWARM_REGROUP_TIME;
+          const regroupSpeed = e.previewAgileSwarm ? 1 : SWARM_REGROUP_SPEED_MULT;
+          const hasCollective = e.swarmInLocalGroup && localSwarmCount >= (e.previewAgileSwarm ? 2 : MIN_SWARM_FOR_FORMATION);
           const swarmDx = st.player.x - e.x;
           const swarmDy = st.player.y - e.y;
           const swarmDist = Math.max(1, Math.hypot(swarmDx, swarmDy));
@@ -2628,20 +2604,20 @@
               e.swarmRegroupDirX = regroupX / regroupLen;
               e.swarmRegroupDirY = regroupY / regroupLen;
               e.swarmState = 'regroup';
-              e.swarmStateTimer = SWARM_REGROUP_TIME;
+              e.swarmStateTimer = regroupTime;
             }
           } else if (e.swarmState === 'regroup') {
             e.swarmStateTimer = Math.max(0, e.swarmStateTimer - dt);
-            e.x += (e.swarmRegroupDirX * spd * SWARM_REGROUP_SPEED_MULT + kbx) * dt;
-            e.y += (e.swarmRegroupDirY * spd * SWARM_REGROUP_SPEED_MULT + kby2) * dt;
+            e.x += (e.swarmRegroupDirX * spd * regroupSpeed + kbx) * dt;
+            e.y += (e.swarmRegroupDirY * spd * regroupSpeed + kby2) * dt;
             if (e.swarmStateTimer <= 1e-9) {
               e.swarmState = hasCollective ? 'form' : 'approach';
-              e.swarmStateTimer = hasCollective ? SWARM_FORMATION_TIME : 0;
+              e.swarmStateTimer = hasCollective ? formationTime : 0;
             }
           } else if (hasCollective) {
             if (e.swarmState !== 'form') {
               e.swarmState = 'form';
-              e.swarmStateTimer = SWARM_FORMATION_TIME;
+              e.swarmStateTimer = formationTime;
             }
             const slotAngle = -Math.PI / 2 + (e.swarmSlotIndex / localSwarmCount) * Math.PI * 2;
             e.swarmTargetX = st.player.x + Math.cos(slotAngle) * SWARM_FORMATION_RADIUS;
@@ -2670,8 +2646,10 @@
             e.swarmReady = false;
             swarmContactActive = true;
             const angle = Math.atan2(swarmDy, swarmDx);
-            e.x += (Math.cos(angle) * spd + kbx) * dt;
-            e.y += (Math.sin(angle) * spd + kby2) * dt;
+            const weave=e.previewAgileSwarm ? Math.sin((e.swarmWeaveAge=(e.swarmWeaveAge||0)+dt)*3.5)*.45 : 0;
+            const travelAngle=angle+weave;
+            e.x += (Math.cos(travelAngle) * spd + kbx) * dt;
+            e.y += (Math.sin(travelAngle) * spd + kby2) * dt;
           }
           // Evitar amontonarse con otros swarm próximos (cuadrícula, no O(n²)):
           // mismo radio (radius*4) y mismo empuje (10*dt) que antes.
@@ -2865,7 +2843,9 @@
         || (isEliteCommander(e) && e.commanderState !== 'position')
         || (isEliteBulwark(e) && e.bulwarkState !== 'guard')
         || (isEliteSwift(e) && e.swiftState !== 'stage');
-      if (NV.isEnemyCombatActive(e) && e.behavior !== 'ranged' && !isElitePhantom(e) && !goliathCommitted && !roleCommitted && !(e.enemyTypeId === 'wisp' && e.wispPhaseState !== 'drift')) {
+      const dimensionalPositioning = NV.isDimensionalThreat && NV.isDimensionalThreat(e)
+        && e.dimensionalThreat && e.dimensionalThreat.phase === 'position';
+      if (NV.isEnemyCombatActive(e) && (e.behavior !== 'ranged' || dimensionalPositioning) && !isElitePhantom(e) && !goliathCommitted && !roleCommitted && !(e.enemyTypeId === 'wisp' && e.wispPhaseState !== 'drift')) {
         const idx = enemies.indexOf(e);
         forEachGridNeighbor(e, grid, (other) => {
           if (other.dead) return;
@@ -2882,13 +2862,14 @@
         });
       }
 
-      e.knockVelX = (e.knockVelX || 0) * 0.92;
-      e.knockVelY = (e.knockVelY || 0) * 0.92;
+      e.knockVelX = (e.knockVelX || 0) * knockbackDecay;
+      e.knockVelY = (e.knockVelY || 0) * knockbackDecay;
       if (st.keepInsideArena) NV.keepEnemyInArena(e, st.W, st.H);
 
             const d = Math.hypot(e.x - st.player.x, e.y - st.player.y);
       const inContact = d < e.radius + 20;
       const contactDamageEnabled = (e.enemyTypeId !== 'specter_grunt' || specterChargeContactActive)
+        && !(NV.isDimensionalThreat && NV.isDimensionalThreat(e))
         && (e.enemyTypeId !== 'drone' || droneContactActive)
         && (e.enemyTypeId !== 'swarmlet' || swarmContactActive)
         && (e.enemyTypeId !== 'wisp' || wispContactActive)
@@ -2946,7 +2927,6 @@
     });
     // Fusión posterior al movimiento/contacto del frame: si 3+ enemigos de la
     // misma especie quedaron tocándose, se condensan en uno más grande y peligroso.
-    fuseEnemies(enemies, st);
     return { enemies: enemies.filter((e) => !e.dead), shake, gameOver };
   };
 })();

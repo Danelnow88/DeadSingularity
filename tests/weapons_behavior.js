@@ -10,7 +10,7 @@ function loadAll() {
   const sbx = { window: { NV: {} }, console, Math, performance: { now: () => Date.now() } };
   for (const f of [
     'js/data/balance.js', 'js/data/gameData.js', 'js/data/consumables.js',
-    'js/engine/weapons.js', 'js/engine/boss.js', 'js/engine/bullets.js',
+    'js/experiments/dimensionRules.js', 'js/engine/weapons.js', 'js/engine/boss.js', 'js/engine/bullets.js',
     'js/engine/flame.js', 'js/engine/pickups.js', 'js/engine/consumables.js',
   ]) { vm.runInNewContext(fs.readFileSync(f, 'utf8'), sbx, { filename: f }); }
   return sbx.window.NV;
@@ -29,6 +29,7 @@ function shootWeapon(weaponId, level, options) {
     currentWeaponLevel: () => level, weaponVisualTier: () => 0, BULLET_TIER_COLORS: ['#fff'], MAX_BULLETS: 100,
     permDamageBonus: opts.permDamageBonus || 0, playWeaponSound() {},
     fusionStep: 0.2, currentWeaponFusion: opts.fusion || 0, onTarget() {}, onFlame(z) { flame = z; },
+    plasmaExperiment: opts.plasmaExperiment ? NV.DimensionRules.plasmaTrialProfile(true) : null,
   });
   return { bullets, flame };
 }
@@ -70,6 +71,15 @@ t('Plasma conserva el permanente plano fuera del multiplicador de nivel', () => 
   const shot = shootWeapon('plasma', 16, { permDamageBonus: 2 });
   if (shot.bullets[0].damage !== Math.round(21 * 1.3 + 4)) throw new Error('damage=' + shot.bullets[0].damage);
   if (shot.bullets[0].damage === Math.round((21 + 4) * 1.3)) throw new Error('el nivel multiplicó el permanente');
+});
+
+t('Plasma experimental solo ajusta daño cuando se solicita el perfil de prueba', () => {
+  if (NV.DimensionRules.plasmaTrialProfile(false) !== null) throw new Error('se entregó perfil fuera de prueba');
+  const normal = shootWeapon('plasma', 1);
+  const preview = shootWeapon('plasma', 1, { plasmaExperiment: true });
+  if (normal.bullets[0].damage !== 21) throw new Error('normal=' + normal.bullets[0].damage);
+  near(preview.bullets[0].damage, 21 * 0.90, 'preview');
+  if (preview.bullets[0].plasmaBossDamageMultiplier !== 0.6) throw new Error('falta calibración de jefe');
 });
 
 t('Shotgun L16 escala cada pellet sin cambiar el conteo', () => {
@@ -551,6 +561,23 @@ t('plasma: proyectil con maxTravelDistance', () => {
   if (typeof bullets[0].maxTravelDistance !== 'number' || bullets[0].maxTravelDistance <= 0) throw new Error('sin maxTravelDistance');
 });
 
+t('plasma: variante mejorada limita crecimiento y radio sin cambiar producción', () => {
+  function shot(preview, level, fusion) {
+    const bullets=[];
+    NV.shoot({player:{x:0,y:0,luck:-1000,permCrit:0,overdrive:0},
+      enemies:[{x:100,y:0,radius:10,hp:100,dead:false}],boss:null,bullets,
+      currentWeapon:NV.weaponById('plasma'),currentWeaponLevel:()=>level,
+      weaponVisualTier:()=>0,BULLET_TIER_COLORS:['#fff'],MAX_BULLETS:100,
+      permDamageBonus:0,playWeaponSound(){},wave:1,fusionStep:.2,currentWeaponFusion:fusion,
+      plasmaExperiment:NV.DimensionRules.plasmaTrialProfile(preview)});
+    return bullets[0];
+  }
+  const normal=shot(false,16,3),trial=shot(true,16,3);
+  if(!(trial.damage/normal.damage<.8))throw new Error('crecimiento experimental insuficiente');
+  if(normal.splashRadius!==88||trial.splashRadius!==72)throw new Error('radio normal o experimental incorrecto');
+  if(!(shot(true,16,3).damage>shot(true,1,0).damage))throw new Error('las mejoras dejaron de rendir');
+});
+
 t('plasma: expira al alcanzar distancia máxima sin daño', () => {
   const enemies = [{ x: 1000, y: 0, radius: 10, hp: 100, dead: false }];
   const bullets = [{ x: 100, y: 0, vx: 600, vy: 0, damage: 21, dead: false, isEnemy: false, pierce: 1, impactType: 'splash', splashRadius: 58, traveledDistance: 519, maxTravelDistance: 520, hitTargets: [], wid: 'plasma', color: '#a855f7' }];
@@ -580,6 +607,22 @@ t('plasma: impacto directo al boss no vuelve a dañarlo con su propio splash', (
   if (boss.hp !== 979) throw new Error('daño directo duplicado=' + (1000 - boss.hp));
 });
 
+t('Plasma de prueba reduce daño a jefe por impacto y splash sin alterar a enemigos normales', () => {
+  const profile = NV.DimensionRules.plasmaTrialProfile(true);
+  const enemy = { x: 100, y: 0, radius: 10, hp: 1000, dead: false };
+  const boss = { x: 145, y: 0, radius: 40, hp: 1000, maxHp: 1000, hitFlash: 0, dead: false };
+  const bullets = [{ x: 100, y: 0, vx: 0, vy: 0, damage: 19.95, dead: false, isEnemy: false,
+    pierce: 1, impactType: 'splash', splashRadius: 58, traveledDistance: 0,
+    maxTravelDistance: 520, hitTargets: [], wid: 'plasma', color: '#a855ee' }];
+  const waves = [];
+  NV.updateBullets(0, mkState({ bullets, enemies: [enemy], boss,
+    plasmaExperiment: profile, spawnShockwave(_x, _y, opts) { waves.push(opts); },
+    player: { x: -1000, y: -1000, character: 'boti', bulwark: 0, invuln: 0, stun: 0 } }));
+  near(1000 - enemy.hp, 19.95, 'enemigo');
+  near(1000 - boss.hp, 19.95 * (.55-.30*5/58) * .6, 'jefe splash');
+  if (waves.length !== 1 || waves[0].style !== 'plasmaTrial') throw new Error('onda de impacto no emitida');
+});
+
 t('plasma: explosión nacida en un enemigo puede alcanzar al boss una sola vez', () => {
   const enemy = { x: 100, y: 0, radius: 10, hp: 100, dead: false };
   const boss = { x: 145, y: 0, radius: 40, hp: 1000, maxHp: 1000, hitFlash: 0, dead: false };
@@ -588,6 +631,18 @@ t('plasma: explosión nacida en un enemigo puede alcanzar al boss una sola vez',
   NV.updateBullets(0, st);
   if (enemy.hp !== 79) throw new Error('impacto directo enemigo=' + enemy.hp);
   if (boss.hp !== 979) throw new Error('splash al boss=' + (1000 - boss.hp));
+});
+
+t('plasma: daño de área experimental cae con distancia y no repite daño directo',()=>{
+  const targets=[100,125,155].map(x=>({x,y:0,radius:5,hp:1000,dead:false}));
+  const bullets=[{x:100,y:0,vx:0,vy:0,damage:100,dead:false,isEnemy:false,pierce:1,
+    impactType:'splash',splashRadius:58,hitTargets:[],wid:'plasma',color:'#a855ee'}];
+  NV.updateBullets(0,mkState({bullets,enemies:targets,boss:null,
+    plasmaExperiment:NV.DimensionRules.plasmaTrialProfile(true),
+    player:{x:-1000,y:-1000,character:'boti',invuln:0}}));
+  near(1000-targets[0].hp,100,'impacto directo');
+  const nearDamage=1000-targets[1].hp,edgeDamage=1000-targets[2].hp;
+  if(!(nearDamage<55&&nearDamage>edgeDamage&&edgeDamage>=25))throw new Error('área sin caída legible');
 });
 
 // ==================== ARSENAL ROLES ====================

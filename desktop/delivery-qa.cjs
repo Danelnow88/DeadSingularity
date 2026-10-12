@@ -20,7 +20,9 @@ module.exports=async(window,{root,webChecking,outRoot,profileRoot,packaged})=>{
   assert.equal(await evaluate(`localStorage.getItem(${JSON.stringify(marker)})`),'persisted');
   await evaluate(`localStorage.removeItem(${JSON.stringify(marker)})`);
   assert.equal(catalog.state,'menu');assert.equal(catalog.pilots,4);assert.equal(catalog.weapons,10);
-  assert.equal(catalog.enemies,13);assert.equal(catalog.elites,8);assert.equal(catalog.bosses,10);assert.equal(catalog.node,'undefined');
+  assert.equal(catalog.enemies,16);assert.equal(catalog.elites,8);assert.equal(catalog.bosses,10);assert.equal(catalog.node,'undefined');
+  const active=await evaluate('NV.alpha.snapshot().content');
+  assert.equal(active.enemies.length,12);assert.equal(active.elites.length,6);assert.equal(active.sceneryCount,8,'packaged baseline must include eight environments');
   fs.writeFileSync(path.join(out,transport+'-full-menu.png'),(await window.webContents.capturePage()).toPNG());
   await evaluate('document.getElementById("lobbyPlayBtn").click()');await wait(2000);
   const playing=await evaluate('NV.getRuntimeSnapshot()');assert.equal(playing.state,'playing');assert(playing.frame>5&&playing.player.hp>0);
@@ -40,7 +42,7 @@ module.exports=async(window,{root,webChecking,outRoot,profileRoot,packaged})=>{
   assert(mobile.canvas.x>=-1&&mobile.canvas.y>=-1&&mobile.canvas.x+mobile.canvas.w<=mobile.width+1&&mobile.canvas.y+mobile.canvas.h<=mobile.height+1,'Canvas móvil fuera de pantalla');
   fs.writeFileSync(path.join(out,transport+'-full-mobile.png'),(await window.webContents.capturePage()).toPNG());
   assert.deepEqual(errors,[],'Errores de renderer');
-  assert.equal(window.getTitle(),'DeadSingularity · V1');
+  assert.equal(window.getTitle(),'DEADSINGULARITY · V1');
   const ico=fs.readFileSync(path.join(root,'assets','brand','icon.ico'));
   assert.equal(ico.readUInt16LE(2),1);assert(ico.readUInt16LE(4)>0);
   fs.writeFileSync(path.join(out,transport+'-full.json'),JSON.stringify({pass:true,generatedAt:new Date().toISOString(),transport,packaged,profileRoot,title:window.getTitle(),catalog,playing,moved,paused,audio,mobile,errors,limitations:'Móvil emulado, sin prueba en teléfono físico. No es una partida humana completa de 20 oleadas.'},null,2));

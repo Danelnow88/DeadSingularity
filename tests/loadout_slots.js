@@ -91,10 +91,10 @@ t('pickup con inventario lleno: NO se auto-equipa (regresión)', () => {
 
 t('fusión: no cambia posiciones ni crea slots fantasma', () => {
   const buy = g.slice(g.indexOf('const invFull = !canFuse'), g.indexOf('NV.consumableList().forEach'));
-  if (!buy.includes('weaponFus[w.id] = fus + 1;')) throw new Error('fusión ausente');
+  if (!buy.includes('tryWeaponFusion(w)')) throw new Error('fusión ausente');
   if (buy.includes('inventory.splice') || buy.includes('inventory.push(w) &&')) throw new Error('fusión muta el loadout');
   // Fusión de pickup opera por id antes del flujo de guardado.
-  if (!g.includes('function tryWeaponFusion(weapon)') || !g.includes('inventory.some((w) => w.id === weapon.id)')) throw new Error('tryWeaponFusion alterada');
+  if (!g.includes('function tryWeaponFusion(weapon)') || !g.includes('NV.fuseWeaponDuplicate(weapon,inventory,weaponFus,MAX_WEAPON_FUSION)')) throw new Error('fusión central ausente');
 });
 
 t('interfaz del dock documenta el intercambio (sin moves a vacío)', () => {

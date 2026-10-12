@@ -86,7 +86,7 @@ t('diagnóstico de grupos default full y solo controla llamadas de render', () =
 
 t('aislamiento fino mantiene starfield y elimina diagnóstico engañoso de grilla', () => {
   if (!game.includes("'no-starfield': { backgroundEffects: true, starfield: false")) throw new Error('no-starfield no aísla solo estrellas');
-  if (!game.includes('if (drawStarfield) NV.drawStarfield(')) throw new Error('starfield sin gate propio');
+  if (!game.includes('if (drawStarfield&&(!sectorVisual||sectorVisual.starfield!==false)) {') || !game.includes('NV.drawStarfield(ctx, cameraW, cameraH')) throw new Error('starfield sin gate propio');
   for (const token of ['no-grid', 'drawGrid', 'gridAlpha', 'gridStartX', 'gridRgb']) {
     if (game.includes(token)) throw new Error('grilla/código muerto: ' + token);
   }

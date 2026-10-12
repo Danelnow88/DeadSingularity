@@ -62,6 +62,7 @@ function makeShop(initialShards) {
     consumableBought: {},
     consumableItems: [],
     consumables: [],
+    economyStock: {consumables:['potion','shield']},
     shards: initialShards,
     dom: { shopShards: balance },
     arenaW: () => 900,
@@ -106,109 +107,30 @@ function stack(type, count) {
   return Array.from({ length: count }, () => ({ type, name: type }));
 }
 
-t('estructura: no queda early return que borre la tarjeta y los dos topes marcan disabled', () => {
-  if (/if \(bought >= CONSUMABLE_CAP\) return;/.test(game)) throw new Error('sigue el early return que hace desaparecer la oferta');
-  if (!game.includes('const visitFull = bought >= CONSUMABLE_CAP;')) throw new Error('sin bandera de tope por visita');
-  if (!game.includes('disabled: stackFull || visitFull || typeSlotsFull')) throw new Error('la oferta no marca ambos topes como disabled');
-  if (visitCap !== 3) throw new Error('cap por visita alterado: ' + visitCap);
+t('stock fijo: dos consumibles, uno de cada tipo por visita',()=>{
+  const shop=makeShop(100),offers=shop.run();
+  if(visitCap!==1||offers.length!==2)throw Error('stock o cap incorrecto');
+  const potion=offers.find(o=>o.consumableType==='potion');
+  if(!shop.sandbox.handleShopPurchase(potion,{classList:makeClassList()}))throw Error('compra falló');
+  const blocked=shop.run().find(o=>o.consumableType==='potion');
+  if(!blocked.disabled||shop.sandbox.shards!==90)throw Error('tope o saldo');
+  if(shop.sandbox.handleShopPurchase(blocked,{classList:makeClassList()})!==false)throw Error('segunda compra permitida');
 });
-
-t('3 compras del mismo consumible en una visita: la tarjeta sigue visible y bloqueada', () => {
-  const shop = makeShop(500);
-  shop.sandbox.consumableItems.push(...stack('potion', 3));
-  shop.sandbox.consumableBought.potion = 3;
-  const offers = shop.run();
-  if (offers.length !== 7) throw new Error('desaparecieron tarjetas: ' + offers.length);
-  const potion = offers.find((o) => o.consumableType === 'potion');
-  if (!potion) throw new Error('la tarjeta de potion desapareció al llegar al tope de visita');
-  if (!potion.disabled) throw new Error('la tarjeta no quedó bloqueada');
-  const expected = 'Visita ' + visitCap + '/' + visitCap;
-  if (potion.disabledReason !== expected) throw new Error('motivo: ' + potion.disabledReason);
-  if (!potion.badge.includes('3/' + visitCap)) throw new Error('badge sin contador de visita: ' + potion.badge);
-  // Las otras tarjetas no se ven afectadas por el tope de potion.
-  const shield = offers.find((o) => o.consumableType === 'shield');
-  if (shield.disabled) throw new Error('otro tipo quedó bloqueado por contagio');
+t('inventario: máximo tres por tipo con tarjeta visible',()=>{
+ const shop=makeShop(100);shop.sandbox.consumableItems.push(...stack('potion',3));
+ const offer=shop.run().find(o=>o.consumableType==='potion');
+ if(!offer.disabled||offer.disabledReason!=='Límite 3/3')throw Error('límite');
 });
-
-t('2 compras: la tarjeta sigue comprable (el bloqueo aparece exactamente en el tope)', () => {
-  const shop = makeShop(500);
-  shop.sandbox.consumableItems.push(...stack('potion', 2));
-  shop.sandbox.consumableBought.potion = 2;
-  const potion = shop.run().find((o) => o.consumableType === 'potion');
-  if (!potion || potion.disabled) throw new Error('bloqueó antes del tope');
-  if (potion.badge.includes(visitCap + '/' + visitCap)) throw new Error('badge ya en tope');
+t('tarjeta vieja: compra rechazada devuelve el saldo',()=>{
+ const shop=makeShop(100),offer=shop.run().find(o=>o.consumableType==='potion');
+ shop.sandbox.consumableBought.potion=1;
+ if(shop.sandbox.handleShopPurchase(offer,{classList:makeClassList()})!==false)throw Error('stale permitida');
+ if(shop.sandbox.shards!==100||shop.sandbox.consumableItems.length)throw Error('saldo o inventario alterado');
 });
-
-t('10 unidades del mismo tipo: la tarjeta sigue visible y bloqueada por límite global', () => {
-  const shop = makeShop(500);
-  shop.sandbox.consumableItems.push(...stack('potion', 10));
-  const offers = shop.run();
-  if (offers.length !== 7) throw new Error('desaparecieron tarjetas: ' + offers.length);
-  const potion = offers.find((o) => o.consumableType === 'potion');
-  if (!potion) throw new Error('la tarjeta de potion desapareció al llegar al límite global');
-  if (!potion.disabled) throw new Error('la tarjeta no quedó bloqueada');
-  if (potion.disabledReason !== 'Límite 10/10') throw new Error('motivo: ' + potion.disabledReason);
+t('slots de tipos completos: no cobra otro tipo',()=>{
+ const shop=makeShop(100);shop.sandbox.economyStock.consumables=['potion','bounty'];
+ ['potion','overdrive','shield','bomb','freeze','magnet'].forEach(type=>shop.sandbox.consumableItems.push({type}));
+ const offer=shop.run().find(o=>o.consumableType==='bounty');
+ if(!offer.disabled||offer.disabledReason!=='Slots 6/6')throw Error('slots');
 });
-
-t('prioridad de motivos: global 10/10 > visita 3/3 > slots 6/6', () => {
-  const sixTypes = ['potion', 'overdrive', 'shield', 'bomb', 'freeze', 'magnet'];
-  // (1) Global + visita simultáneos => gana el global.
-  const both = makeShop(500);
-  both.sandbox.consumableItems.push(...stack('potion', 10));
-  both.sandbox.consumableBought.potion = 3;
-  const global = both.run().find((o) => o.consumableType === 'potion');
-  if (global.disabledReason !== 'Límite 10/10') throw new Error('prioridad global: ' + global.disabledReason);
-
-  // (2) Visita + slots de tipos simultáneos => gana la visita.
-  const visitVsSlots = makeShop(500);
-  sixTypes.forEach((type) => visitVsSlots.sandbox.consumableItems.push({ type, name: type }));
-  visitVsSlots.sandbox.consumableBought.potion = 3;
-  const visit = visitVsSlots.run().find((o) => o.consumableType === 'potion');
-  if (visit.disabledReason !== 'Visita ' + visitCap + '/' + visitCap) throw new Error('prioridad visita: ' + visit.disabledReason);
-
-  // (3) Sólo slots de tipos => motivo de slots.
-  const slotsOnly = makeShop(500);
-  sixTypes.forEach((type) => slotsOnly.sandbox.consumableItems.push({ type, name: type }));
-  const bounty = slotsOnly.run().find((o) => o.consumableType === 'bounty');
-  if (bounty.disabledReason !== 'Slots 6/6') throw new Error('motivo de slots: ' + bounty.disabledReason);
-});
-
-t('4ta compra defensiva: no cobra shards ni agrega stock aunque la UI quede desincronizada', () => {
-  const shop = makeShop(100);
-  shop.sandbox.consumableItems.push(...stack('potion', 2));
-  shop.sandbox.consumableBought.potion = 2;
-  const potion = shop.run().find((o) => o.consumableType === 'potion');
-  if (potion.disabled) throw new Error('precondición: la tarjeta debería estar habilitada');
-  // La UI quedó vieja: justo antes del click ya se consumió el 3er cupo de la visita.
-  shop.sandbox.consumableBought.potion = 3;
-  const stockBefore = shop.sandbox.consumableItems.length;
-  const shardsBefore = shop.sandbox.shards;
-  const ok = shop.sandbox.handleShopPurchase(potion, { classList: makeClassList() });
-  if (ok !== false) throw new Error('la 4ta compra no fue rechazada');
-  if (shop.sandbox.consumableItems.length !== stockBefore) throw new Error('agregó stock con el tope alcanzado');
-  if (shop.sandbox.shards !== shardsBefore) throw new Error('cobró shards con el tope alcanzado');
-  if (shop.sandbox.consumableBought.potion !== 3) throw new Error('contador de visita alterado');
-  if (!shop.calls.floats.some((text) => String(text).includes('3/' + visitCap))) throw new Error('sin feedback del tope de visita');
-});
-
-t('3 compras reales por visita: el 3er click compra y el 4to (tarjeta ya bloqueada) no muta nada', () => {
-  const shop = makeShop(100);
-  const offerFor = () => shop.run().find((o) => o.consumableType === 'potion');
-  for (let i = 0; i < 3; i++) {
-    const offer = offerFor();
-    if (offer.disabled) throw new Error('se bloqueó antes del click ' + (i + 1));
-    if (shop.sandbox.handleShopPurchase(offer, { classList: makeClassList() }) !== true) throw new Error('la compra ' + (i + 1) + ' no se efectuó');
-    if (shop.sandbox.consumableBought.potion !== i + 1) throw new Error('contador tras compra ' + (i + 1) + ': ' + shop.sandbox.consumableBought.potion);
-  }
-  if (shop.sandbox.consumableItems.length !== 3) throw new Error('stock final incorrecto: ' + shop.sandbox.consumableItems.length);
-  if (shop.sandbox.shards !== 100 - 3 * 10) throw new Error('shards incorrectos: ' + shop.sandbox.shards);
-  const blocked = offerFor();
-  if (!blocked || !blocked.disabled) throw new Error('la tarjeta no quedó bloqueada tras el 3er click');
-  const stockBefore = shop.sandbox.consumableItems.length;
-  const shardsBefore = shop.sandbox.shards;
-  if (shop.sandbox.handleShopPurchase(blocked, { classList: makeClassList() }) !== false) throw new Error('el 4to click no fue rechazado');
-  if (shop.sandbox.consumableItems.length !== stockBefore || shop.sandbox.shards !== shardsBefore) throw new Error('el 4to click mutó estado');
-});
-
-console.log('RESULT shop_consumable_caps: pass=' + pass + ' fail=' + fail);
-process.exit(fail ? 1 : 0);
+console.log('RESULT shop_consumable_caps: pass='+pass+' fail='+fail);process.exit(fail?1:0);

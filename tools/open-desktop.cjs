@@ -6,6 +6,8 @@ const exe=[path.join(root,'local','runtime','windows','electron.exe'),path.join(
 if(!exe){console.error('Falta el runtime Electron. Ejecutá npm install.');process.exitCode=1;}
 else {
   const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
-  const child=spawn(exe,[root,...process.argv.slice(2)],{cwd:root,env,windowsHide:true,detached:true,stdio:'ignore'});
+  // The interactive profiling window must not inherit Windows' hidden-show flag.
+  const profiling=process.argv.includes('--profile-performance');
+  const child=spawn(exe,[root,...process.argv.slice(2)],{cwd:root,env,windowsHide:!profiling,detached:true,stdio:'ignore'});
   child.on('error',error=>{console.error(error.message);process.exitCode=1;});child.unref();
 }

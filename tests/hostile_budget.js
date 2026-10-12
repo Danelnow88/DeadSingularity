@@ -145,7 +145,7 @@ t('fusión reduce hostiles y no inventa heavy slots', () => {
   const st = { enemies, player: { x: 800, y: 500, invuln: 0, stun: 0 }, bullets: [], MAX_BULLETS: 10, MAX_ENEMY_BULLETS: 10, enemyBulletCount: () => 0, applyPlayerDamage() { return { applied: false }; }, addFloatText() {}, spawnExplosion() {} };
   const r = NV.updateEnemies(0, st);
   const b = NV.getHostileBudget({ enemies: r.enemies, boss: null });
-  if (r.enemies.length !== 1 || b.hostiles !== 1 || b.heavy !== 0) throw new Error(JSON.stringify({ len: r.enemies.length, b }));
+  if (r.enemies.length !== 3 || b.hostiles !== 3 || b.heavy !== 0) throw new Error(JSON.stringify({ len: r.enemies.length, b }));
 });
 
 t('tres boss minions migrados no fusionan; noFuse se aplica bilateralmente', () => {
@@ -176,13 +176,13 @@ t('noFuse bilateral excluye un vecino same-key y evita fusión', () => {
   if (r.enemies.length !== 3 || r.enemies.some((e) => e.fusionLevel !== undefined || e.dead)) throw new Error('vecino noFuse consumido');
 });
 
-t('fusión extrema se promociona a heavy cuando hay slot', () => {
+t('grupo cercano conserva cuerpos y clasificación al retirar fusión', () => {
   const NV = setup();
   const enemies = Array.from({ length: 3 }, (_, i) => ({ x: 100 + i, y: 100, hp: 10, maxHp: 10, damage: 2, speed: 0, radius: 39, color: '#fff', shape: 'circle', behavior: 'chase', enemyTypeId: 'tank', dead: false, knockVelX: 0, knockVelY: 0, fusionLevel: 2, hostileClass: 'medium' }));
   const st = { enemies, player: { x: 800, y: 500, invuln: 0, stun: 0 }, bullets: [], MAX_BULLETS: 10, MAX_ENEMY_BULLETS: 10, enemyBulletCount: () => 0, applyPlayerDamage() { return { applied: false }; }, addFloatText() {}, spawnExplosion() {}, MAX_HOSTILES: 30, MAX_HEAVY_HOSTILES: 7, boss: null };
   const r = NV.updateEnemies(0, st);
   const b = assertBudget(NV, { enemies: r.enemies, boss: null });
-  if (r.enemies.length !== 1 || r.enemies[0].hostileClass !== 'heavy' || b.heavy !== 1) throw new Error(JSON.stringify({ cls: r.enemies[0] && r.enemies[0].hostileClass, b }));
+  if (r.enemies.length !== 3 || r.enemies.some(e=>e.hostileClass!=='medium') || b.heavy !== 0) throw new Error(JSON.stringify({ cls: r.enemies[0] && r.enemies[0].hostileClass, b }));
 });
 
 t('fusión extrema no excede cap heavy ya lleno', () => {

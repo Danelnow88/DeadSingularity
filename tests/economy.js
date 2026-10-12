@@ -1,37 +1,30 @@
-// Smoke de rebalancing v36: recompensa de jefe, valor de shards y topes de tienda.
-const fs = require('fs'), vm = require('vm');
-const sbx = { window: { NV: {} }, console, Math };
-for (const f of ['js/engine/boss.js', 'js/engine/pickups.js']) vm.runInNewContext(fs.readFileSync(f, 'utf8'), sbx, { filename: f });
-const NV = sbx.window.NV;
-let pass = 0, fail = 0;
-function t(desc, fn) { try { fn(); pass++; console.log('  ok  ' + desc); } catch (e) { fail++; console.log('  FAIL ' + desc + ' -> ' + e.message); } }
-
-t('jefe muerto paga 50 + wave*5 (wave 10 => 100)', () => {
-  const boss = { pattern: 'chase', timer: 0, hp: 0, maxHp: 500, dead: false, name: 'B', color: '#f00', radius: 30 };
-  const res = NV.updateBoss(0.1, { boss, W: 800, H: 600, score: 0, shards: 5, wave: 10, shake: 0,
-    player: { x: 400, y: 500, hp: 100, maxHp: 100 },
-    sfx: { bossAttack: new Proxy({}, { get: () => () => {} }) }, enemies: [], bullets: [], MAX_BULLETS: 50, MAX_ENEMY_BULLETS: 50, enemyBulletCount: () => 0,
-    showBanner: () => {}, triggerFlash: () => {}, spawnExplosion: () => {}, addFloatText: () => {},
-    triggerWaveVictory: () => {}, runBossAttack: () => {}, spawnBossProj: () => {}, spawnMinion: () => {} });
-  if (res.shards !== 105) throw new Error('shards=' + res.shards);
-});
-
-t('pickup con value suma ese valor (+3 élite)', () => {
-  const player = { x: 50, y: 50 };
-  const pickups = [{ x: 50, y: 50, type: 'shard', value: 3, dead: false }, { x: 55, y: 55, type: 'shard', dead: false }];
-  let texts = [];
-  const r = NV.updatePickups(0.1, pickups, player, (x, y, txt) => texts.push(txt), () => {});
-  if (r.shards !== 4) throw new Error('shards=' + r.shards);
-  if (!texts.includes('+3') || !texts.includes('+1')) throw new Error('texts=' + texts);
-});
-
-t('topes de tienda definidos: hp 8 / armor 5 / luck 7', () => {
-  const g = fs.readFileSync('js/game.js', 'utf8');
-  const m = g.match(/SHOP_CAPS\s*=\s*\{[^}]+\}/);
-  if (!m) throw new Error('SHOP_CAPS no encontrado');
-  for (const k of ['hp: 8', 'armor: 5', 'luck: 7']) if (!m[0].includes(k)) throw new Error('falta ' + k + ' en ' + m[0]);
-  if (!g.includes('shopBought = {}')) throw new Error('reset por partida ausente');
-});
-
-console.log('RESULT economy: pass=' + pass + ' fail=' + fail);
-process.exit(fail ? 1 : 0);
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const NV={},box={window:{NV},Math:Object.create(Math),console};
+for(const f of ['data/balance','data/gameData','data/consumables','engine/weapons','engine/pickups','engine/enemies'])
+  vm.runInNewContext(fs.readFileSync('js/'+f+'.js','utf8'),box);
+let seed=1729;box.Math.random=()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296);
+let rare=0,bounty=0;
+for(let i=0;i<10000;i++){
+  const stock=NV.createEconomyStock(box.Math.random);
+  assert.equal(stock.consumables.length,2);assert.equal(stock.consumables[0],'potion');
+  rare+=stock.premium?1:0;bounty+=stock.consumables.includes('bounty')?1:0;
+}
+assert(rare>900&&rare<1500);assert(bounty>250&&bounty<550);
+let weapons=0;
+for(let i=0;i<3000;i++){
+  const floor=[];
+  NV.updateBossChests(.1,[{x:0,y:0}],{x:0,y:0},[],floor,NV.WEAPONS,()=>{},()=>{});
+  assert(floor.length<=1);weapons+=floor.length;
+}
+assert(weapons>250&&weapons<600,'cofres demasiado generosos o sin armas');
+const levels={},inventory=[{id:'rifle'}];
+for(let i=1;i<=3;i++)assert.equal(NV.fuseWeaponDuplicate(inventory[0],inventory,levels,3).level,i);
+assert(NV.fuseWeaponDuplicate(inventory[0],inventory,levels,3).maxed);
+assert.equal(inventory.length,1);assert.equal(NV.evolvedWeaponImpact(NV.WEAPONS.find(w=>w.id==='rifle'),2).pierce,3);
+const player={bounty:4,bountyKills:0,bountyTokens:0,x:500,y:500,xp:0,xpToNext:1e9,luck:0},pickups=[];
+for(let i=0;i<80;i++)NV.killEnemy({e:{x:0,y:0,hp:0,score:1,xp:0,color:'#fff'},player,pickups,
+  score:0,weaponLevels:{},weaponKills:{},addFloatText(){},spawnExplosion(){},sfx:{enemyDeath(){}},waveEvent:null});
+assert.equal(player.bountyTokens,3);assert.equal(pickups.filter(p=>p.value===1).length,3);
+player.economyBuffTime=60;NV.tickEconomyBuff(player,0);assert.equal(player.economyBuffTime,60);
+NV.tickEconomyBuff(player,61);assert.equal(player.economyBuffTime,0);
+console.log('PASS economy: stock, rarity, bounded chest loot, duplicates, traits, bounty cap, buff expiry');

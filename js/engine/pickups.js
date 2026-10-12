@@ -10,6 +10,7 @@
   // isEligible(weapon) opcional: filtra el pool ANTES de elegir (pool de elegibles,
   // nunca retry aleatorio sin límite). Sin elegibles: no genera pickup ni banner.
   NV.spawnWeaponPickup = function (WEAPONS, weaponPickups, W, H, showBanner, RARITY_COLORS, isEligible) {
+    if(weaponPickups.filter(p=>!p.dead).length>=((NV.ECONOMY && NV.ECONOMY.weaponFloorCap)||1))return false;
     const pool = (typeof isEligible === 'function') ? WEAPONS.filter(isEligible) : WEAPONS;
     if (pool.length === 0) return false; // todas las candidatas inelegibles: no se genera drop
     const weapon = pool[Math.floor(Math.random() * pool.length)];
@@ -19,7 +20,6 @@
       weapon: weapon,
       dead: false,
     });
-    showBanner('¡' + weapon.name + '! ◆', RARITY_COLORS[weapon.rarity]);
     return true;
   };
 
@@ -114,7 +114,7 @@
           const r = tryFusion(wp.weapon);
           if (r && r.fused) {
             wp.dead = true;
-            addFloatText(wp.x, wp.y - 10, 'FUSIÓN Nv' + r.level, '#ffd700');
+            addFloatText(wp.x, wp.y - 10, 'FUSIÓN Nv' + r.level + (r.level>=2 && NV.weaponFusionTrait ? ' · '+NV.weaponFusionTrait(wp.weapon.id,r.level) : ''), '#ffd700');
             playFuse(r.level);
             continue;
           }
@@ -181,7 +181,8 @@
     for (let i = 0; i < n; i++) {
       const ox = c.x + (Math.random() - 0.5) * 26;
       const oy = c.y + (Math.random() - 0.5) * 26;
-      if (Math.random() < 0.55) {
+      if (Math.random() >= ((NV.ECONOMY && NV.ECONOMY.chestWeaponChance) || .08)
+        || weaponPickups.filter(p => !p.dead).length >= ((NV.ECONOMY && NV.ECONOMY.weaponFloorCap) || 1)) {
         pickups.push({ x: ox, y: oy, value: 3 + Math.floor(Math.random() * 4), dead: false, fromBossChest: true });
       } else {
         const pool = (typeof isEligible === 'function') ? WEAPONS.filter(isEligible) : WEAPONS;

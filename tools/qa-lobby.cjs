@@ -27,6 +27,9 @@ app.whenReady().then(async()=>{
     win.setMinimumSize(1,1);win.setContentSize(w,h);
     const target=new URL(base);if(name!=='desktop')target.searchParams.set('mobile','1');
     await win.loadURL(target.toString());
+    assert.equal(await evaluate('document.title'),'DEADSINGULARITY');
+    assert.equal(await evaluate('document.getElementById("lobbyTitle").textContent'),'DEADSINGULARITY');
+    assert.equal(await evaluate('document.getElementById("lobbyTitle").children.length'),0,'no punctuation decoration after the name');
     await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'no-preference'}]});
     await delay(800);
     if(name==='mobile-portrait') {

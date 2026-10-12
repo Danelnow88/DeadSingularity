@@ -95,13 +95,7 @@ NV.drawEnemyArrival(drawing,arrivalEnemy);metrics.viewX=0;metrics.viewY=0;NV.dra
 assert.equal(JSON.stringify(arrivalEnemy),arrivalBefore);
 assert.deepEqual(calls.filter(c=>c[0]==='translate'),[['translate',1100,650],['translate',1100,650]],'aviso anclado al spawn, independiente de cámara');
 
-// Círculo de fusión descubierto tarde no aplica daño mientras reavisa.
-let hits=0;
-const fused={x:1100,y:650,hp:100,maxHp:100,fusionLevel:2,fusionPulse:{stage:'windup',t:.1,x:1100,y:650,startHp:100}};
-const fusionSt={enemies:[fused],player:{x:1100,y:650},applyPlayerDamage(){hits++;return{applied:true};}};
-NV.updateFusionThreats(.05,fusionSt);assert.equal(hits,0);
-metrics.viewX=450;metrics.viewY=260;NV.updateFusionThreats(.06,fusionSt);assert.equal(hits,0,'ataque oculto no detona al descubrirlo');
-assert.equal(fused.fusionPulse.stage,'cooldown');
+assert.equal(NV.updateFusionThreats, undefined, 'pulso de fusión retirado');
 
 // Pipeline real de hazards: el owner de minas NO borra láseres/core zones
 // durante boss. Antes la integración reiniciaba el aviso cada frame.

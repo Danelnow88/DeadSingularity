@@ -6,6 +6,8 @@ function mkCtx(){ const calls={strokes:0,arcs:0,fills:0,gradients:0,points:[]};
   return { ctx:new Proxy(base,{get(tt,k){ if(k in calls)return calls[k]; if(k in tt)return tt[k]; return (tt[k]=function(){return tt}); },set(){return true}}), calls };
 }
 const NV={}; vm.runInNewContext(fs.readFileSync('js/render/metaReadability.js','utf8'),{window:{NV},Map,WeakMap,Math});
+t('telemetría redundante apagada por defecto',()=>{for(const key of ['density','contact','intent','legend'])if(NV.META_VIS_OPTIONS[key])throw Error(key+' activo');});
+for(const key of ['density','contact','intent'])NV.setMetaVisOption(key,true); // Pruebas del diagnóstico opt-in.
 t('campo distingue masa comprimida de enemigos aislados',()=>{const dense=Array.from({length:8},(_,i)=>({x:100+i,y:100,radius:10})); const lone={x:500,y:400,radius:10}; const f=NV.buildDensityField(dense.concat(lone)); if(!(f.info.get(dense[0]).intensity>f.info.get(lone).intensity))throw Error('sin contraste');});
 t('spatial grid evita comparación cuadrática en 80 dispersos',()=>{const es=Array.from({length:80},(_,i)=>({x:(i%10)*200,y:Math.floor(i/10)*200,radius:10})); const f=NV.buildDensityField(es); if(f.comparisons>300)throw Error('comparaciones='+f.comparisons);});
 t('cálculo no muta objetos de gameplay',()=>{const e={x:1,y:2,radius:10};const before=JSON.stringify(e);NV.buildDensityField([e]);if(JSON.stringify(e)!==before)throw Error('mutó');});

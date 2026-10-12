@@ -25,7 +25,7 @@ identificadores existentes en la referencia, no nombres inventados.
 | enemy.runner | CORREDOR | PENDIENTE |
 | enemy.tank | TANQUE | PENDIENTE |
 | enemy.shielder | ESCUDO | PENDIENTE |
-| enemy.swarmlet | ENJAMBITO | PENDIENTE |
+| enemy.swarmlet | ENJAMBITO | EJAMBRITO |
 | enemy.spitter | ESCOPURAS | PENDIENTE |
 | enemy.wisp | ESPÍRITU | PENDIENTE |
 | enemy.kamikaze | KAMIKAZE | PENDIENTE |

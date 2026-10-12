@@ -1,7 +1,11 @@
-# Avisos de distribución — DeadSingularity alpha
+# Avisos de distribución — DEADSINGULARITY alpha
 
-El juego usa gráficos Canvas2D y audio sintetizado por código. El inventario de
-la entrega no incluye imágenes ni canciones obtenidas de otras franquicias.
+El juego usa gráficos Canvas2D, assets raster originales de núcleos y escenarios,
+y audio sintetizado por código. Algunos escenarios se generaron con image_gen
+a partir de indicaciones artísticas y se optimizaron a WebP. Las referencias de
+ambiente no se distribuyen como imágenes del juego. No se empaquetan canciones
+externas: la música propia es una función opcional de análisis local en Windows,
+con consentimiento, sin grabación ni envío de audio.
 No se concede aquí una licencia pública sobre el código o la marca del juego.
 El titular deberá decidir la licencia comercial y comprobar nombre/marca antes
 de publicar. Este archivo no sustituye una revisión de derechos.

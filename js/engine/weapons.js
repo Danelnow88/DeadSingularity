@@ -3,6 +3,12 @@
 (() => {
   'use strict';
   const NV = window.NV;
+  const SHOTGUN_ROSE = [
+    [0.00, 0.00], [0.52, 0.05], [-0.28, 0.42], [-0.24, -0.45],
+    [0.82, 0.31], [0.30, 0.78], [-0.43, 1.00], [-0.91, 0.34],
+    [-0.76, -0.43], [-0.12, -1.00], [0.57, -0.73], [0.96, -0.20],
+  ];
+  const FUSION_PIERCE = Object.freeze({pistol:2,rifle:3,sniper:6,laser:4});
 
   // Enemigo/jefe más cercano al jugador.
   NV.findTarget = function ({ player, enemies, boss }) {
@@ -10,6 +16,8 @@
     for (const e of enemies) {
       if (NV.isEnemyTargetable && !NV.isEnemyTargetable(e)) continue;
       const d = Math.hypot(e.x - player.x, e.y - player.y);
+      // Approaching a physical objective is an explicit focus choice in auto mode.
+      if(e.isDimensionCore&&d<=160)return e;
       if (d < minDist) { minDist = d; target = e; }
     }
     if (boss && !boss.dead) {
@@ -72,6 +80,14 @@
     if (id === 'shotgun') return { type: 'pellet', pierce: 1 };
     return { type: 'direct', pierce: weapon.pierce || 1 };
   };
+  // Duplicados y componentes de tienda comparten el mismo progreso y límite.
+  NV.fuseWeaponDuplicate = function (weapon, inventory, levels, maximum) {
+    if(!weapon || !inventory.some(w=>w.id===weapon.id))return {fused:false,owned:false};
+    const current=Math.max(0,Math.floor(levels[weapon.id]||0));
+    if(current>=maximum)return {fused:false,maxed:true};
+    levels[weapon.id]=current+1;
+    return {fused:true,level:current+1};
+  };
 
   // Fusión II desbloquea una propiedad de rol, no otra escalera infinita de daño.
   NV.WEAPON_EVOLUTIONS = Object.freeze({
@@ -80,18 +96,33 @@
     laser: 'Perfora 4 blancos y sus escudos', plasma: 'Explosión ampliada: radio 76',
     flamethrower: 'Alcance de llama ampliado a 205', bow: 'Busca rebotes hasta 230 de distancia', railgun: 'Empuje de impacto +75%',
   });
+  NV.WEAPON_ASCENSIONS = Object.freeze({
+    pistol:'Perfora 3 blancos',rifle:'Perfora 4 blancos',smg:'Empuje de supresión +100%',
+    shotgun:'Abanico: hasta 7 enemigos por descarga',sniper:'Perfora 7 blancos',
+    laser:'Perfora 5 blancos y sus escudos',plasma:'Explosión ampliada: radio 88',
+    flamethrower:'Alcance de llama ampliado a 225',bow:'Busca rebotes hasta 270 de distancia',
+    railgun:'Empuje de impacto +100%',
+  });
+  NV.weaponFusionTrait = function(id,level) {
+    return level>=3 ? NV.WEAPON_ASCENSIONS[id]||'' : level>=2 ? NV.WEAPON_EVOLUTIONS[id]||'' : '';
+  };
   NV.evolvedWeaponImpact = function (weapon, fusion) {
     const result = NV.weaponImpactProfile(weapon);
     result.range = weapon.range;
     if (!(fusion >= 2)) return result;
     const id = weapon.id;
-    const pierce = { pistol: 2, rifle: 3, sniper: 6, laser: 4 };
-    if (pierce[id]) result.pierce = pierce[id];
+    if (FUSION_PIERCE[id]) result.pierce = FUSION_PIERCE[id] + (fusion>=3 ? 1 : 0);
     if (id === 'plasma') result.radius = 76;
     if (id === 'bow') result.radius = 230;
     if (id === 'flamethrower') result.range = 205;
     if (id === 'smg') result.knockback = 90;
     if (id === 'railgun') result.knockback = 105;
+    if (fusion>=3) {
+      if(id==='plasma')result.radius=88;
+      if(id==='bow')result.radius=270;
+      if(id==='flamethrower')result.range=225;
+      if(id==='smg'||id==='railgun')result.knockback=120;
+    }
     return result;
   };
 
@@ -121,6 +152,10 @@
   NV.shoot = function (state) {
     const { player, enemies, boss, bullets, currentWeapon: weapon } = state;
     const impact = NV.evolvedWeaponImpact(weapon, state.currentWeaponFusion);
+    const plasmaTrial = weapon.id === 'plasma' ? state.plasmaExperiment : null;
+    if (plasmaTrial && plasmaTrial.fusionRadius) {
+      impact.radius = plasmaTrial.fusionRadius[Math.min(3, Math.max(0, state.currentWeaponFusion || 0))];
+    }
     const configuredCount = weapon.id === 'shotgun'
       ? (NV.BALANCE.SHOTGUN_PELLET_COUNT || weapon.count || 12)
       : (weapon.count || 1);
@@ -146,10 +181,13 @@
     if (manualAim && !aim) return false;
     const baseAngle = manualAim ? Math.atan2(aim.y, aim.x) : Math.atan2(target.y - player.y, target.x - player.x);
 
-    const levelMult = NV.weaponLevelDamageMultiplier(state.currentWeaponLevel());
+    const normalLevelMult = NV.weaponLevelDamageMultiplier(state.currentWeaponLevel());
+    const levelMult = plasmaTrial ? 1 + (normalLevelMult - 1) * plasmaTrial.levelGrowthMultiplier : normalLevelMult;
     const scaledWeaponBase = weapon.damage * levelMult;
     const baseDmg = (scaledWeaponBase + state.permDamageBonus * 2) * NV.waveWeaponMult(state.wave);
-    const finalDmg = NV.weaponFusionDamage(baseDmg, state.currentWeaponFusion, state.fusionStep);
+    const fusionStep = plasmaTrial ? (state.fusionStep || .2) * plasmaTrial.fusionGrowthMultiplier : state.fusionStep;
+    const finalDmg = NV.weaponFusionDamage(baseDmg * (player.economyBuffTime>0 ? NV.ECONOMY.passiveDamageMult : 1), state.currentWeaponFusion, fusionStep)
+      * (weapon.id === 'plasma' && state.plasmaExperiment ? state.plasmaExperiment.damageMultiplier : 1);
 
     if (impact.type === 'flame') {
       const crit = Math.random() < (0.1 + player.luck * 0.002 + (player.permCrit || 0) * NV.BALANCE.CRIT_PERM_CHANCE);
@@ -178,19 +216,14 @@
     const pelletsPerBurst = weapon.id === 'shotgun' ? count : actualCount;
     const projectileCount = pelletsPerBurst * shotBursts;
     const shotGroups = [];
-    for (let burst = 0; burst < shotBursts; burst++) {
+    for (let burst = 0; weapon.id === 'shotgun' && burst < shotBursts; burst++) {
       shotGroups.push({
         targets: [],
-        cap: (NV.BALANCE.SHOTGUN_UNIQUE_TARGET_CAP || 3) + (state.currentWeaponFusion >= 2 ? 1 : 0),
+        cap: (NV.BALANCE.SHOTGUN_UNIQUE_TARGET_CAP || 3) + (state.currentWeaponFusion >= 3 ? 2 : state.currentWeaponFusion >= 2 ? 1 : 0),
         bossHits: 0,
         bossCap: NV.BALANCE.SHOTGUN_BOSS_PELLET_CAP || 8,
       });
     }
-    const shotgunRose = [
-      [0.00, 0.00], [0.52, 0.05], [-0.28, 0.42], [-0.24, -0.45],
-      [0.82, 0.31], [0.30, 0.78], [-0.43, 1.00], [-0.91, 0.34],
-      [-0.76, -0.43], [-0.12, -1.00], [0.57, -0.73], [0.96, -0.20],
-    ];
 
     let firedCount = 0, anyCrit = false;
     for (let i = 0; i < projectileCount; i++) {
@@ -199,14 +232,13 @@
       const pelletIndex = weapon.id === 'shotgun' ? i % pelletsPerBurst : i;
       const localCount = weapon.id === 'shotgun' ? pelletsPerBurst : projectileCount;
       const rosePoint = weapon.id === 'shotgun'
-        ? shotgunRose[pelletIndex % shotgunRose.length]
-        : [0, localCount > 1 ? (pelletIndex - (localCount - 1) / 2) / ((localCount - 1) / 2) : 0];
-      const spreadFactor = rosePoint[1];
+        ? SHOTGUN_ROSE[pelletIndex % SHOTGUN_ROSE.length] : null;
+      const spreadFactor = rosePoint ? rosePoint[1] : localCount > 1 ? (pelletIndex - (localCount - 1) / 2) / ((localCount - 1) / 2) : 0;
       const compactSpread = weapon.id === 'shotgun' ? (NV.BALANCE.SHOTGUN_COMPACT_SPREAD || 0.018) : spread;
       const initialAngle = baseAngle + spreadFactor * compactSpread * 0.5;
       const roseRadius = weapon.id === 'shotgun' ? 1.8 : 0;
-      const spawnForward = rosePoint[0] * roseRadius;
-      const spawnLateral = rosePoint[1] * roseRadius;
+      const spawnForward = rosePoint ? rosePoint[0] * roseRadius : 0;
+      const spawnLateral = spreadFactor * roseRadius;
       const pelletSpeed = weapon.id === 'shotgun' ? weapon.speed * (1 + rosePoint[0] * 0.045) : weapon.speed;
       const crit = Math.random() < (0.1 + player.luck * 0.002 + (player.permCrit || 0) * NV.BALANCE.CRIT_PERM_CHANCE);
       const overdriveMult = weapon.id === 'shotgun' && player.overdrive > 0 ? 1.5 : 1;
@@ -218,6 +250,7 @@
         color: weapon.color, dead: false, isEnemy: false, pierce: impact.pierce,
         crit, stunChance: 0,
         impactType: impact.type, splashRadius: impact.radius || 0, bounceLeft: impact.bounces || 0, hitTargets: [],
+        plasmaBossDamageMultiplier: weapon.id === 'plasma' && state.plasmaExperiment ? state.plasmaExperiment.bossDamageMultiplier : null,
         knockback: impact.knockback || 60,
         // Estética de tier (visual; no se usa en colisiones). wid selecciona la forma.
         tier: vTier, glowColor, wid: weapon.id,

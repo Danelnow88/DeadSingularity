@@ -74,8 +74,8 @@ t('boss_minion: identidad declarada FUERA de los pools de produccion', () => {
   ok(!/boss_minion/.test(labJs), 'boss_minion hardcodeado en el shell del lab');
 });
 
-t('los conteos del roster de produccion siguen intactos', () => {
-  ok(NV.ENEMY_TYPES.length === 13, 'ENEMY_TYPES = ' + NV.ENEMY_TYPES.length);
+t('roster incluye tres amenazas dimensionales y conserva elites y bosses', () => {
+  ok(NV.ENEMY_TYPES.length === 16, 'ENEMY_TYPES = ' + NV.ENEMY_TYPES.length);
   ok(NV.ELITE_TYPES.length === 8, 'ELITE_TYPES = ' + NV.ELITE_TYPES.length);
   ok(NV.BOSS_TYPES.length === 10, 'BOSS_TYPES = ' + NV.BOSS_TYPES.length);
   const defs = NV.getProductionEnemyDefinitions();

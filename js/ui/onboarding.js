@@ -4,6 +4,8 @@
   'use strict';
   const NV = window.NV;
   if (!NV || !NV.input || typeof document === 'undefined') return;
+  // Laboratories must not teach unavailable abilities or write tutorial progress.
+  if (NV.alpha && (NV.alpha.snapshot().combatLab || NV.alpha.snapshot().dimensionLab || NV.alpha.snapshot().eventPreview)) return;
   const KEY = 'deadSingularityTutorialV1';
   const done = () => { try { return localStorage.getItem(KEY) === 'done'; } catch (_) { return false; } };
   let completed = done(), step = 0, active = false, autoTimer = 0, hudVisible = true;

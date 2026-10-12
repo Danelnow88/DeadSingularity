@@ -132,6 +132,7 @@
     player.maxHp = number(player.maxHp, 1, 5000, 120);
     player.hp = number(player.hp, 1, player.maxHp, player.maxHp);
     player.xpToNext = number(player.xpToNext, 1, 1e9, 100);
+    player.economyBuffTime = number(raw.player && raw.player.economyBuffTime, 0, 60, 0);
     const levels = {}, kills = {}, fus = {};
     for (const w of NV.WEAPONS) {
       levels[w.id] = integer(raw.levels && raw.levels[w.id], 1, 100);
@@ -148,6 +149,7 @@
     for (const id of ['hp', 'speed', 'armor', 'luck']) shopBought[id] = integer(raw.shopBought && raw.shopBought[id], 0, 8);
     const upgradeSlots = (Array.isArray(raw.upgradeSlots) ? raw.upgradeSlots : []).filter(s => s && ['hp', 'speed', 'armor', 'luck'].includes(s.icon)).slice(0, 24).map(s => ({ icon: s.icon, name: { hp: '+25 HP', speed: 'Agilidad', armor: 'Armadura', luck: 'Suerte' }[s.icon] }));
     return { version: VERSION, catalog: catalogIdentity(), character: raw.character, wave: raw.wave, player, run, inventory, levels, kills, fus, shopBought, upgradeSlots,
+      coreSchedule:NV.DimensionEvents?.normalizeCoreSchedule(raw.coreSchedule)||null,
       currentWeapon: inventory.includes(raw.currentWeapon) ? raw.currentWeapon : inventory[0], consumables,
       difficulty: ['easy', 'normal', 'hard'].includes(raw.difficulty) ? raw.difficulty : 'normal',
       score: integer(raw.score, 0, 1e9), shards: integer(raw.shards, 0, 1e7), savedAt: integer(raw.savedAt, 0, 1e15) };

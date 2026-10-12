@@ -3,20 +3,21 @@
   'use strict';
   const NV = window.NV;
   if (!NV || !NV.alpha || !NV.expedition) return;
-  if (NV.alpha.snapshot().combatLab) return;
+  if (NV.alpha.snapshot().combatLab || NV.alpha.snapshot().dimensionLab) return;
   const $ = id => document.getElementById(id);
   const el = (tag, cls, text) => { const n = document.createElement(tag); n.className = cls || ''; if (text) n.textContent = text; return n; };
   const button = (label, fn, cls) => { const b = el('button', cls || 'alpha-button', label); b.type = 'button'; b.addEventListener('click', fn); return b; };
   const time = seconds => Math.floor(seconds / 60) + ':' + String(Math.floor(seconds % 60)).padStart(2, '0');
   const errors = [];
-  const comfortPanel = document.getElementById('panelGraphics');
-  for (const [key, label, description] of [['reducedEffects', 'Reducir destellos y sacudidas', 'Sin flashes de pantalla ni vibración de cámara. Los avisos de ataques se conservan.'], ['largeText', 'Texto grande', 'Aumenta textos de interfaz, avisos y menús sin cambiar hitboxes.'], ['familyFriendly', 'Lenguaje suave', 'Los jefes usan frases de robots. Desactivarlo habilita los insultos originales.']]) {
+  const comfortPanel = document.getElementById('panelControls');
+  for (const [key, label, description] of [['largeText', 'Texto grande', 'Aumenta textos de interfaz, avisos y menús sin cambiar hitboxes.'], ['familyFriendly', 'Lenguaje suave', 'Los jefes usan frases de robots. Desactivarlo habilita los insultos originales.']]) {
     if (!comfortPanel) break;
     const row = el('label', 'settings-toggle');
     const input = document.createElement('input'); input.type = 'checkbox'; input.checked = !!NV.settings.gameplay[key];
     input.id = 'alpha-' + key;
     const copy = el('span'); copy.append(el('b', '', label), el('small', '', description));
     input.addEventListener('change', () => NV.setComfortOption(key, input.checked)); row.append(input, copy); comfortPanel.append(row);
+    NV.onSettingsChange(settings => { input.checked = !!settings.gameplay[key]; });
   }
   window.addEventListener('error', e => { errors.push(String(e.message || 'Error').slice(0, 500)); if (errors.length > 20) errors.shift(); });
   let dialogPaused = false, previousFocus = null;
@@ -45,11 +46,12 @@
     } else if (kind === 'help') {
       const intro = el('p', 'alpha-lead', 'HISTORIA: cuatro sectores, veinte oleadas y diez jefes distintos. Alternás un asalto y un jefe. Tras el décimo termina la misión; una nueva Historia empieza de cero con tus mejoras permanentes. INFINITO no tiene final. Los guardados anteriores mantienen su ruta de cuatro jefes.');
       const controls = el('div', 'alpha-manual-grid');
-      for (const [key, action] of [['WASD / flechas', 'Moverte'], ['Mouse + clic', 'Apuntar y disparar'], ['Shift', 'Dash: soltá para dosificar'], ['Espacio', 'Habilidad del piloto'], ['1–6 / rueda', 'Cambiar arma'], ['Q / E · F', 'Elegir objeto · usar'], ['Mando', 'Sticks mover/apuntar · RT disparar · B dash · A habilidad'], ['P / Start', 'Pausa'], ['Tab', 'Estadísticas']]) {
+      for (const [key, action] of [['WASD / flechas', 'Moverte'], ['Mouse + clic', 'Apuntar y disparar'], ['Shift', 'Dash: soltá para dosificar'], ['Espacio', 'Habilidad del piloto'], ['1–6 / rueda', 'Cambiar arma'], ['Q / E · F', 'Elegir objeto · usar'], ['H', 'Mostrar armas y consumibles durante 3 segundos'], ['Mando', 'Sticks mover/apuntar · RT disparar · B dash · A habilidad'], ['P / Start', 'Pausa'], ['Tab', 'Estadísticas']]) {
         const row = el('p'); row.append(el('kbd', '', key), el('span', '', action)); controls.append(row);
       }
       body.append(intro, controls, el('p', '', 'En AJUSTES → CONTROLES podés elegir disparo automático. En móvil se dispara automáticamente; usá los controles táctiles en horizontal.'),
         el('h3', '', 'ELEGÍ TU HERRAMIENTA'), el('p', '', 'Las armas guardadas se sincronizan al 60% del avance de tu arma de mayor nivel (hasta nivel 40). Conservás la maestría ganada con cada una. El entrenamiento recupera hasta 10 niveles del arma más atrasada, sin superar a la principal.'));
+      body.append(el('h3','','EVENTOS DIMENSIONALES'),el('p','','Cámara de Inercia: un núcleo evasivo por encuentro, desde oleada 3, en una dimensión variable y nunca en oleadas de jefe. Dos oleadas completas de descanso como mínimo; hasta tres encuentros en Historia, sin límite en Infinito. Los modelos no se repiten consecutivamente. Quieto ralentiza los disparos brevemente; movete 1,5 segundos seguidos para recargar. Disponible tanto en partida normal como en pruebas dimensionales.'));
       for (const w of NV.WEAPONS) {
         const row = el('p', 'alpha-weapon-line'); row.append(el('strong', '', w.name + ' · '), el('span', '', w.pro + '. ' + w.con + '. Fusión II: ' + NV.WEAPON_EVOLUTIONS[w.id] + '.')); body.append(row);
       }
@@ -104,8 +106,32 @@
   });
   const resume = button('CONTINUAR', () => { if (NV.alpha.resume()) refresh(true); }); resume.id = 'alphaResume';
   const links = el('div', 'alpha-links'); links.append(button('CÓMO JUGAR', () => open('help')), button('RÉCORDS / INFORME', () => open('career')));
+  const eventPreview = NV.alpha.snapshot().eventPreview;
+  // Presentation only: scoped to the lobby, never the combat canvas or saved settings.
+  const testLobby = $('startScreen');
+  if (testLobby) testLobby.classList.toggle('dimension-test-lobby', !!eventPreview);
+  if (eventPreview && testLobby) {
+    const status = testLobby.querySelector('.lobby-online');
+    if (status) status.textContent = '● MODO PRUEBA · SIN GUARDAR';
+    const playLabel = $('lobbyPlayBtn').querySelector('span');
+    if (playLabel) playLabel.textContent = 'JUGAR PRUEBA';
+  }
+  const eventTest = button(eventPreview ? 'PRUEBA SIN GUARDAR · VOLVER' : 'PROBAR EVENTOS DIMENSIONALES', () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('fresh'); url.searchParams.delete('dimensionEvents'); url.searchParams.delete('eventMode'); url.searchParams.delete('eventPilot');
+    if (!eventPreview) {
+      url.searchParams.set('dimensionEvents','preview');
+      url.searchParams.set('eventMode',NV.alpha.snapshot().mode);
+      url.searchParams.set('eventPilot',NV.alpha.snapshot().character);
+    }
+    window.location.assign(url.href);
+  });
+  eventTest.id = 'dimensionEventPreviewBtn';
+  const eventNotice = el('small','alpha-note',eventPreview
+    ? 'PRUEBA SIN GUARDAR · Misma base que el juego normal. Los próximos experimentos se aplicarán solo aquí.'
+    : 'Eventos dimensionales integrados. El lobby ciruela queda disponible para futuros experimentos sin guardar.');
   const caption = el('small', 'alpha-note', 'HISTORIA: 20 oleadas · 10 jefes distintos · una misión completa.');
-  launch.append(resume, links);
+  launch.append(resume, links, eventTest, eventNotice);
   const hero = $('lobbyLaunch') || document.querySelector('.lobby-hero'); if (hero) hero.append(launch);
   $('lobbyPlayBtn').addEventListener('click', e => {
     if (!NV.alpha.snapshot().saveDisabled && NV.expedition.load() && !window.confirm('Iniciar una partida nueva reemplaza el checkpoint. ¿Empezar de nuevo?')) {
@@ -119,8 +145,8 @@
     b.append(label, text, cost); preps[kind] = { b, cost }; prepRow.append(b);
   }
   const routes = el('div', 'alpha-route');
-  routes.append(el('span', '', 'Elegí el tipo de próxima oleada (opcional): '));
-  const routeButtons = Object.entries(NV.WAVE_EVENTS).map(([id, data]) => {
+  routes.append(el('span', '', 'Evento dimensional de la próxima oleada (opcional): '));
+  const routeButtons = Object.entries(NV.WAVE_EVENTS).filter(([id]) => !NV.DimensionEvents || NV.DimensionEvents.routeAllowed(id,true)).map(([id, data]) => {
     const labels = { elites: 'MÁS ÉLITES', payday: 'MÁS FRAGMENTOS', fog: 'NEBLINA', mines: 'MINAS' };
     const b = button(labels[id] || data.name, () => { NV.alpha.route(id); refresh(true); });
     b.title = data.desc; routes.append(b); return { id, b };
@@ -136,8 +162,6 @@
   }, 'alpha-button alpha-save-quit');
   if (shop) (shop.querySelector('.shop-bottom-bar') || shop).append(saveQuit, savedStatus);
   const result = document.querySelector('.game-over-future'); if (result) { result.classList.add('alpha-result'); result.removeAttribute('aria-hidden'); }
-  const strip = el('div', 'alpha-run-strip'); strip.setAttribute('aria-label', 'Objetivo de expedición');
-  document.querySelector('main').append(strip);
   let lastState = '', lastDock = '';
   let lastLobbyRoute = '';
   function refreshLobbyRoute(checkpoint) {
@@ -179,11 +203,6 @@
     if(s.state==='menu') refreshLobbyRoute(checkpoint);
     resume.hidden = !checkpoint;
     if (checkpoint) resume.textContent = 'CONTINUAR · OLEADA ' + (checkpoint.wave + 1) + (checkpoint.run.mode === 'expedition' && checkpoint.run.bossProgression !== 'full-roster' ? ' · RUTA ANTERIOR' : '');
-    strip.hidden = s.state !== 'playing' || s.paused || s.showHUD === false || !s.run || !s.run.contract;
-    if (!strip.hidden && s.run) {
-      const contract = NV.expedition.isBossWave(s.run, s.wave) ? 'GOLPES ' + s.run.waveHits + '/2' : Object.values(s.run.waveKills).filter(n => n >= 3).length + '/2 ARMAS · 3 BAJAS';
-      strip.textContent = 'DESAFÍO OPCIONAL: ' + contract;
-    }
     const inShop = s.state === 'shop' || s.state === 'shop_enter';
     if (inShop && s.run) {
       const sig = JSON.stringify([s.state, s.wave, s.shards, s.hp, s.run.prep, s.run.event, s.inventory]);

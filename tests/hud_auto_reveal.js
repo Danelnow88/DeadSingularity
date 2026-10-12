@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const game = fs.readFileSync('js/game.js', 'utf8');
 const start = game.indexOf('  const HUD_REVEAL_SECONDS');
 const end = game.indexOf('  let settingsRestorePaused', start);
-const box = vm.createContext({ paused: false, state: 'playing' });
+const box = vm.createContext({ paused: false, state: 'playing', showHUD: true });
 vm.runInContext(game.slice(start, end), box);
 const run = code => vm.runInContext(code, box);
 run('revealHUD(); updateHudReveal(0.32)');
@@ -23,6 +23,33 @@ run('state="playing"; updateHudReveal(10)');
 assert.equal(run('hudReveal'), 0);
 run('revealHUD(); updateHudReveal(-1)');
 assert.equal(run('hudHold'), 3);
+run('hudHold=0; hudReveal=0');
+assert.equal(run('requestHUDReveal()'), true);
+assert.equal(run('hudHold'), 3);
+run('paused=true; hudHold=0');
+assert.equal(run('requestHUDReveal()'), false);
+assert.equal(run('hudHold'), 0);
+run('paused=false; showHUD=false');
+assert.equal(run('requestHUDReveal()'), false);
+run('showHUD=true; state="shop"');
+assert.equal(run('requestHUDReveal()'), false);
+run('state="playing"');
+// Ejecutar las entradas reales con inventario vacío: deben revelar sin mutar equipo.
+box.inventory = []; box.consumableItems = []; box.currentWeapon = {};
+box.NV = { input: {}, groupConsumables: () => [] };
+const section = (from, to) => game.slice(game.indexOf(from), game.indexOf(to, game.indexOf(from)));
+run(section('    function equipFromInventory(index)', '    // === CAMBIO DE ARMA CON LA RUEDA'));
+run(section('    function cycleWeapon(dir)', '    NV.input.cycleWeapon = cycleWeapon;'));
+run(section('  function useConsumable()', '\n\n',));
+for (const action of ['equipFromInventory(5)', 'cycleWeapon(1)', 'useConsumable()']) {
+  run('hudHold=0'); run(action); assert.equal(run('hudHold'), 3, action);
+}
+box.combatIntent = { abilityIntent: false };
+run(game.match(/NV\.input\.setSpecial = \(v\) => \{[^\n]+/)[0]);
+run('hudHold=0; NV.input.setSpecial(true)');
+assert.equal(run('hudHold'), 3, 'especial revela aunque su ejecución esté en cooldown');
+assert(game.includes("e.code === 'KeyH' && requestHUDReveal()"));
+assert(fs.readFileSync('js/ui/alpha.js', 'utf8').includes("['H', 'Mostrar armas y consumibles"));
 for (const name of ['notifyMobileWeapon', 'notifyMobileConsumable', 'useSpecial']) {
   assert(game.includes(`function ${name}() {${name === 'useSpecial' ? '\n   ' : ''} revealHUD();`), name);
 }
@@ -30,7 +57,7 @@ assert(game.includes('if (showHUD) revealHUD();'));
 assert(game.includes('if (combatIntent.abilityIntent && player.specialCd <= 0) useSpecial();'));
 assert.equal((game.match(/NV\.drawBossHUD\(/g) || []).length, 1);
 assert(game.includes('const maxWaveTimer = NV.waveDuration('));
-assert(fs.readFileSync('js/ui/alpha.js', 'utf8').includes('s.showHUD === false'));
+assert(!fs.readFileSync('js/ui/alpha.js', 'utf8').includes('alpha-run-strip'),'desafío no debe montar HUD persistente');
 const render = game.slice(game.indexOf("    if (showHUD && (state === 'playing' || state === 'wave_end')) {"), game.indexOf('    if (showStats) {'));
 const calls = [];
 let offset = 0, stack = [];

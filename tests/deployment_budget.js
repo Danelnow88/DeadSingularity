@@ -1,0 +1,33 @@
+'use strict';
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const NV={},math=Object.create(Math);math.random=()=>.25;
+const sandbox={window:{NV},console,Math:math,Object,Array,Set,Map};
+for(const f of ['data/balance','data/gameData','engine/hostileBudget','engine/enemies','engine/boss'])vm.runInNewContext(fs.readFileSync('js/'+f+'.js','utf8'),sandbox);
+assert.equal(NV.BALANCE.MAX_HOSTILES,30);assert.equal(NV.BALANCE.MAX_HEAVY_HOSTILES,7);
+const cap=10;
+assert.equal(NV.deploymentHostileLimit(true),30);assert.equal(NV.deploymentHostileLimit(false),cap);
+for(const difficulty of ['easy','normal','hard'])for(const wave of [1,5,20,100,1000]){
+ for(const metrics of [undefined,{arenaW:5000,arenaH:3000,refW:900,refH:520}])assert(NV.fieldHostileTarget(wave,difficulty,metrics)<=cap);
+ assert(NV.bossSupportTarget(wave,difficulty)<=cap);
+}
+const state=limit=>({enemies:[],boss:null,player:{x:800,y:500},MAX_HOSTILES:limit,MAX_HEAVY_HOSTILES:7,wave:1,W:900,H:520,ENEMY_TYPES:NV.ENEMY_TYPES,ELITE_TYPES:NV.ELITE_TYPES,forceTypeId:'drone'});
+const limited=state(cap),original=state(30);
+assert(NV.spawnEnemy(limited));assert(NV.spawnEnemy(original));
+assert.deepEqual(limited.enemies[0],original.enemies[0],'spawn admission must not change artwork, HP, damage, loot or AI');
+for(let i=1;i<cap;i++)assert(NV.spawnEnemy(limited));
+assert.equal(NV.spawnEnemy(limited),false);limited.enemies[0].dead=true;assert(NV.spawnEnemy(limited));
+assert.equal(NV.getHostileBudget(limited).hostiles,cap,'dead enemies free a deployment slot');
+for(let i=1;i<30;i++)assert(NV.spawnEnemy(original));assert.equal(NV.spawnEnemy(original),false,'Lab retains hard cap 30');
+const summons=state(cap);summons.boss={dead:false,isBoss:true,hostileClass:'heavy'};
+for(let i=0;i<cap-1;i++)assert(NV.spawnMinion(100,100,summons));
+assert.equal(NV.spawnMinion(100,100,summons),false,'boss is included in the deployment slots');
+assert.equal(NV.getHostileBudget(summons).heavy,1);
+const b={x:400,y:100,hp:40,maxHp:100,dead:false,isBoss:true,hostileClass:'heavy',attack:'split',atkTimer:0};
+const st=state(cap);st.boss=b;st.enemies=Array.from({length:cap-3},()=>({dead:false,hostileClass:'light'}));
+Object.assign(st,{bullets:[],MAX_BULLETS:10,MAX_ENEMY_BULLETS:10,enemyBulletCount:()=>0,spawnBossProj(){},sfx:{bossAttack:new Proxy({},{get:()=>()=>{}})}});
+st.spawnMinion=(x,y)=>NV.spawnMinion(x,y,st);
+NV.runBossAttack(b,0,st);assert(!b.split);assert.equal(st.enemies.length,cap-3,'summon batch is atomic when only two slots remain');
+st.enemies[0].dead=true;NV.runBossAttack(b,0,st);assert(b.split);assert.equal(NV.getHostileBudget(st).hostiles,cap);
+const game=fs.readFileSync('js/game.js','utf8');
+assert.equal((game.match(/MAX_HOSTILES: NV\.deploymentHostileLimit\(combatLabMode\)/g)||[]).length,4,'all production spawn wrappers and boss batch checks use deployment admission');
+console.log('PASS bounded production deployment, intact enemy stats, world-size independence, atomic boss summons and uncapped Lab up to 30/7.');

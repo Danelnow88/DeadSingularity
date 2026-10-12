@@ -103,8 +103,8 @@ t('player bounds remain 900x520 via ARENA metrics', () => {
 
 t('enemy spawns still receive 900x520 arena dimensions', () => {
   const g = fs.readFileSync('js/game.js', 'utf8');
-  if (!g.includes('NV.spawnEnemy({ enemies, player, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES, wave, ENEMY_TYPES, W: arenaW(), H: arenaH()')) throw new Error('spawnEnemy no recibe W/H arena runtime');
-  if (!g.includes('NV.spawnElite({ enemies, player, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES, wave, ELITE_TYPES, W: arenaW(), H: arenaH()')) throw new Error('spawnElite no recibe W/H arena runtime');
+  if (!/NV\.spawnEnemy\(\{[^}]+W: arenaW\(\), H: arenaH\(\)/.test(g)) throw new Error('spawnEnemy no recibe W/H arena runtime');
+  if (!/NV\.spawnElite\(\{[^}]+W: arenaW\(\), H: arenaH\(\)/.test(g)) throw new Error('spawnElite no recibe W/H arena runtime');
 });
 
 t('boss center remains x=450', () => {

@@ -9,5 +9,5 @@ if not exist "%DSV1_RUNTIME%" (
   pause
   exit /b 1
 )
-start "DeadSingularity V1" "%DSV1_RUNTIME%" "%~dp0."
+start "DEADSINGULARITY V1" "%DSV1_RUNTIME%" "%~dp0."
 

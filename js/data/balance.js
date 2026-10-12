@@ -11,6 +11,9 @@
   NV.BALANCE = {
     // Tope de buffers de entidad
     MAX_HOSTILES: 30, MAX_HEAVY_HOSTILES: 7,
+    // Validated PC deployment budget; all artwork and per-enemy stats retained.
+    // Ordinary waves and boss summons wait for a free slot. Lab keeps 30/7.
+    ACTIVE_HOSTILE_LIMIT: 10,
     // Curva de amenaza: densidad blanda + reposición + composición.
     // MAX_HOSTILES/MAX_HEAVY_HOSTILES siguen siendo el TECHO DURO de emergencia;
     // el refill ordinario ahora se detiene antes (objetivo blando) para que el
@@ -169,23 +172,33 @@
   NV.waveDuration = function (wave, waveEvent) {
     const B = NV.BALANCE;
     const base = NV.baseWaveDuration(wave);
+    const event = NV.WAVE_EVENTS && NV.WAVE_EVENTS[waveEvent];
+    if (event && Number.isFinite(event.durationMultiplier)) return base * event.durationMultiplier;
     return waveEvent ? Math.min(B.WAVE_EVENT_TIME_CAP, base * B.WAVE_EVENT_DURATION_MULT) : base;
   };
 
-  // Asalto finito: la barra representa enemigos realmente despejados, no pasos
-  // recorridos. La duración sigue siendo el tiempo mínimo de supervivencia.
-  // El presupuesto tiene techo para que las runs largas no crezcan sin límite.
+  // Despliegue por tiempo y limpieza final. total conserva la referencia histórica
+  // para diagnósticos; no limita aparición ni condiciona la victoria.
   NV.waveClearObjective = function (wave, difficultyId) {
     const w = Math.max(1, Math.floor(wave || 1));
     const id = NV.difficultyGet(difficultyId).id;
     const offset = id === 'easy' ? -4 : id === 'hard' ? 4 : 0;
     return {
+      mode: 'timed',
       total: Math.min(60, 22 + Math.floor((w - 1) * 1.5) + offset),
     };
   };
   NV.waveClearReady = function (remaining, spawned, alive, objective) {
-    return !!objective && remaining <= 0 && spawned >= objective.total && alive === 0;
+    return !!objective && remaining <= 0 && alive === 0;
   };
+  NV.waveDeploymentOpen = (remaining, bossActive) => !!bossActive || remaining > 0;
+  NV.fieldHostileTarget = function (wave, difficulty, metrics) {
+    const base = NV.softHostileTarget(wave, difficulty, metrics);
+    return Math.min(NV.deploymentHostileLimit(false), Math.max(base, Math.min(NV.BALANCE.SOFT_DENSITY_MAX, base + 3)));
+  };
+  NV.deploymentHostileLimit = labMode => labMode ? NV.BALANCE.MAX_HOSTILES
+    : Math.min(NV.BALANCE.MAX_HOSTILES, NV.BALANCE.ACTIVE_HOSTILE_LIMIT);
+  NV.fieldSpawnBatch = wave => Math.min(NV.BALANCE.LATE_BATCH_CAP, NV.spawnBatchForWave(wave) + 1);
 
   // Compensación parcial: el evento dura 15% más, pero sólo ralentiza 7.5% el refill.
   NV.waveSpawnFactor = function (wave, waveEvent) {
@@ -241,7 +254,7 @@
   // Summons pueden ocupar estos lugares: no existe otro presupuesto paralelo.
   NV.bossSupportTarget = function (wave, diffId) {
     const base = diffId === 'easy' ? 5 : diffId === 'hard' ? 9 : 7;
-    return base + Math.min(2, Math.floor(Math.max(0, wave || 1) / 20));
+    return Math.min(NV.deploymentHostileLimit(false), base + Math.min(2, Math.floor(Math.max(0, wave || 1) / 20)));
   };
   NV.spawnRefillInterval = function (wave, event, bossActive, diffId, metrics) {
     if (bossActive) return diffId === 'easy' ? 3 : diffId === 'hard' ? 2 : 2.5;
@@ -377,6 +390,48 @@
   };
   NV.weaponFusionShopPrice = function (currentFusion) {
     return NV.BALANCE.WEAPON_FUSE_PRICE + Math.max(0, Math.floor(currentFusion || 0)) * 8;
+  };
+  // Economía de expedición: una sola moneda, stock persistente por visita.
+  NV.ECONOMY = Object.freeze({
+    weaponRollChance: .004, weaponRollSeconds: 2, weaponFloorCap: 1, chestWeaponChance: .08,
+    premiumStockChance: .12, bountyStockChance: .04,
+    bountyDuration: 4, bountyEveryKills: 4, bountyTokenCap: 3,
+    consumableVisitCap: 1, consumableStackCap: 3,
+    passiveDuration: 60, passiveDamageMult: 1.12, passivePrice: 18,
+  });
+  // Probabilidad por tiempo: los refills más rápidos no multiplican el loot tardío.
+  NV.weaponDropChanceForInterval = function(seconds) {
+    if(!Number.isFinite(seconds)||seconds<=0)return 0;
+    return -Math.expm1(Math.log1p(-NV.ECONOMY.weaponRollChance)*seconds/NV.ECONOMY.weaponRollSeconds);
+  };
+  NV.createEconomyStock = function (rng = Math.random) {
+    const tactical = ['overdrive','shield','bomb','freeze','magnet'];
+    const second = rng() < NV.ECONOMY.bountyStockChance ? 'bounty' : tactical[Math.floor(rng()*tactical.length)];
+    return {consumables:['potion',second], premium:rng()<NV.ECONOMY.premiumStockChance,
+      passiveBought:false, premiumBought:false, weaponId:null, basicWeaponId:null, basicWeaponIds:null, basicBought:false};
+  };
+  // Oleada que se va a desplegar (la tienda entre N y N+1 usa N+1).
+  NV.ARMORY_SLOT_WAVES = Object.freeze([2,2,5,10,15,20]);
+  NV.armoryOfferCapacity = function (nextWave) {
+    return Math.max(2,NV.ARMORY_SLOT_WAVES.filter(w=>w<=nextWave).length);
+  };
+  NV.armoryRarityAvailable = function (rarity,nextWave) {
+    return ['common','uncommon','rare'].includes(rarity) || (rarity==='epic' && nextWave>=10) || (rarity==='legendary' && nextWave>=15);
+  };
+  NV.buildArmoryCards = function (offers,nextWave) {
+    const capacity=NV.armoryOfferCapacity(nextWave),cards=offers.slice(0,capacity);
+    while(cards.length<6){
+      const unlockWave=NV.ARMORY_SLOT_WAVES[cards.length],locked=cards.length>=capacity;
+      cards.push({kind:'weapon',reserved:true,locked,unlockWave,disabled:true,price:0,
+        name:locked?'Oferta bloqueada':'Sin stock',
+        desc:locked?'Disponible desde la oleada '+unlockWave+'. Agrega una alternativa de compra; no aumenta el inventario ni las compras por visita.'
+          :'Sin stock en esta visita. No quedan armas ni fusiones válidas para este espacio.',
+        disabledReason:locked?'Oleada '+unlockWave:'Esta visita'});
+    }
+    return cards;
+  };
+  NV.tickEconomyBuff = function (player,dt) {
+    if(dt>0 && player.economyBuffTime>0)player.economyBuffTime=Math.max(0,player.economyBuffTime-dt);
   };
   NV.HIT_SLOW = {
     NORMAL: { multiplier: 0.85, activeDuration: 0.15, immunity: 0.20 },

@@ -26,6 +26,22 @@
   const queryString = (typeof window !== 'undefined' && window.location) ? (window.location.search || '') : '';
   const runMode = /(?:^|[?&])combatLab=1(?:&|$)/.test(queryString) ? 'combatLab' : 'production';
   const combatLabMode = runMode === 'combatLab';
+  const dimensionLabMode = /(?:^|[?&])dimensionLab=(traversal|pursuit)(?:&|$)/.test(queryString);
+  const isolatedMode = combatLabMode || dimensionLabMode;
+  const dimensionEventPreview = !isolatedMode && /(?:^|[?&])dimensionEvents=preview(?:&|$)/.test(queryString);
+  // Content promotion is independent of sandbox presentation and persistence.
+  const dimensionContentEnabled = !isolatedMode;
+  const dimensionEventPlasmaProfile = NV.DimensionRules && NV.DimensionRules.plasmaTrialProfile
+    ? NV.DimensionRules.plasmaTrialProfile(dimensionContentEnabled) : null;
+  if(dimensionContentEnabled&&NV.preloadInertiaSprites)NV.preloadInertiaSprites();
+  let fieldEventSession = null;
+  let coreEncounterSchedule = null;
+  const audioPerimeterFrame={active:false,paused:false,hidden:false};
+  const sceneryOptions={preview:dimensionContentEnabled},starCamera={x:0,y:0};
+  NV.dimensionIllustratedScenery=dimensionContentEnabled;
+  let dimensionExperiment = null, dimensionPursuit = null, experimentPreviousPlayer = null;
+  let experimentSerial = 0;
+  let dimensionLabLastConfig = null;
   let scaleX = 1, scaleY = 1;
   let canvasResizeController = null;
 
@@ -472,6 +488,7 @@
   // === PROGRESO ===
   let wave = 1, score = 0, shards = 0, waveTimer = 0, spawnTimer = 0, boss = null, transition = 0;
   let waveDefeats = 0, waveSpawned = 0, waveGoal = null;
+  let dimensionRun = null;
   let wavePressure = NV.createWavePressure ? NV.createWavePressure() : null;
   let waveGoalNudgeShown = false;
   let waveDirectorCycle = 0;
@@ -480,7 +497,7 @@
   // Evento de oleada activo (null si no hay): modifica la run de esa oleada.
   let waveEvent = null;
   let expeditionRun = null;
-  let expeditionMode = 'expedition';
+  let expeditionMode = dimensionEventPreview && /(?:^|[?&])eventMode=endless(?:&|$)/.test(queryString) ? 'endless' : 'expedition';
   const WAVE_EVENTS = NV.WAVE_EVENTS;
   const combatLabState = {
     status: combatLabMode ? 'IDLE' : null,
@@ -519,7 +536,8 @@
   };
   let upgradeSlots = []; // registro de compras de mejoras de la partida actual (se agrupa por tipo)
   // Tope de compras del mismo consumible POR VISITA a la tienda (se resetea en showShop).
-  const CONSUMABLE_CAP = 3;
+  const CONSUMABLE_CAP = 1;
+  let economyStock = null;
   let consumableBought = {};
   const CONSUMABLE_STACK_CAP = NV.CONSUMABLE_STACK_CAP;
   const CONSUMABLE_TYPE_SLOT_CAP = NV.CONSUMABLE_TYPE_SLOT_CAP;
@@ -538,6 +556,11 @@
   const HUD_ANIM_SECONDS = 0.32;
   let hudHold = 0, hudReveal = 0;
   function revealHUD() { hudHold = HUD_REVEAL_SECONDS; }
+  function requestHUDReveal() {
+    if (paused || !showHUD || (state !== 'playing' && state !== 'wave_end')) return false;
+    revealHUD();
+    return true;
+  }
   function updateHudReveal(dt) {
     if (paused || (state !== 'playing' && state !== 'wave_end')) return;
     const step = Math.max(0, dt);
@@ -576,7 +599,8 @@
     syncMoveIntent();
   };
   NV.input.setSlide = (v) => { combatIntent.dashIntent = !!v; };
-  NV.input.setSpecial = (v) => { combatIntent.abilityIntent = !!v; };
+  NV.input.setSpecial = (v) => { combatIntent.abilityIntent = !!v; if (v) requestHUDReveal(); };
+  NV.input.revealHUD = requestHUDReveal;
   NV.input.setFire = (v) => { combatIntent.fireIntent = !!v; };
   NV.input.setAimWorld = (x, y) => {
     aimPointerClient = null; // Joystick/mando/Lab proveen mundo, no cursor físico.
@@ -591,6 +615,7 @@
   // Cambio de consumible táctil → misma lógica que Q/E (grupos + selección circular).
   NV.input.cycleConsumable = (dir) => {
     if (state !== 'playing' || paused) return;
+    requestHUDReveal();
     const g = NV.groupConsumables(consumableItems);
     if (g.length) {
       consumSel = NV.cycleIndex(consumSel, g.length, dir > 0 ? +1 : -1);
@@ -761,10 +786,12 @@
   const BULLET_DEFS = NV.BULLET_DEFS;
 
   // === ENEMIGOS BÁSICOS (7 tipos) ===
-  const ENEMY_TYPES = NV.ENEMY_TYPES;
+  const trialEnemyRoster = dimensionContentEnabled
+    ? (dimensionEventPreview ? NV.dimensionTrialRoster() : NV.dimensionBaselineRoster()) : null;
+  const ENEMY_TYPES = trialEnemyRoster ? trialEnemyRoster.enemies : NV.ENEMY_TYPES;
 
   // === ÉLITES (8 tipos) ===
-  const ELITE_TYPES = NV.ELITE_TYPES;
+  const ELITE_TYPES = trialEnemyRoster ? trialEnemyRoster.elites : NV.ELITE_TYPES;
 
   // === BOSSES (10 tipos) ===
     const BOSS_TYPES = NV.BOSS_TYPES;
@@ -910,6 +937,7 @@
     target.bulwark = 0;
     target.shield = 0;
     target.bounty = 0;
+    target.bountyKills = 0; target.bountyTokens = 0; target.economyBuffTime = 0;
     target.regenTimer = 0;
     target.stun = 0;
     target.stunReapplyLockout = 0;
@@ -937,7 +965,7 @@
   // === INICIALIZACIÓN ===
   function init() {
     console.log('[INIT] Iniciando...');
-    if (/[?&]fresh=1/.test((window.location && window.location.search) || '')) {
+    if (isolatedMode || dimensionEventPreview || /[?&]fresh=1/.test((window.location && window.location.search) || '')) {
       metaFrozen = true;
       metaShards = 0;
       permUpgrades = NV.defaultPermUpgrades();
@@ -1000,10 +1028,15 @@
     });
     // Rueda del mouse: arma anterior/siguiente (también funciona para todos los personajes,
     // el inventario es compartido). passive:false para poder cancelar el scroll.
+    let lastWeaponWheelAt = -Infinity;
     window.addEventListener('wheel', (e) => {
       if (state !== 'playing' || paused) return;
-      cycleWeapon(e.deltaY > 0 ? 1 : -1);
       e.preventDefault();
+      if (!Number.isFinite(e.deltaY) || e.deltaY === 0) return;
+      const now = performance.now();
+      if (now - lastWeaponWheelAt < 160) return;
+      lastWeaponWheelAt = now;
+      cycleWeapon(e.deltaY > 0 ? 1 : -1);
     }, { passive: false });
     // Click sobre un slot de consumible (HUD): lo selecciona como activo.
     canvas.addEventListener('click', (e) => {
@@ -1069,20 +1102,25 @@
       }
       if (e.code === 'Tab') { showStats = !showStats; e.preventDefault(); }
       if (e.code === 'KeyP') togglePause();
+      if (e.code === 'KeyH' && requestHUDReveal()) e.preventDefault();
       if (e.code === 'KeyF' && state === 'playing' && !paused) {
         useConsumable();
         e.preventDefault();
       }
       if (e.code === 'KeyQ' && state === 'playing' && !paused) {
+        requestHUDReveal();
         // Cicla el consumible seleccionado (el resaltado en el HUD muestra cuál se usa con F).
         const groups = NV.groupConsumables(consumableItems);
         if (groups.length) { consumSel = NV.cycleIndex(consumSel, groups.length, -1); sfx.wheelSelect(); }
+        notifyMobileConsumable();
         e.preventDefault();
       }
       if (e.code === 'KeyE' && state === 'playing' && !paused) {
+        requestHUDReveal();
         // Cicla en sentido inverso al Q para poder movernos en ambos sentidos entre tipos.
         const groups = NV.groupConsumables(consumableItems);
         if (groups.length) { consumSel = NV.cycleIndex(consumSel, groups.length, +1); sfx.wheelSelect(); }
+        notifyMobileConsumable();
         e.preventDefault();
       }
       const digit = /^Digit([1-6])$/.exec(e.code);
@@ -1120,11 +1158,11 @@
 
     // === CAMBIO DE ARMA (teclas 1-6 entre las recogidas) ===
     function equipFromInventory(index) {
+      requestHUDReveal();
       if (index < 0 || !inventory[index] || inventory[index] === currentWeapon) return;
       stopCurrentWeaponAudio();
       if (NV.playtest) NV.playtest.weaponSwitch(currentWeapon.id, inventory[index].id);
       currentWeapon = inventory[index];
-      addFloatText(arenaW() / 2, arenaH() / 2 - 40, 'EQUIPADO: ' + currentWeapon.name, RARITY_COLORS[currentWeapon.rarity]);
       updateHUD();
       sfx.wheelSelect();
       notifyMobileWeapon();
@@ -1134,6 +1172,7 @@
     // La pistola inicial es un arma normal del inventario: ningún slot está reservado.
     function cycleWeapon(dir) {
       if (state !== 'playing' || paused) return;
+      requestHUDReveal();
       const list = inventory.slice();
       if (!list.length) return;
       const ci = list.indexOf(currentWeapon);
@@ -1143,7 +1182,6 @@
       stopCurrentWeaponAudio();
       if (NV.playtest) NV.playtest.weaponSwitch(currentWeapon.id, next.id);
       currentWeapon = next;
-      addFloatText(arenaW() / 2, arenaH() / 2 - 40, 'EQUIPADO: ' + currentWeapon.name, RARITY_COLORS[currentWeapon.rarity]);
       updateHUD();
       sfx.wheelSelect();
       notifyMobileWeapon();
@@ -1176,8 +1214,20 @@
     if (combatLabMode) {
       enterCombatLabIdle();
       installCombatLabRuntime();
+      if (/[?&]dimensionExperiment=museum-time(?:&|$)/.test(queryString)) {
+        installDimensionLabRuntime();
+        startDimensionExperiment('museum-time');
+      }
+    } else if (dimensionLabMode) {
+      enterCombatLabIdle();
+      installDimensionLabRuntime();
+      startDimensionExperiment(/[?&]dimensionLab=pursuit(?:&|$)/.test(queryString) ? 'pursuit' : 'traversal');
     } else {
       showMenu();
+    }
+    if (dimensionEventPreview) {
+      const previewPilot = /(?:^|[?&])eventPilot=([a-z]+)(?:&|$)/.exec(queryString);
+      if (previewPilot && Object.prototype.hasOwnProperty.call(CHARACTERS,previewPilot[1])) selectPilot(previewPilot[1]);
     }
     // Telemetría opt-in F08: se activa con ?playtest=1 (o manualmente en consola
     // con NV.playtest.enable()); snapshot con NV.playtest.snapshot().
@@ -1195,6 +1245,50 @@
     if (!NV.externalAudio) return;
     const widget = dom.rwAddMusicBtn ? dom.rwAddMusicBtn.parentElement : null;
     if (!widget) return;
+    if(!window.deadSingularityDesktopAudio?.systemAudio||!dimensionContentEnabled){
+      widget.classList?.add('hidden');
+      const explanation=document.querySelector('#systemMenu .system-experimental p');
+      if(explanation)explanation.textContent='Música propia: función opcional y experimental de la app Windows. Desactivada en web y móvil.';
+      return;
+    }
+    const explanation=document.querySelector('#systemMenu .system-experimental p');
+    if(explanation)explanation.textContent='1. Abrí YouTube Music o Spotify y reproducí un tema. También sirve su app/PWA. 2. Activá la reacción para analizar el audio de Windows. Opcional, sin grabación ni envío.';
+    const musicPanel=document.getElementById('systemMusicSlot');
+    const musicStatus=document.createElement('p');musicStatus.id='nativeMusicStatus';musicStatus.setAttribute('role','status');musicStatus.setAttribute('aria-live','polite');
+    const sourceRow=document.createElement('div');sourceRow.className='native-music-sources';
+    for(const [service,label] of [['youtube','Abrir YouTube Music'],['spotify','Abrir Spotify']]){
+      const b=document.createElement('button');b.type='button';b.textContent=label;
+      b.addEventListener('click',async()=>{
+        b.disabled=true;
+        try{
+          const result=await window.deadSingularityDesktopAudio.openMusic(service);
+          musicStatus.textContent=result.ok?'Reproducí un tema en la ventana que se abrió y luego activá la reacción.':'No se pudo abrir el navegador. Podés abrir tu app o PWA de música manualmente.';
+        }catch{musicStatus.textContent='No se pudo abrir la fuente. Reabrí ABRIR V1 para actualizar la integración.';}
+        finally{b.disabled=false;}
+      });sourceRow.appendChild(b);
+    }
+    if(musicPanel){musicPanel.insertBefore(sourceRow,musicPanel.firstChild);musicPanel.appendChild(musicStatus);}
+    // A session-local visual choice, not a capture toggle or saved gameplay
+    // preference. All designs reuse the same native analysis and shared tile.
+    if(musicPanel&&NV.AudioPerimeter?.enabled){
+      const styleRow=document.createElement('div');styleRow.className='native-music-style';
+      const label=document.createElement('label');label.htmlFor='nativeMusicStyle';label.textContent='Visualizador';
+      const select=document.createElement('select');select.id='nativeMusicStyle';
+      const hint=document.createElement('p');hint.id='nativeMusicStyleHint';select.setAttribute('aria-describedby',hint.id);
+      for(const [index,design] of NV.AudioPerimeter.styles.entries()){
+        const option=document.createElement('option');option.value=design.id;option.textContent=(index+1)+'. '+design.name;select.appendChild(option);
+      }
+      select.value=NV.AudioPerimeter.getStyle();
+      const describe=()=>{hint.textContent=NV.AudioPerimeter.styles.find(s=>s.id===select.value).description;};
+      select.addEventListener('change',()=>{
+        if(!NV.AudioPerimeter.setStyle(select.value))select.value=NV.AudioPerimeter.getStyle();
+        describe();
+      });
+      describe();styleRow.append(label,select,hint);musicPanel.insertBefore(styleRow,widget);
+    }
+    widget.classList.add('native-music-controls');
+    if(dom.rwAddMusicBtn)dom.rwAddMusicBtn.textContent='Activar reacción';
+    if(dom.rwStopBtn)dom.rwStopBtn.textContent='Detener';
 
     // Posiciona el widget (absolute dentro de .hud relative) justo en el hueco
     // entre .logo y .stats (.stat-wave), calculado dinámicamente para que no se
@@ -1229,26 +1323,38 @@
 
     const statusText = (r) => {
       r = r || NV.rhythm;
-      if (!NV.rhythmSupported || !NV.rhythmSupported()) return 'Captura no soportada. Probá el micrófono si está disponible.';
-      if (r.state === 'starting') return 'Esperando permiso del navegador… elegí una pestaña/ventana con audio y activá “compartir audio” si aparece.';
-      if (r.state === 'listening' && r.mode === 'tab') return 'Captura de pestaña activa: los fondos reaccionan de forma sutil. La música no se reamplifica.';
-      if (r.state === 'listening' && r.mode === 'mic') return 'Micrófono activo: los fondos reaccionan de forma sutil.';
+      if (!NV.rhythmSupported || !NV.rhythmSupported()) return 'Captura no disponible en este runtime. Abrí la app Windows actualizada.';
+      if (r.state === 'starting') return 'Esperando tu autorización en la ventana de Música propia…';
+      if (r.state === 'listening' && r.mode === 'tab') return dimensionContentEnabled
+        ? 'ANÁLISIS DE AUDIO ACTIVO · Solo en este equipo. El perímetro responde a tu música; usá Detener para apagarlo.'
+        : 'Captura de pestaña activa: los fondos reaccionan de forma sutil. La música no se reamplifica.';
+      if (r.state === 'listening' && r.mode === 'mic') return dimensionContentEnabled
+        ? 'Micrófono activo: los módulos del perímetro responden al ritmo.'
+        : 'Micrófono activo: los fondos reaccionan de forma sutil.';
       if (r.state === 'denied') return 'Permiso cancelado o denegado. Podés intentarlo de nuevo cuando quieras.';
-      if (r.error === 'no-audio-track') return 'La captura no incluyó audio. Volvé a intentar y marcá “compartir audio”.';
+      if (r.error === 'no-audio-track') return 'Windows no entregó una pista de audio. Comprobá la salida de audio y volvé a activar.';
       if (r.streamEnded) return 'Captura finalizada. Podés volver a activarla desde el menú.';
-      return 'Opcional: compartí una pestaña/ventana con audio. Solo se analiza el volumen/frecuencias para fondos sutiles.';
+      return dimensionContentEnabled
+        ? 'Opcional: activa el análisis de audio de Windows. No modifica el combate y no se graba ni envía audio.'
+        : 'Opcional: compartí una pestaña/ventana con audio. Solo se analiza el volumen/frecuencias para fondos sutiles.';
     };
     const refresh = (r) => {
       r = r || NV.rhythm;
       const active = (r.state === 'listening' || r.state === 'starting');
+      musicStatus.textContent=statusText(r);
+      const captureToggle=document.getElementById('systemMenuToggle');
+      if(captureToggle){
+        captureToggle.setAttribute('data-audio-active',r.state==='listening'?'true':'false');
+        captureToggle.setAttribute('aria-label',r.state==='listening'?'Abrir sistema · análisis de audio activo':'Abrir sistema');
+      }
       if (dom.rwAddMusicBtn) {
         dom.rwAddMusicBtn.disabled = !!active;
-        dom.rwAddMusicBtn.title = active ? 'Música ya capturada' : 'Agregar música (capturar pestaña/ventana)';
+        dom.rwAddMusicBtn.title = active ? 'Análisis de audio activo' : 'Analizar música de Windows';
         widget.title = statusText(r);
       }
       if (dom.rwStopBtn) {
         dom.rwStopBtn.disabled = !active;
-        dom.rwStopBtn.title = 'Detener captura';
+        dom.rwStopBtn.title = 'Detener análisis de audio';
       }
     };
     NV.rhythmNotifier(refresh);
@@ -1362,11 +1468,13 @@
   }
   // Consola: NV.resetMeta() borra el progreso persistente al instante.
   NV.resetMeta = function () {
+    if (isolatedMode || dimensionEventPreview) return false;
     try { localStorage.removeItem('deadSingularityMeta'); console.log('[META] Progreso borrado. Recargá para empezar de cero.'); }
     catch (e) { console.warn('[META] Error:', e); }
   };
 
   function prepareMenuState() {
+    fieldEventSession = null;
     if (NV.clearPhantomPossession) NV.clearPhantomPossession(player, true);
     if (NV.audio && typeof NV.audio.stopAllWeapons === 'function') NV.audio.stopAllWeapons();
     NV.input.setFire(false);
@@ -1409,6 +1517,13 @@
   }
 
   function clearCombatLabTransientState() {
+    if (typeof dimensionPursuit !== 'undefined') {
+      if (dimensionPursuit) dimensionPursuit.cancel('reset');
+      dimensionPursuit=null;
+    }
+    if (typeof dimensionExperiment !== 'undefined') dimensionExperiment=null;
+    if (typeof experimentPreviousPlayer !== 'undefined') experimentPreviousPlayer=null;
+    dimensionRun = null;
     clearCombatIntent();
     if (NV.clearPhantomPossession) NV.clearPhantomPossession(player, true);
     if (hookSystem && typeof NV.resetHookSystem === 'function') NV.resetHookSystem(hookSystem);
@@ -1821,7 +1936,121 @@
     }
   }
 
+  function startDimensionExperiment(preset, characterId) {
+    if (!isolatedMode || !NV.DimensionRules || !['museum-time','traversal','pursuit'].includes(preset)) {
+      return {ok:false,errors:['Experiment unavailable in production.']};
+    }
+    if (combatLabMode && dimensionLabMode) return {ok:false,errors:['Conflicting laboratory modes.']};
+    if (preset !== 'museum-time' && !dimensionLabMode) return {ok:false,errors:['Traversal requires dimensionLab mode.']};
+    if (characterId && !['rook','boti'].includes(characterId)) return {ok:false,errors:['Unsupported experimental pilot.']};
+    const result=startCombatLab({characterId:characterId||'rook',wave:1,difficultyId:'normal',
+      durationMode:'infinite',composition:[{enemyId:'tank',quantity:1}]});
+    if (!result.ok) return result;
+    dimensionExperiment=NV.DimensionRules.session(preset);
+    dimensionExperiment.serial=++experimentSerial;
+    combatIntent.firePolicy='legacy-auto'; expeditionRun=null;
+    player.x=arenaW()/2;player.y=arenaH()/2;followPlayerCamera();
+    const firstContext=experimentPlacementContext(enemies[0].radius,enemies[0]);
+    const near={x:player.x+220,y:player.y};
+    const firstPosition=NV.Pursuit.safePosition(near,firstContext) ? near : NV.Pursuit.position(firstContext);
+    if(!firstPosition) {dimensionExperiment.status='ERROR';paused=true;return {ok:false,errors:['No safe experimental placement.']};}
+    enemies[0].x=firstPosition.x;enemies[0].y=firstPosition.y;
+    if (preset!=='museum-time') {
+      dimensionRun=NV.createDimensionRun(1,false,{mode:'timed'},15);
+      waveTimer=15;waveGoal=null;spawnTimer=Infinity;
+      if(preset==='pursuit') {
+        dimensionPursuit=NV.Pursuit.create('dimension-test:'+dimensionExperiment.serial);
+        enemies[0].dimensionGuarding=true;
+      }
+    }
+    dimensionLabLastConfig={preset,characterId:player.character};
+    return {ok:true,preset};
+  }
+
+  function completeDimensionExperiment() {
+    dimensionExperiment.status='COMPLETE';paused=true;clearCombatIntent();
+    stopCurrentWeaponAudio();syncGameState();
+    if(dimensionPursuit)dimensionPursuit.cancel('completed');
+  }
+
+  function experimentPlacementContext(radius,self) {
+    return {radius,self,W:arenaW(),H:arenaH(),player,enemies,
+      view:{x:viewX(),y:viewY(),width:viewW(),height:viewH()},
+      unsafe(point,r){return hazards.some(h=>h.state==='active'&&
+        (h.type==='sectorHazard' ? NV.sectorHazardContains(h,point,r) :
+          Math.hypot(point.x-h.x,point.y-h.y)<(h.radius||32)+r));}};
+  }
+
+  function tickExperimentPursuit(dt) {
+    if(!dimensionPursuit||!dimensionRun||dimensionRun.phase==='transit')return;
+    const actor=enemies.find(e=>e.pursuitUid&&!e.dead);
+    if(dimensionPursuit.phase==='materializing'&&actor) {
+      if(!NV.Pursuit.safePosition(actor,experimentPlacementContext(actor.radius,actor))) {
+        enemies=enemies.filter(e=>e!==actor);currentAutoTarget=null;dimensionPursuit.retry();
+      } else if(!actor.arrival)dimensionPursuit.arrived();
+    }
+    if(!dimensionPursuit.tick(dt))return;
+    const record=dimensionPursuit.record;
+    const definition=NV.getProductionEnemyDefinition(record.typeId);
+    const radius=NV.productionEnemySpawnRadius(definition);
+    const position=NV.Pursuit.position(experimentPlacementContext(radius));
+    if(!position)return;
+    const result=NV.spawnProductionEnemy({enemies,player,boss:null,MAX_HOSTILES,MAX_HEAVY_HOSTILES,
+      wave:1,W:arenaW(),H:arenaH(),announceSpawn:true},record.typeId,{position});
+    if(result.ok)dimensionPursuit.placed(result.entity);
+  }
+
+  function finishExperimentField(dt) {
+    if(!dimensionRun||!dimensionExperiment||state!=='playing')return;
+    const phase=dimensionRun.phase;
+    if(phase==='combat') {
+      const pending=dimensionPursuit&&['waiting','materializing','transit'].includes(dimensionPursuit.phase);
+      if(!enemies.some(e=>!e.dead)&&!pending)dimensionExperiment.objective=true;
+      if(dimensionExperiment.objective) {
+        if(!NV.openDimensionPortal(dimensionRun,arenaW(),arenaH())) {
+          completeDimensionExperiment();
+        }
+      }
+      return;
+    }
+    NV.stepDimensionPortal(dimensionRun,player,dt);
+    if(phase!=='transit'&&dimensionRun.phase==='transit') {
+      if(dimensionPursuit)dimensionPursuit.depart(enemies.find(e=>e.pursuitUid&&!e.dead),
+        'cross:'+dimensionExperiment.serial+':'+dimensionRun.depth);
+      bullets=[];flameZones=[];pendingBombImpacts=[];currentAutoTarget=null;
+    }
+  }
+
+  function installDimensionLabRuntime() {
+    NV.dimensionLabRuntime=Object.freeze({
+      start:startDimensionExperiment,
+      reset(){enterCombatLabIdle();return {ok:true};},
+      restart(){return dimensionLabLastConfig ? startDimensionExperiment(dimensionLabLastConfig.preset,dimensionLabLastConfig.characterId) : {ok:false,errors:['No experimental preset started.']};},
+      completeObjective(){if(!dimensionExperiment||dimensionExperiment.status!=='RUNNING'||paused)return false;dimensionExperiment.objective=true;return true;},
+      provoke(uid){
+        if(!dimensionPursuit||!dimensionExperiment||paused)return false;
+        const e=enemies.find(actor=>actor.dimensionGuarding&&!actor.dead);
+        if(!e||(uid&&uid!==dimensionPursuit.snapshot().uid))return false;
+        if(!dimensionPursuit.provoke(e,dimensionRun.depth))return false;
+        e.dimensionGuarding=false;return true;
+      },
+      pause(){if(!dimensionExperiment||paused||dimensionExperiment.status!=='RUNNING')return false;NV.input.togglePause();return true;},
+      resume(){if(!dimensionExperiment||!paused||dimensionExperiment.status!=='RUNNING')return false;NV.input.togglePause();return true;},
+      snapshot(){return {experiment:dimensionExperiment ? JSON.parse(JSON.stringify(dimensionExperiment)) : null,
+        pursuit:dimensionPursuit ? dimensionPursuit.snapshot() : null,state,paused,
+        dimension:dimensionRun ? JSON.parse(JSON.stringify(dimensionRun)) : null,
+        reservations:dimensionPursuit ? dimensionPursuit.reservations() : {hostiles:0,heavy:0},
+        player:{x:player.x,y:player.y,hp:player.hp,maxHp:player.maxHp,dashStamina:player.dashStamina},
+        enemies:enemies.filter(e=>!e.dead).map(e=>({id:e.enemyTypeId,uid:e.pursuitUid||null,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,arrival:e.arrival?Object.assign({},e.arrival):null})),
+        bullets:bullets.length,score,shards,saveDisabled:metaFrozen};}
+    });
+    NV.DimensionLabRuntime=NV.dimensionLabRuntime;
+  }
+
   function startGame() {
+    if (isolatedMode) return false;
+    dimensionRun = null;
+    fieldEventSession = null;
     console.log('[START] Iniciando partida...');
     NV.runDifficulty = NV.settings && NV.settings.gameplay && NV.settings.gameplay.difficulty || 'normal';
     paused = false;
@@ -1840,6 +2069,7 @@
     player.stun = 0; player.stunReapplyLockout = 0;
 
     wave = 1; score = 0; shards = 0;
+    coreEncounterSchedule=dimensionContentEnabled&&NV.DimensionEvents?NV.DimensionEvents.createCoreSchedule():null;
     if (NV.expedition && !combatLabMode) {
       expeditionRun = NV.expedition.create(expeditionMode, NV.expedition.profile().seed);
       if (!metaFrozen) NV.expedition.clear();
@@ -1861,6 +2091,12 @@
     inventory = [NV.starterWeapon()]; currentWeapon = inventory[0]; consumableItems = [];
     consumSel = 0;
     weaponLevels = {}; weaponKills = {}; weaponFus = {}; fireTimer = 0;
+    if (dimensionEventPreview && /(?:^|[?&])eventWeapon=plasma(?:&|$)/.test(queryString)) {
+      const previewWeapon = NV.weaponById('plasma');
+      if (previewWeapon) {
+        inventory = [previewWeapon]; currentWeapon = previewWeapon; weaponLevels.plasma = 1;
+      }
+    }
     if (NV.playtest) NV.playtest.reset(); // telemetría opt-in F08: agregados por partida
         boss = null; shake = 0; hitstop = 0; flashAlpha = 0;
     transition = 0; paused = false; showStats = false;
@@ -1913,10 +2149,25 @@
       NV.expedition.beginWave(expeditionRun);
       NV.expedition.syncArsenal(inventory, weaponLevels, weaponKills);
     }
+    // A shared adapter replaces only the selected field rule. Stable legacy
+    // routes retain their current duration, hazards and economy.
+    if (waveEvent === 'museum-time' && !dimensionContentEnabled) waveEvent = null;
+    fieldEventSession = !isolatedMode && NV.DimensionEvents ? NV.DimensionEvents.createSession({
+      wave, mode:expeditionMode, bossWave, legacyEvent:waveEvent, preview:dimensionContentEnabled,
+      coreEncounter:coreEncounterSchedule?coreEncounterSchedule.pick({wave,mode:expeditionMode,bossWave}):null,
+      coreHpMultiplier:NV.difficultyHpMult(NV.runDifficulty)
+    }) : null;
     waveTimer = NV.waveDuration(wave, waveEvent);
     waveDefeats = 0;
     waveSpawned = 0;
     waveGoal = bossWave ? null : NV.waveClearObjective(wave, NV.runDifficulty);
+    dimensionRun = combatLabMode ? null : NV.createDimensionRun(wave, bossWave,
+      NV.waveClearObjective(wave, NV.runDifficulty), waveTimer, sceneryOptions);
+    if (dimensionRun) { waveTimer = dimensionRun.duration; waveGoal = NV.dimensionObjective(dimensionRun); }
+    if (fieldEventSession) {
+      waveEvent = fieldEventSession.enter(0);
+      if (dimensionRun) waveTimer = dimensionRun.duration = NV.waveDuration(wave,waveEvent);
+    }
     wavePressure = NV.createWavePressure ? NV.createWavePressure() : null;
     waveGoalNudgeShown = false;
     spawnTimer = 0;
@@ -1933,7 +2184,7 @@
     consumableVfx = []; // #11: los VFX instantáneos no sobreviven al cambio de oleada
     pendingBombImpacts = []; // #11: sin impactos de bomba huérfanos entre oleadas
 
-    if (bossWave) {
+    if (bossWave && (!dimensionRun || dimensionRun.depth === 3)) {
       const bossIndex = NV.expedition && !combatLabMode && expeditionRun
         ? NV.expedition.bossIndex(expeditionRun, wave)
         : ((wave / 5 - 1) % BOSS_TYPES.length + BOSS_TYPES.length) % BOSS_TYPES.length;
@@ -1971,20 +2222,77 @@
   }
 
   // Elige un evento de oleada al azar (sin repetir el de la oleada anterior).
+  function enterDimensionField() {
+    stopCurrentWeaponAudio();
+    const collected = NV.collectRemainingNormalShards(pickups);
+    shards += collected.shards;
+    enemies = []; bullets = []; particles = []; pickups = []; weaponPickups = [];
+    flameZones = []; trails = []; floatTexts = []; shockwaves = []; drones = []; meteors = [];
+    bossChests = []; consumableVfx = []; pendingBombImpacts = [];
+    clearEspectroBridge();
+    if (NV.clearHazards) NV.clearHazards(hazards, minefieldState, sectorEncounterState);
+    if (hookSystem && NV.resetHookSystem) NV.resetHookSystem(hookSystem);
+    if (NV.clearPhantomPossession) NV.clearPhantomPossession(player, true);
+    player.x = arenaW() / 2; player.y = arenaH() / 2;
+    player.invuln = Math.max(player.invuln || 0, 1.2);
+    dimensionRun.arrival = 0.8;
+    waveTimer = dimensionRun.duration;
+    waveSpawned = 0; waveDefeats = 0; spawnTimer = 0;
+    waveDirectorCycle = dimensionRun.depth * 3;
+    waveGoal = NV.dimensionObjective(dimensionRun);
+    waveGoalNudgeShown = false; countdownLastSecond = 0;
+    wavePressure = NV.createWavePressure ? NV.createWavePressure() : null;
+    boss = null;
+    if (dimensionExperiment) {
+      dimensionExperiment.enter(dimensionRun.depth);
+      spawnTimer=Infinity;waveGoal=null;waveTimer=15;
+      if(dimensionPursuit)dimensionPursuit.entered(dimensionRun.depth);
+      const pending=dimensionPursuit&&dimensionPursuit.phase==='waiting';
+      if(!pending) {
+        const definition=NV.getProductionEnemyDefinition('tank');
+        const position=NV.Pursuit.position(experimentPlacementContext(NV.productionEnemySpawnRadius(definition)));
+        if(position)NV.spawnProductionEnemy({enemies,player,boss:null,MAX_HOSTILES,MAX_HEAVY_HOSTILES,
+          wave:1,W:arenaW(),H:arenaH()},'tank',{position});
+        else {dimensionExperiment.status='ERROR';paused=true;}
+      }
+      return;
+    }
+    if (fieldEventSession) {
+      waveEvent = fieldEventSession.enter(dimensionRun.depth);
+      waveTimer = dimensionRun.duration = NV.waveDuration(wave,waveEvent);
+    }
+    if (dimensionRun.bossWave && dimensionRun.depth === 3) {
+      const index = NV.expedition && expeditionRun ? NV.expedition.bossIndex(expeditionRun, wave)
+        : ((wave / 5 - 1) % BOSS_TYPES.length + BOSS_TYPES.length) % BOSS_TYPES.length;
+      const difficulty = NV.settings && NV.settings.gameplay ? NV.settings.gameplay.difficulty : NV.runDifficulty;
+      boss = buildBossForWave(wave, index, difficulty);
+      waveGoal = null;
+      if (NV.playtest) NV.playtest.bossStart(wave, boss.name, boss.pattern, boss.maxHp, playtestWeaponStates());
+      showBanner('¡' + boss.name + '!', boss.color); sfx.bossEnter();
+    } else {
+      const event = waveEvent === 'museum-time' ? WAVE_EVENTS[waveEvent] : null;
+      showBanner(event ? event.name + ' · ' + (fieldEventSession && fieldEventSession.hasInertiaObjective() ? 'DESTRUÍ EL NÚCLEO' : event.desc) : 'UNIVERSO ' + (dimensionRun.depth + 1) + ' · OLEADA ' + wave,
+        event ? event.color : NV.BLACK_HOLE_MODELS[dimensionRun.depth - 1].color, event ? 3200 : 1500);
+    }
+    triggerFlash(NV.BLACK_HOLE_MODELS[dimensionRun.depth - 1].color);
+    followPlayerCamera(); updateHUD();
+  }
+
   function pickWaveEvent() {
-    const keys = Object.keys(WAVE_EVENTS);
+    if (NV.DimensionEvents) return NV.DimensionEvents.pickLegacy(waveEvent);
+    const keys = Object.keys(WAVE_EVENTS).filter(id => WAVE_EVENTS[id].stage !== 'preview');
     let ev;
     do { ev = keys[Math.floor(Math.random() * keys.length)]; } while (ev === waveEvent && keys.length > 1);
     return ev;
   }
 
-  function showBanner(text, color) {
+  function showBanner(text, color, duration) {
     dom.waveBanner.textContent = text;
     dom.waveBanner.style.color = color;
     // Los avisos tácticos largos informan sin cubrir al jefe ni la mira.
     dom.waveBanner.classList.toggle('compact', String(text).length > 20);
     dom.waveBanner.classList.remove('hidden');
-    setTimeout(() => dom.waveBanner.classList.add('hidden'), 1500);
+    setTimeout(() => dom.waveBanner.classList.add('hidden'), duration || 1500);
   }
 
   // === CELEBRACIÓN DE VICTORIA DE OLEADA (más épica para jefes) ===
@@ -2083,6 +2391,7 @@
   function prepareShopContent() {
     if (NV.expedition && !combatLabMode) NV.expedition.syncArsenal(inventory, weaponLevels, weaponKills);
     consumableBought = {}; // el tope de consumibles es por visita a la tienda
+    economyStock = NV.createEconomyStock();
     invSwapSel = -1;
     updateHUD(); // La habilidad no debe seguir pulsando fuera del combate.
     clearShopBalanceFeedback();
@@ -2116,7 +2425,10 @@
     consumSel = consumSel >= n ? 0 : Math.max(0, consumSel);
   }
   function useConsumable() {
-    if (state !== 'playing' || paused || consumableItems.length === 0) return;
+    if (typeof dimensionExperiment !== 'undefined' && dimensionExperiment) return;
+    if (state !== 'playing' || paused) return;
+    requestHUDReveal();
+    if (consumableItems.length === 0) return;
     // Usa el TIPO seleccionado (elegido con Q / click en el HUD), no siempre el primero.
     const groups = NV.groupConsumables(consumableItems);
     consumSel = Math.min(consumSel, groups.length - 1);
@@ -2214,7 +2526,7 @@
           slot.title = 'Origen del intercambio (click en otra arma para intercambiar)';
         }
         slot.title += ' · Nivel ' + (weaponLevels[weapon.id] || 1) + ' · ' + weapon.pro;
-        if (fusLevel >= 2 && NV.WEAPON_EVOLUTIONS) slot.title += ' · ' + NV.WEAPON_EVOLUTIONS[weapon.id];
+        if (fusLevel >= 2 && NV.weaponFusionTrait) slot.title += ' · ' + NV.weaponFusionTrait(weapon.id,fusLevel);
 
         // Click = seleccionar para intercambiar / equipar
         slot.addEventListener('click', () => {
@@ -2245,7 +2557,7 @@
         const sellBtn = document.createElement('button');
         sellBtn.className = 'inv-remove';
         sellBtn.textContent = 'VENDER';
-        sellBtn.title = 'Vender por ' + NV.weaponSellValue(weapon, WEAPON_SELL_PRICES) + ' shards';
+        sellBtn.title = 'Vender por ' + NV.weaponSellValue(weapon, WEAPON_SELL_PRICES) + ' tokens';
         sellBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           // Nunca quedarse sin armas: el engine presupone currentWeapon válido.
@@ -2338,7 +2650,7 @@
         canvas.width = 32; canvas.height = 32;
         slot.appendChild(canvas);
         drawMetaSkillCanvas(canvas, g.icon, 32, 24);
-        slot.insertAdjacentHTML('beforeend', '<span class="slot-index">' + (i + 1) + '</span><span class="slot-badge">Nv' + g.level + '</span>');
+        slot.insertAdjacentHTML('beforeend', '<span class="slot-index">' + (i + 1) + '</span><span class="slot-badge">' + (blocked ? 'MAX' : 'Nv' + g.level + '/' + maxLvl) + '</span>');
         slot.title = g.name + ' Nv' + g.level + (blocked ? ' (máximo)' : '');
       } else {
         slot.title = 'Slot de mejora vacío';
@@ -2356,64 +2668,55 @@
   }
 
   function generateOffers() {
+    if(!economyStock)economyStock=NV.createEconomyStock();
     const upgrades = [];
     const weapons = [];
     const consumables = [];
-    // Cada mejora ocupa UN slot y sube de nivel; al llegar a su nivel máximo la oferta se bloquea.
-    const hpLvl = upgradeLevel('hp');
-    const speedLvl = upgradeLevel('speed');
-    const armorLvl = upgradeLevel('armor');
-    const luckLvl = upgradeLevel('luck');
-
-    if ((shopBought.hp || 0) < SHOP_CAPS.hp) {
-      upgrades.push({
-        kind: 'upgrade', metaIcon: 'hp', name: '+25 HP', desc: 'Vida máxima +25 (' + (shopBought.hp || 0) + '/' + SHOP_CAPS.hp + ')', rarity: 'common',
-        disabled: hpLvl >= UPGRADE_LEVELS.hp, disabledReason: 'Nivel ' + UPGRADE_LEVELS.hp + '/' + UPGRADE_LEVELS.hp,
-        price: NV.runUpgradePrice ? NV.runUpgradePrice('hp', hpLvl) : 15, buy: () => { player.maxHp += 25; player.hp += 25; shopBought.hp = (shopBought.hp || 0) + 1; upgradeSlots.push({ icon: 'hp', name: '+25 HP' }); },
-      });
+    if(!economyStock.basicWeaponId) {
+      const nextShopWave=wave+1;
+      if(economyStock.premium && !economyStock.weaponId){
+        const fusionCandidates=inventory.filter(w=>weaponFusionLevel(w.id)<MAX_WEAPON_FUSION);
+        economyStock.weaponId=fusionCandidates.length?fusionCandidates[Math.floor(Math.random()*fusionCandidates.length)].id:'none';
+      }
+      const pool=WEAPONS.filter(w=>NV.armoryRarityAvailable(w.rarity,nextShopWave) && !inventory.some(i=>i.id===w.id));
+      const fallback=inventory.filter(w=>weaponFusionLevel(w.id)<MAX_WEAPON_FUSION && w.id!==economyStock.weaponId);
+      const candidates=pool.concat(fallback);
+      const choices=candidates.slice();economyStock.basicWeaponIds=[];
+      while(choices.length && economyStock.basicWeaponIds.length<NV.armoryOfferCapacity(nextShopWave)) {
+        economyStock.basicWeaponIds.push(choices.splice(Math.floor(Math.random()*choices.length),1)[0].id);
+      }
+      economyStock.basicWeaponId=economyStock.basicWeaponIds[0] || 'none';
     }
-    if (player.agility < MAX_AGILITY) {
-      upgrades.push({
-        kind: 'upgrade', metaIcon: 'speed', name: 'Agilidad', desc: 'Acelera y frena mejor (máx +100%)', rarity: 'rare',
-        disabled: speedLvl >= UPGRADE_LEVELS.speed, disabledReason: 'Nivel ' + UPGRADE_LEVELS.speed + '/' + UPGRADE_LEVELS.speed,
-        price: NV.runUpgradePrice ? NV.runUpgradePrice('speed', speedLvl) : 15, buy: () => { player.agility = Math.min(MAX_AGILITY, player.agility + AGILITY_PER_UPGRADE); upgradeSlots.push({ icon: 'speed', name: 'Agilidad' }); },
-      });
-    }
-    if ((shopBought.armor || 0) < SHOP_CAPS.armor) {
-      upgrades.push({
-        kind: 'upgrade', metaIcon: 'armor', name: 'Armadura', desc: '+3 armadura (' + (shopBought.armor || 0) + '/' + SHOP_CAPS.armor + ')', rarity: 'epic',
-        disabled: armorLvl >= UPGRADE_LEVELS.armor, disabledReason: 'Nivel ' + UPGRADE_LEVELS.armor + '/' + UPGRADE_LEVELS.armor,
-        price: NV.runUpgradePrice ? NV.runUpgradePrice('armor', armorLvl) : 20, buy: () => { player.armor += 3; shopBought.armor = (shopBought.armor || 0) + 1; upgradeSlots.push({ icon: 'armor', name: 'Armadura' }); },
-      });
-    }
-    if ((shopBought.luck || 0) < SHOP_CAPS.luck) {
-      upgrades.push({
-        kind: 'upgrade', metaIcon: 'luck', name: 'Suerte', desc: '+2 suerte (' + (shopBought.luck || 0) + '/' + SHOP_CAPS.luck + ')', rarity: 'rare',
-        disabled: luckLvl >= UPGRADE_LEVELS.luck, disabledReason: 'Nivel ' + UPGRADE_LEVELS.luck + '/' + UPGRADE_LEVELS.luck,
-        price: NV.runUpgradePrice ? NV.runUpgradePrice('luck', luckLvl) : 20, buy: () => { player.luck += 2; shopBought.luck = (shopBought.luck || 0) + 1; upgradeSlots.push({ icon: 'luck', name: 'Suerte' }); },
-      });
-    }
-
     WEAPONS.forEach(w => {
+      if(economyStock.premium && !economyStock.weaponId) {
+        const candidates=WEAPONS.filter(v=>!(economyStock.basicWeaponIds||[economyStock.basicWeaponId]).includes(v.id) && inventory.some(i=>i.id===v.id) && weaponFusionLevel(v.id)<MAX_WEAPON_FUSION);
+        economyStock.weaponId=candidates.length ? candidates[Math.floor(Math.random()*candidates.length)].id : 'none';
+      }
+      const basic=(economyStock.basicWeaponIds||[economyStock.basicWeaponId]).includes(w.id);
+      const premium=economyStock.premium && w.id===economyStock.weaponId;
+      if(!basic && !premium)return;
+      const bought=basic ? economyStock.basicBought : economyStock.premiumBought;
       const owned = inventory.some((iw) => iw.id === w.id);
       const fus = weaponFusionLevel(w.id);
       // La equipada también se puede fusionar: no exigir desequipar para mejorar.
       // Poseída al tope de fusión: no se ofrece.
-      if (owned && fus >= MAX_WEAPON_FUSION) return;
+      if (owned && fus >= MAX_WEAPON_FUSION && !bought) return;
       const canFuse = owned && fus < MAX_WEAPON_FUSION;
       const invFull = !canFuse && inventory.length >= INVENTORY_SLOTS;
       weapons.push({
-        kind: 'weapon', name: w.name, weapon: w, rarity: w.rarity,
+        kind: 'weapon', premium:!!premium, name: canFuse ? 'Fusión · '+w.name : w.name, weapon: w, rarity: w.rarity,
+        badge:basic ? (bought ? 'Elección realizada' : 'Elegí una por visita') : 'Componente raro',
         desc: canFuse
-          ? ('FUSIÓN ' + (fus + 1) + '/' + MAX_WEAPON_FUSION + ' · +' + Math.round(WEAPON_FUSION_DMG * 100) + '% daño' + (fus === 1 && NV.WEAPON_EVOLUTIONS ? ' · ' + NV.WEAPON_EVOLUTIONS[w.id] : ''))
+          ? ('FUSIÓN ' + (fus + 1) + '/' + MAX_WEAPON_FUSION + ' · +' + Math.round(WEAPON_FUSION_DMG * 100) + '% daño' + (fus >= 1 && NV.weaponFusionTrait ? ' · ' + NV.weaponFusionTrait(w.id,fus+1) : ''))
           : ((w.pro || '') + ' · ' + (w.con || '')),
         price: canFuse && NV.weaponFusionShopPrice ? NV.weaponFusionShopPrice(fus) : (canFuse ? WEAPON_FUSE_PRICE : 25),
         // Inventario lleno: oferta bloqueada (misma regla que los pickups: sin auto-equipar).
-        disabled: invFull,
-        disabledReason: invFull ? 'INVENTARIO LLENO' : undefined,
+        disabled: invFull || bought,
+        disabledReason: bought ? 'Comprado en esta visita' : invFull ? 'INVENTARIO LLENO' : undefined,
         buy: () => {
+          if(basic ? economyStock.basicBought : economyStock.premiumBought)return false;
           if (canFuse) {
-            weaponFus[w.id] = fus + 1;
+            const result=tryWeaponFusion(w); if(!result.fused)return false;
             addFloatText(arenaW() / 2, arenaH() / 2, w.name + ' FUSIONADO → Nv' + (fus + 1), '#ffd700');
             sfx.fuse(fus + 1);
           } else if (inventory.length < INVENTORY_SLOTS) {
@@ -2424,12 +2727,14 @@
             // Guardia defensiva: nunca arma fantasma equipada fuera del loadout.
             return false;
           }
+          if(basic)economyStock.basicBought=true;else economyStock.premiumBought=true;
           return true;
         },
       });
     });
 
     NV.consumableList().forEach((c) => {
+      if(!economyStock.consumables.includes(c.key))return;
       const bought = consumableBought[c.key] || 0;
       const typeCount = NV.consumableTypeCount(consumableItems);
       const stacked = NV.consumableCountByType(consumableItems, c.key);
@@ -2440,7 +2745,7 @@
       // la tarjeta nunca desaparece, sólo queda `disabled` con su badge "BLOQUEADO".
       // Prioridad determinística del motivo cuando coinciden: 1) global 10/10,
       // 2) visita 3/3, 3) slots de tipos 6/6.
-      const badgeStock = stacked > 0 ? ('Stock x' + stacked) : 'Sin stock';
+      const badgeStock = stacked > 0 ? ('En mochila x' + stacked) : 'En mochila: 0';
       const badge = badgeStock + ' · compras ' + bought + '/' + CONSUMABLE_CAP;
       consumables.push({
         kind: 'consumable', consumableType: c.key, name: c.name,
@@ -2473,12 +2778,53 @@
       });
     });
 
+    // Un slot pasivo temporal; no suma otra escalera permanente a cada tienda.
+    upgrades.length=0;
+    upgrades.push({kind:'upgrade',metaIcon:'armor',name:'Sobrecarga táctica',rarity:'rare',
+      desc:'+12% daño durante 60 s de combate. No se acumula.',price:NV.ECONOMY.passivePrice,
+      disabled:economyStock.passiveBought || player.economyBuffTime>0,disabledReason:'Ya activo o comprado',
+      buy:()=>{if(economyStock.passiveBought || player.economyBuffTime>0)return false;
+        economyStock.passiveBought=true;player.economyBuffTime=NV.ECONOMY.passiveDuration;return true;}});
+    upgrades.push(...runUpgradeOffers());
     renderOffers(dom.upgradesOffers, upgrades);
-    renderOffers(dom.weaponOffers, weapons);
+    renderOffers(dom.weaponOffers, weapons.filter(item=>!item.premium));
+    const fusionOffers=weapons.filter(item=>item.premium);
+    renderOffers(dom.shopFusionOffers,fusionOffers);
+    if(dom.shopFusionOffers)dom.shopFusionOffers.classList.toggle('hidden',!fusionOffers.length);
     renderOffers(dom.consumableOffers, consumables);
     renderShopInspector(upgrades.find(item => !item.disabled) || upgrades[0] || weapons.find(item => !item.disabled) || weapons[0]);
     renderShopConsumableLoadout();
     renderUpgradeSlots();
+  }
+
+  // Recupera las mejoras originales de la run, sin cambiar el stock de armas.
+  function runUpgradeOffers() {
+    const defs = [
+      {icon:'hp',name:'+25 HP',desc:'Vida máxima +25',rarity:'common',price:15,apply:()=>{player.maxHp+=25;player.hp+=25;}},
+      {icon:'speed',name:'Agilidad',desc:'Acelera y frena mejor (máx +100%)',rarity:'rare',price:15,apply:()=>{player.agility=Math.min(MAX_AGILITY,player.agility+AGILITY_PER_UPGRADE);}},
+      {icon:'armor',name:'Armadura',desc:'+3 armadura',rarity:'epic',price:20,apply:()=>{player.armor+=3;}},
+      {icon:'luck',name:'Suerte',desc:'+2 suerte',rarity:'rare',price:20,apply:()=>{player.luck+=2;}},
+    ];
+    return defs.map(def=>{
+      const level=upgradeLevel(def.icon),max=UPGRADE_LEVELS[def.icon];
+      const blocked=()=>upgradeLevel(def.icon)>=max || (def.icon==='speed' && player.agility>=MAX_AGILITY)
+        || (SHOP_CAPS[def.icon] && (shopBought[def.icon]||0)>=SHOP_CAPS[def.icon])
+        || (level===0 && new Set(upgradeSlots.map(u=>u.icon)).size>=UPGRADE_SLOT_CAP);
+      return {kind:'upgrade',metaIcon:def.icon,name:def.name,rarity:def.rarity,
+        desc:def.desc+' · nivel '+level+'/'+max,badge:level>=max?'MAXEADA':'Nivel '+level+'/'+max,
+        price:NV.runUpgradePrice?NV.runUpgradePrice(def.icon,level):def.price,
+        disabled:!!blocked(),disabledReason:level>=max?'MAX '+max+'/'+max:'Límite alcanzado',
+        buy:()=>{if(blocked())return false;def.apply();shopBought[def.icon]=(shopBought[def.icon]||0)+1;
+          upgradeSlots.push({icon:def.icon,name:def.name});return true;}};
+    });
+  }
+
+  function shopRestrictionIcon(reason) {
+    const text=String(reason||'').toLowerCase();
+    const path=text.includes('max')||text.includes('nivel') ? '<path d="m7 12 3 3 7-7"/>'
+      : text.includes('stock')||text.includes('agotad')||text.includes('visita')||text.includes('comprad') ? '<path d="M8 7h8M8 17h8M9 7v3l3 2-3 2v3M15 7v3l-3 2 3 2v3"/>'
+      : '<rect x="7" y="10" width="10" height="8" rx="2"/><path d="M9 10V7a3 3 0 0 1 6 0v3"/>';
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/>'+path+'</svg>';
   }
 
   function drawWeaponCanvas(canvas, weapon, canvasSize, iconSize) {
@@ -2519,6 +2865,10 @@
 
   function renderOffers(container, items) {
     if (!container) return;
+    // Cada uno de los seis espacios tiene una oleada real de habilitación.
+    if (container === dom.weaponOffers) {
+      items = NV.buildArmoryCards(items,wave+1);
+    }
     container.innerHTML = "";
     items.forEach(item => {
       const el = document.createElement("div");
@@ -2527,20 +2877,26 @@
       el.setAttribute('aria-disabled', String(!!item.disabled));
       const kind = item.kind || (item.weapon ? 'weapon' : item.consumableType ? 'consumable' : 'upgrade');
       el.className = "offer offer-" + kind + " rarity-" + visualRarity(item.rarity, item.price) + (item.disabled ? " disabled" : "");
-      const iconHtml = item.weapon || item.consumableType || item.metaIcon ? '<div class="offer-icon"><canvas></canvas></div>' : '<div class="offer-icon">•</div>';
+      if (item.reserved) { el.classList.add('offer-reserved'); if(item.locked)el.classList.add('offer-locked'); el.setAttribute('role','note'); el.setAttribute('aria-label',item.locked?'Disponible desde la oleada '+item.unlockWave:'Sin stock en esta visita'); el.title=item.desc; }
+      const iconHtml = item.reserved ? '<div class="offer-icon" aria-hidden="true">'+(item.locked?shopRestrictionIcon('bloqueado'):'<svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 9h16M9 14h6"/></svg>')+'</div>' : item.weapon || item.consumableType || item.metaIcon ? '<div class="offer-icon"><canvas></canvas></div>' : '<div class="offer-icon">•</div>';
       const priceHtml = item.disabled ? item.disabledReason : ('◆ ' + item.price);
       const badgeHtml = item.badge
         ? '<div class="offer-badge"><span class="offer-badge-full">' + item.badge + '</span><span class="offer-badge-mobile">' + (item.badgeMobile || item.badge) + '</span></div>'
         : '';
       el.innerHTML = iconHtml + '<div class="offer-name">' + item.name + "</div><div class=\"offer-desc\">" + item.desc + "</div>" + badgeHtml + "<div class='offer-price'>" + priceHtml + "</div>";
-      el.addEventListener("click", () => handleShopPurchase(item, el));
+      if (item.disabled && !item.reserved) {
+        el.classList.add('has-restriction');
+        if (/^(MAX|Nivel)/.test(item.disabledReason||'')) el.classList.add('is-maxed');
+        el.insertAdjacentHTML('beforeend','<span class="offer-restriction" title="'+(item.disabledReason||'No disponible')+'">'+shopRestrictionIcon(item.disabledReason)+'</span>');
+      }
+      if (!item.reserved) el.addEventListener("click", () => handleShopPurchase(item, el));
       // La ficha contextual explica el mismo objeto visual; no altera compra,
       // precios ni estado de inventario.
       const inspect = () => renderShopInspector(item);
       el.addEventListener('pointerenter', inspect);
       el.addEventListener('focus', inspect);
       el.addEventListener('click', inspect);
-      el.addEventListener('keydown', event => {
+      if (!item.reserved) el.addEventListener('keydown', event => {
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handleShopPurchase(item, el); }
       });
       container.appendChild(el);
@@ -2557,7 +2913,7 @@
     const labels = { upgrade: 'MEJORA DE RUN', weapon: 'ARMAMENTO', consumable: 'PROTOCOLO' };
     if (dom.shopInspectorKind) dom.shopInspectorKind.textContent = labels[kind] || 'SELECCIÓN';
     if (dom.shopInspectorName) dom.shopInspectorName.textContent = item.name || 'Oferta';
-    if (dom.shopInspectorDesc) dom.shopInspectorDesc.textContent = item.disabled
+    if (dom.shopInspectorDesc) dom.shopInspectorDesc.textContent = item.reserved ? item.desc : item.disabled
       ? (item.disabledReason || 'No disponible ahora')
       : (item.desc || 'Sin descripción disponible');
     if (dom.shopInspectorPrice) dom.shopInspectorPrice.textContent = item.disabled
@@ -2612,6 +2968,8 @@
   }
 
   function gameOver() {
+    if (typeof dimensionExperiment !== 'undefined' && dimensionExperiment) dimensionExperiment.status='PLAYER_DEAD';
+    if (typeof dimensionPursuit !== 'undefined' && dimensionPursuit) dimensionPursuit.cancel('death');
     if (state === 'player_dying' || state === 'gameover') return false;
     if (NV.expedition && !combatLabMode && !metaFrozen) NV.expedition.clear();
     clearCombatIntent();
@@ -2837,6 +3195,18 @@
       return;
     }
     if (state !== 'playing') return;
+    const fieldClock = fieldEventSession && fieldEventSession.isTemporal() ? fieldEventSession : null;
+    const inertiaField = !!(fieldClock && fieldClock.hasInertiaObjective());
+    const combatClock = dimensionExperiment || fieldClock;
+    if (combatClock && !(dt>0)) return;
+    const admittedDt=dt;
+    const clocks=combatClock ? combatClock.sample(dt,combatIntent,{
+      dashActive:player.dashActive,
+      dashWillStart:combatIntent.dashIntent&&!player.dashInputHeld&&player.stun<=0&&player.dashStamina>=player.dashCost,
+      hardCC:player.stun>0,
+      externalForcedMove:!!(hookSystem&&hookSystem.phase==='tether') || !!(player.phantomPossession&&player.phantomPossession.active) || !!(dimensionRun&&dimensionRun.phase!=='combat')
+    }) : null;
+    experimentPreviousPlayer=combatClock ? {x:player.x,y:player.y} : null;
     let completeCombatLabAfterUpdate = false;
     if (combatLabMode && combatLabState.status === 'RUNNING' && combatLabState.duration != null) {
       const remaining = Math.max(0, combatLabState.duration - combatLabState.elapsed);
@@ -2861,11 +3231,11 @@
     if (flashAlpha > 0) flashAlpha = Math.max(0, flashAlpha - dt);
     if (specialVFX) {
       specialVFX.x = player.x; specialVFX.y = player.y;
-      specialVFX.life -= dt;
+      specialVFX.life -= combatClock ? clocks.combatDt : dt;
       if (specialVFX.life <= 0) specialVFX = null;
     }
-    if (typeof updateConsumableVfx === 'function') updateConsumableVfx(dt);
-    updateBombImpacts(dt);
+    if (typeof updateConsumableVfx === 'function') updateConsumableVfx(combatClock ? clocks.combatDt : dt);
+    updateBombImpacts(combatClock ? clocks.combatDt : dt);
 
     runMusic(dt);
 
@@ -2894,7 +3264,7 @@
       player, combatIntent.dashIntent,
       combatIntent.moveX, combatIntent.moveY,
       combatIntent.aimX, combatIntent.aimY, combatIntent.aimActive,
-      dt
+      dt, combatClock ? clocks.combatDt : undefined
     );
     if (dashing && !wasDashing && sfx.dash) sfx.dash({ x: player.x, worldWidth: arenaW() });
     if (!dashing) NV.updatePlayerMovement(player, effectiveMoveIntent.x, effectiveMoveIntent.y, dt);
@@ -2918,10 +3288,27 @@
     }
     // Solo VFX: el retorno de dash incluye su último frame de desplazamiento.
     NV.emitDashTrail(trails, dashing, trailStartX, trailStartY, player.x, player.y, player.color);
+    if (dimensionRun && dimensionRun.arrival > 0) dimensionRun.arrival = Math.max(0, dimensionRun.arrival - dt);
 
+    if (!combatLabMode && dimensionRun && dimensionRun.phase !== 'combat' &&
+      ((!dimensionExperiment && !inertiaField) || dimensionRun.phase==='transit')) {
+      const arrived = NV.stepDimensionPortal(dimensionRun, player, dt);
+      updatePickups(dt); updateWeaponPickups(dt); updateParticles(dt); updateFloatTexts(dt); updateTrails(dt);
+      if (arrived) enterDimensionField();
+      updateHUD();
+      return;
+    }
+
+    if (dimensionExperiment) {
+      tickExperimentPursuit(admittedDt);
+    }
+    if (combatClock) dt=clocks.combatDt;
     // Regeneración pasiva BOTI
     const char = CHARACTERS[player.character];
-    NV.applyBotiPassiveRegen(char, player, frame, addFloatText);
+    if (combatClock) {
+      const ticks=combatClock.healTicks(dt);
+      if(char.passiveId==='boti_regen'&&ticks>0)player.hp=Math.min(player.maxHp,player.hp+ticks);
+    } else NV.applyBotiPassiveRegen(char, player, frame, addFloatText);
 
     // Regeneración permanente (+0.2 HP/s por nivel, solo fuera de peligro)
     if ((player.permRegen || 0) > 0 && player.hp < player.maxHp && state !== 'gameover') {
@@ -2955,6 +3342,7 @@
       if (player.overdrive <= 0) { player.overdrive = 0; triggerFlash('#caa7ff'); }
     }
     if (player.bounty > 0) { player.bounty -= dt; if (player.bounty <= 0) player.bounty = 0; }
+    NV.tickEconomyBuff(player,dt);
     NV.comboTick(killCombo, dt);
     NV.musicState.combo = killCombo.count;
     if (player.specialCd > 0) player.specialCd -= dt;
@@ -2974,39 +3362,41 @@
     // Spawns y progreso de oleada SOLO fuera de la transición de victoria: durante la
     // celebración no arranca la oleada siguiente (nada de spawns ni countdown visible).
     if (!combatLabMode && transition <= 0) {
+    if (!dimensionExperiment) {
+    waveTimer = Math.max(inertiaField && !fieldClock.objectiveReady() ? .001 : 0, waveTimer - dt);
         spawnTimer -= dt;
-    if (spawnTimer <= 0) {
+    if (spawnTimer <= 0 && (!inertiaField || dimensionRun.phase==='combat') && NV.waveDeploymentOpen(waveTimer, !!boss)) {
       // Curva de amenaza: el refill normal se DETIENE al alcanzar el objetivo
       // creciente de la oleada (NV.softHostileTarget); MAX_HOSTILES queda como techo
       // duro de emergencia. Lote con techo 5 + piso de reposición 0.35s:
       // matar crea una reducción real y temporal de la presión del enjambre.
-      const perWave = boss ? (NV.runDifficulty === 'hard' ? 2 : 1) : NV.spawnBatchForWave(wave);
+      const perWave = boss ? (NV.runDifficulty === 'hard' ? 2 : 1) : NV.fieldSpawnBatch(wave);
       const budget = NV.getHostileBudget({ enemies, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES });
-      const softTarget = boss ? NV.bossSupportTarget(wave, NV.runDifficulty) : NV.softHostileTarget(wave, NV.runDifficulty, NV.worldMetrics);
-      if (budget.remainingHostiles > 0 && budget.hostiles < softTarget && (boss || !waveGoal || waveSpawned < waveGoal.total)) {
+      const softTarget = boss ? NV.bossSupportTarget(wave, NV.runDifficulty) : NV.fieldHostileTarget(wave, NV.runDifficulty, NV.worldMetrics);
+      if (budget.remainingHostiles > 0 && budget.hostiles < softTarget) {
         // Top-up HASTA el objetivo blando (nunca por encima del soft target).
-        const remainingWave = !boss && waveGoal ? Math.max(0, waveGoal.total - waveSpawned) : Infinity;
-        const normalAttempts = Math.min(perWave, budget.remainingHostiles, Math.max(0, softTarget - budget.hostiles), remainingWave);
+        const normalAttempts = Math.min(perWave, budget.remainingHostiles, Math.max(0, softTarget - budget.hostiles));
         const composition = NV.planWaveSpawnBatch
           ? NV.planWaveSpawnBatch(wave, normalAttempts, waveDirectorCycle++, ENEMY_TYPES, NV.runDifficulty)
           : [];
+        const positionContext = {player,enemies,W:arenaW(),H:arenaH(),ENEMY_TYPES,cycle:waveDirectorCycle};
         const squadPositions = composition.length > 1 && NV.waveSquadPositions
-          ? NV.waveSquadPositions(composition, {player,enemies,W:arenaW(),H:arenaH(),ENEMY_TYPES,cycle:waveDirectorCycle}) : [];
+          ? NV.waveSquadPositions(composition, positionContext)
+          : !boss && NV.waveDistributedPositions ? NV.waveDistributedPositions(normalAttempts, positionContext) : [];
         for (let i = 0; i < normalAttempts; i++) spawnEnemy(composition[i], squadPositions[i]);
         // F1: élites controladas — dejan de rellenar al llegar al objetivo heavy
         // blando (SOFT_HEAVY_TARGET); MAX_HEAVY_HOSTILES sigue siendo el techo duro.
-        if (!boss && budget.heavy < NV.BALANCE.SOFT_HEAVY_TARGET && (!waveGoal || waveSpawned < waveGoal.total)) {
+        if (!boss && budget.heavy < NV.BALANCE.SOFT_HEAVY_TARGET) {
           const filled = NV.getHostileBudget({ enemies, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES });
           spawnElite(Math.max(0, softTarget - filled.hostiles));
         }
       }
-      if (Math.random() < 0.03 + wave * 0.002) spawnWeaponPickup();
       // Eventos compensan sólo parte del tiempo extra y conservan actividad adicional.
       spawnTimer = NV.spawnRefillInterval(wave, waveEvent, !!boss, NV.runDifficulty, NV.worldMetrics);
+      if (!boss && !weaponPickups.some(p=>!p.dead) && Math.random() < NV.weaponDropChanceForInterval(spawnTimer)) spawnWeaponPickup();
     }
 
-        waveTimer -= dt;
-        if (!boss && waveTimer > 0 && waveTimer <= 3.1) {
+        if (!boss && waveTimer > 0 && waveTimer <= 3.1 && !inertiaField) {
           const sec = Math.ceil(waveTimer);
           if (sec !== countdownLastSecond && sec >= 1 && sec <= 3) {
             countdownLastSecond = sec;
@@ -3016,13 +3406,15 @@
           countdownLastSecond = 0;
         }
     }
+    }
     updateHazards(dt);
     if (state !== 'playing') return;
     updateEnemies(dt); // F3: NV.updateEnemies ya ejecuta la state machine del hook
     if (state !== 'playing') return;
-    if (!combatLabMode && NV.updateWavePressure) NV.updateWavePressure(dt, {
+    if (!combatLabMode && !dimensionExperiment && NV.updateWavePressure) NV.updateWavePressure(dt, {
       state: wavePressure, wave, boss, active: true, difficulty: NV.runDifficulty,
-      player, enemies, applyPlayerDamage,
+      threatView: {x:viewX(),y:viewY(),width:viewW(),height:viewH()},
+      player, enemies, bullets, MAX_BULLETS, MAX_ENEMY_BULLETS, enemyBulletCount, sfx, W, applyPlayerDamage,
       onPlayerKilled: () => { if (state === 'playing') gameOver(); },
     });
     if (state !== 'playing') return;
@@ -3036,18 +3428,31 @@
     // fin de oleada cuando ambos eventos caen en el mismo frame.
     if (transition <= 0 && waveTimer <= 0 && !boss) {
       if (!combatLabMode) {
+        if (!dimensionExperiment && !inertiaField) {
         if (player.hp <= 0) { gameOver(); return; }
         const remainingHostiles = enemies.reduce((count, enemy) => count + (!enemy.dead ? 1 : 0), 0);
         if (NV.waveClearReady(waveTimer, waveSpawned, remainingHostiles, waveGoal)) {
+          if (dimensionRun && NV.openDimensionPortal(dimensionRun, arenaW(), arenaH())) {
+            NV.activateNormalShardMagnetPull(pickups, player);
+            enemies = []; bullets = []; flameZones = []; meteors = []; drones = [];
+            wavePressure = NV.createWavePressure ? NV.createWavePressure() : null;
+            pendingBombImpacts = [];
+            if (NV.clearHazards) NV.clearHazards(hazards, minefieldState, sectorEncounterState);
+            stopCurrentWeaponAudio();
+            showBanner('CAMPO DESPEJADO · ABRIENDO CRUCE ' + (dimensionRun.depth + 1) + '/3', NV.BLACK_HOLE_MODELS[dimensionRun.depth].color);
+            if (sfx.waveClear) sfx.waveClear();
+            return;
+          }
           shards += 8 + wave * 2;
           triggerWaveVictory(false, null, null);
           return;
         }
-        // La siguiente escuadra entra cuando hay espacio; una especial no salta
-        // las escuadras pendientes ni borra por reloj a los hostiles vivos.
+        // El reloj cerró la compuerta: quedan sólo los hostiles vivos o en aviso.
+        // Nunca borrarlos por reloj ni generar nuevas escuadras durante limpieza.
         if (!waveGoalNudgeShown) {
           waveGoalNudgeShown = true;
           showBanner('¡LIMPIÁ LA ZONA PARA AVANZAR!', '#f5d67c');
+        }
         }
       }
     }
@@ -3085,6 +3490,57 @@
       }
     }
 
+    if (dimensionExperiment && dimensionRun) finishExperimentField(admittedDt);
+    if (inertiaField && dimensionRun && state==='playing') {
+      if (dimensionRun.phase==='combat') {
+        const context=experimentPlacementContext(24);context.bullets=bullets;
+        context.spawnGuard=(core,id,serial)=>{
+          const definition=NV.getProductionEnemyDefinition(id);
+          if(!definition)return false;
+          const radius=NV.productionEnemySpawnRadius(definition);
+          const placement=experimentPlacementContext(radius);
+          let position=null;
+          for(let i=0;i<12;i++) {
+            const angle=(serial*.381966+i/12)*Math.PI*2;
+            const point={x:core.x+Math.cos(angle)*155,y:core.y+Math.sin(angle)*155};
+            if(NV.Pursuit.safePosition(point,placement)){position=point;break;}
+          }
+          if(!position)return false;
+          return NV.spawnProductionEnemy({enemies,player,boss:null,MAX_HOSTILES,MAX_HEAVY_HOSTILES,
+            wave,W:arenaW(),H:arenaH(),announceSpawn:true},id,{position}).ok;
+        };
+        context.emit=(core,angles)=>{
+          for(const angle of angles) {
+            if(bullets.length>=MAX_BULLETS||enemyBulletCount()>=MAX_ENEMY_BULLETS)break;
+            bullets.push({x:core.x+Math.cos(angle)*32,y:core.y+Math.sin(angle)*32,
+              vx:Math.cos(angle)*210,vy:Math.sin(angle)*210,damage:9,color:core.color,
+              isEnemy:true,dead:false,sourceEnemy:core,sourceType:'dimension-core',projectileStyle:'genericBolt'});
+          }
+          if(sfx.enemyAttack)sfx.enemyAttack('ranged',{x:core.x,worldWidth:arenaW()});
+        };
+        if (fieldClock.updateObjective(dt,admittedDt,context)) {
+          if(sfx.pickup)sfx.pickup();
+          const progress=fieldClock.objectiveView();
+          if(!progress.complete)showBanner('NÚCLEO '+progress.collected+'/'+progress.required+' DESTRUIDO',WAVE_EVENTS['museum-time'].color);
+        }
+        if (fieldClock.objectiveReady()) {
+          waveTimer=0;
+          if (NV.openDimensionPortal(dimensionRun,arenaW(),arenaH())) {
+            showBanner('NÚCLEO DESTRUIDO · ALCANZÁ EL CRUCE',WAVE_EVENTS['museum-time'].color);
+            if(sfx.waveClear)sfx.waveClear();
+          }
+        }
+      } else {
+        fieldClock.updateObjective(dt,admittedDt,{player,W:arenaW(),H:arenaH()});
+        NV.stepDimensionPortal(dimensionRun,player,admittedDt);
+        if(dimensionRun.phase==='transit') {
+          bullets=[];flameZones=[];pendingBombImpacts=[];currentAutoTarget=null;stopCurrentWeaponAudio();
+        }
+      }
+    }
+    if (dimensionExperiment && dimensionExperiment.preset==='museum-time' && !enemies.some(e=>!e.dead) && state==='playing') {
+      completeDimensionExperiment();
+    }
     if (completeCombatLabAfterUpdate && state === 'playing') {
       paused = true;
       combatLabState.status = 'COMPLETE';
@@ -3095,7 +3551,12 @@
     updateHUD();
   }
 
+  function dimensionCombatTargets() {
+    const core=fieldEventSession&&fieldEventSession.combatTarget();
+    return core ? enemies.concat(core) : enemies;
+  }
   function shoot(firePolicy) {
+    const enemies=dimensionCombatTargets();
     const fireInterval = weaponFireInterval();
     const res = NV.shoot({
       player, enemies, boss, bullets, currentWeapon,
@@ -3105,6 +3566,7 @@
       fireInterval,
       aimVector: firePolicy === 'manual' ? { x: combatIntent.aimX, y: combatIntent.aimY } : null,
       currentWeaponFusion: currentWeaponFusion(), fusionStep: WEAPON_FUSION_DMG,
+      plasmaExperiment: dimensionEventPlasmaProfile,
       onTarget: (target) => { currentAutoTarget = target; },
       onFlame: (config) => {
         const life = Math.max(0.24, fireInterval * 1.35);
@@ -3135,11 +3597,13 @@
   }
 
   function applyKnockback(e, bx, by, strength) {
+    if(e.isDimensionCore)return;
     return NV.applyKnockback(e, bx, by, strength);
   }
 
   function useSpecial() {
     revealHUD();
+    if (typeof dimensionExperiment!=='undefined' && dimensionExperiment) return;
     const res = NV.useSpecial({
       player, CHARACTERS, meteors, particles, drones, W: arenaW(), H: arenaH(), shake, specialVFX,
       enemies, shockwaves,
@@ -3189,17 +3653,16 @@
   }
 
   function spawnEnemy(plannedTypeId, spawnPosition) {
-    if (NV.spawnEnemy({ enemies, player, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES, wave, ENEMY_TYPES, W: arenaW(), H: arenaH(), waveEvent, allowBossSupport: !!boss && !combatLabMode, announceSpawn: !combatLabMode, spawnPosition, forceTypeId: plannedTypeId || forceSpecterType })) {
+    if (NV.spawnEnemy({ enemies, player, boss, MAX_HOSTILES: NV.deploymentHostileLimit(combatLabMode), MAX_HEAVY_HOSTILES, wave, ENEMY_TYPES, W: arenaW(), H: arenaH(), waveEvent, allowBossSupport: !!boss && !combatLabMode, announceSpawn: !combatLabMode, spawnPosition, forceTypeId: plannedTypeId || forceSpecterType })) {
       if (!combatLabMode && !boss) waveSpawned++;
     }
   }
 
   function spawnElite(remainingSoftSlots) {
     const before = enemies.length;
-    NV.spawnElite({ enemies, player, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES, wave, ELITE_TYPES, W: arenaW(), H: arenaH(), waveEvent,
+    NV.spawnElite({ enemies, player, boss, MAX_HOSTILES: NV.deploymentHostileLimit(combatLabMode), MAX_HEAVY_HOSTILES, wave, ELITE_TYPES, W: arenaW(), H: arenaH(), waveEvent,
       announceSpawn: !combatLabMode,
-      maxCount: Math.min(remainingSoftSlots == null ? Infinity : remainingSoftSlots,
-        waveGoal ? Math.max(0, waveGoal.total - waveSpawned) : Infinity) });
+      maxCount: remainingSoftSlots == null ? Infinity : remainingSoftSlots });
     if (!combatLabMode && !boss) waveSpawned += Math.max(0, enemies.length - before);
   }
 
@@ -3216,7 +3679,15 @@
   }
 
   function killEnemy(e, damageSource) {
+    if(e.isDimensionCore){e.dead=true;e.killResolved=true;return;}
     if (e.killResolved || e.waveCleanup) return;
+    if (typeof dimensionExperiment !== 'undefined' && dimensionExperiment) {
+      if(e.pursuitUid && dimensionPursuit && !dimensionPursuit.kill(e.pursuitUid))return;
+      e.killResolved=true;e.dead=true;
+      spawnExplosion(e.x,e.y,e.color,8);
+      if(sfx.enemyDeath)sfx.enemyDeath('normal',{x:e.x,worldWidth:arenaW()});
+      return;
+    }
     if (!combatLabMode && !boss) waveDefeats++;
     if (NV.expedition && !combatLabMode && expeditionRun) NV.expedition.kill(expeditionRun, damageSource);
     // F3: cleanup Hook si muere el source (muerte/fusion/removal invalida el hook).
@@ -3237,10 +3708,16 @@
   }
 
   function updateEnemies(dt) {
+    const experimental=typeof dimensionExperiment!=='undefined'&&dimensionExperiment;
+    const guardians=experimental ? enemies.filter(e=>e.dimensionGuarding&&!e.dead) : [];
     const res = NV.updateEnemies(dt, {
-      enemies, player, bullets, MAX_BULLETS, MAX_ENEMY_BULLETS, shake,
+      enemies:experimental ? enemies.filter(e=>!e.dimensionGuarding) : enemies,
+      player, bullets, MAX_BULLETS, MAX_ENEMY_BULLETS, shake,
       enemyBulletCount, applyPlayerDamage, addFloatText, spawnExplosion, waveEvent, sfx,
       wave, hookSystem, hazards, W: arenaW(), H: arenaH(), gameState: state,
+      threatView: { x: viewX(), y: viewY(), width: viewW(), height: viewH() },
+      temporalShots: fieldEventSession && fieldEventSession.hasInertiaObjective()
+        ? fieldEventSession.projectilePolicy() : null,
       keepInsideArena: !combatLabMode,
       onKill: (e) => killEnemy(e), // autodestrucción de kamikazes: mismo camino que un kill normal
       onPlayerDamaged: recordPlayerDamage,
@@ -3251,11 +3728,9 @@
       if (typeof NV.resetHookState === 'function') NV.resetHookState(hookSystem);
       else if (typeof NV.resetHookSystem === 'function') NV.resetHookSystem(hookSystem);
     }
-    enemies = res.enemies; shake = res.shake;
+    enemies = guardians.length ? res.enemies.concat(guardians) : res.enemies; shake = res.shake;
     if (NV.observeEnemyAudio) NV.observeEnemyAudio(enemies, arenaW());
-    if (NV.updateFusionThreats && state === 'playing' && player.hp > 0) NV.updateFusionThreats(dt, {
-      enemies, player, applyPlayerDamage, addFloatText, spawnExplosion, onPlayerKilled: gameOver,
-    });
+
     // Telemetría opt-in F08: muestreo agregado de intents Runner/Spitter (sin mutar entidades).
     if (NV.playtest && NV.playtest.enabled) {
       for (const e of enemies) NV.playtest.observeEnemy(e, dt);
@@ -3367,22 +3842,26 @@
 
   // Esbirros invocados (funciona incluso durante la pelea con un jefe)
   function spawnMinion(x, y, summonVariant) {
-    return NV.spawnMinion(x, y, { enemies, player, boss, wave, W: arenaW(), H: arenaH(), ENEMY_TYPES, MAX_HOSTILES, MAX_HEAVY_HOSTILES, announceSpawn: !combatLabMode }, summonVariant);
+    return NV.spawnMinion(x, y, { enemies, player, boss, wave, W: arenaW(), H: arenaH(), ENEMY_TYPES, MAX_HOSTILES: NV.deploymentHostileLimit(combatLabMode), MAX_HEAVY_HOSTILES, announceSpawn: !combatLabMode }, summonVariant);
   }
 
   function runBossAttack(b, dt) {
     return NV.runBossAttack(b, dt, {
       player, enemies, bullets, sfx, triggerFlash, addFloatText,
-      boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES, MAX_BULLETS, MAX_ENEMY_BULLETS, enemyBulletCount,
+      boss, MAX_HOSTILES: NV.deploymentHostileLimit(combatLabMode), MAX_HEAVY_HOSTILES, MAX_BULLETS, MAX_ENEMY_BULLETS, enemyBulletCount,
       spawnBossProj, spawnMinion,
     });
   }
 
   function updateBullets(dt) {
+    const enemies=dimensionCombatTargets();
     const res = NV.updateBullets(dt, {
       bullets, W: arenaW(), H: arenaH(), player, enemies, boss, shake, hitstop,
+      playerPrevious: experimentPreviousPlayer,
+      inertia: fieldEventSession && fieldEventSession.hasInertiaObjective() ? fieldEventSession.projectilePolicy() : null,
+      plasmaExperiment: dimensionEventPlasmaProfile,
       MAX_BULLETS, CHARACTERS, SHIELD_COOLDOWN,
-      applyPlayerDamage, addFloatText, killEnemy, applyKnockback, spawnExplosion,
+      applyPlayerDamage, addFloatText, killEnemy, applyKnockback, spawnExplosion, spawnShockwave,
       sfx, onPlayerDamaged: recordPlayerDamage,
     });
     bullets = res.bullets; shake = res.shake; hitstop = res.hitstop;
@@ -3390,6 +3869,7 @@
   }
 
   function updateFlameZones(dt, aimAngle) {
+    const enemies=dimensionCombatTargets();
     flameZones = NV.updateFlameZones(dt, flameZones, {
       player, enemies, boss, currentAutoTarget, aimAngle,
       killEnemy, addFloatText, applyKnockback,
@@ -3479,12 +3959,9 @@
   // Fusión de arma recogida: si ya la poseés, sube su nivel de fusión en vez de
   // ocupar un slot. Devuelve {fused,level} | {maxed} | {fused:false,owned:false}.
   function tryWeaponFusion(weapon) {
-    if (!inventory.some((w) => w.id === weapon.id)) return { fused: false, owned: false };
-    const cur = weaponFus[weapon.id] || 0;
-    if (cur >= MAX_WEAPON_FUSION) return { fused: false, maxed: true };
-    weaponFus[weapon.id] = cur + 1;
-    if (currentWeapon.id === weapon.id) updateHUD();
-    return { fused: true, level: cur + 1 };
+    const result=NV.fuseWeaponDuplicate(weapon,inventory,weaponFus,MAX_WEAPON_FUSION);
+    if(result.fused && currentWeapon.id===weapon.id)updateHUD();
+    return result;
   }
 
   function updateWeaponPickups(dt) {
@@ -3558,6 +4035,23 @@
     return Object.assign({ mode: renderDiagnosticMode }, RENDER_DIAGNOSTIC_MODES[renderDiagnosticMode]);
   };
   let frameVisualRhythm = NV.rhythm;
+  function drawDimensionEventObjective() {
+    if(dimensionContentEnabled&&state==='playing'&&NV.drawPlasmaBlasts&&
+      !(dimensionRun&&dimensionRun.phase==='transit')) {
+      const camera=cinematicView(viewX(),viewY(),viewW(),viewH());
+      ctx.save();
+      ctx.setTransform(scaleX*camera.zoom,0,0,scaleY*camera.zoom,
+        scaleX*(viewW()/2-camera.centerX*camera.zoom),scaleY*(viewH()/2-camera.centerY*camera.zoom));
+      NV.drawPlasmaBlasts(ctx,shockwaves);ctx.restore();
+    }
+    if(state!=='playing'||!fieldEventSession||!fieldEventSession.hasInertiaObjective()||!NV.drawInertiaChamber||
+      !dimensionRun||dimensionRun.phase==='transit')return;
+    const camera=cinematicView(viewX(),viewY(),viewW(),viewH());
+    ctx.save();
+    ctx.setTransform(scaleX*camera.zoom,0,0,scaleY*camera.zoom,
+      scaleX*(viewW()/2-camera.centerX*camera.zoom),scaleY*(viewH()/2-camera.centerY*camera.zoom));
+    NV.drawInertiaChamber(ctx,fieldEventSession.objectiveView());ctx.restore();
+  }
   function draw() {
     resizeCanvas();
     followPlayerCamera();
@@ -3598,7 +4092,8 @@
 
     // Base oscura + identidad del sector. La capa sectorial es decorativa y
     // hereda el presupuesto visual; nunca altera gameplay ni world metrics.
-    const sectorVisual = NV.sectorVisualForWave ? NV.sectorVisualForWave(wave) : null;
+    const visualWave = !combatLabMode && dimensionRun ? 1 + dimensionRun.environments[dimensionRun.depth] * 5 : wave;
+    const sectorVisual = NV.sectorVisualForWave ? NV.sectorVisualForWave(visualWave,sceneryOptions) : null;
     ctx.fillStyle = sectorVisual ? sectorVisual.background : '#01030d';
     ctx.fillRect(cameraLeft, cameraTop, cameraW, cameraH);
     if (drawBackgroundEffects) {
@@ -3606,11 +4101,16 @@
       ctx.translate(cameraLeft, cameraTop);
       // El arte de bordes pertenece a la arena, no al rectángulo de la cámara.
       ctx.save(); ctx.translate(-cameraLeft, -cameraTop);
-      if (NV.drawSectorBackdrop) NV.drawSectorBackdrop(ctx, arenaW(), arenaH(), frame, wave, {
+      if (NV.drawSectorBackdrop) NV.drawSectorBackdrop(ctx, arenaW(), arenaH(), frame, visualWave, {
         tier: vbp ? vbp.tier : 'full',
+        preview: dimensionContentEnabled,
+        variant: dimensionRun && dimensionRun.depth > 0 ? dimensionRun.seed + dimensionRun.depth * 7919 : 0,
       });
       ctx.restore();
-      if (drawStarfield) NV.drawStarfield(ctx, cameraW, cameraH, frame, player.x - cameraLeft, player.y - cameraTop, frameVisualRhythm);
+      if (drawStarfield&&(!sectorVisual||sectorVisual.starfield!==false)) {
+        starCamera.x=cameraLeft;starCamera.y=cameraTop;
+        NV.drawStarfield(ctx, cameraW, cameraH, frame, player.x - cameraLeft, player.y - cameraTop, frameVisualRhythm,dimensionContentEnabled?starCamera:null);
+      }
       if (drawRhythmBackground && NV.drawRhythmLayer) {
         // P2: capa rítmica de fondo es decorativa — se throttlea por tier.
         const rbDetail = vbp ? vbp.rhythmBackgroundDetail : 1;
@@ -3627,6 +4127,19 @@
       ctx.globalAlpha = 1;
     }
 
+    if (state === 'playing' && !combatLabMode && dimensionRun) {
+      const portal = dimensionRun.portal;
+      if (portal) {
+        const progress = dimensionRun.phase === 'transit' ? dimensionRun.transit / 1.15 : 0;
+        const opening = Math.min(1, dimensionRun.age / 1.2);
+        NV.drawBlackHole(ctx, portal.x, portal.y, portal.radius * (0.15 + 0.85 * opening) * (1 + progress * 1.4), dimensionRun.age, portal.model, { reduced: vbp && vbp.tier !== 'full' });
+        ctx.save(); ctx.font = '12px system-ui'; ctx.textAlign = 'center';
+        ctx.fillStyle = NV.BLACK_HOLE_MODELS[portal.model].color;
+        ctx.fillText('UNIVERSO ' + (dimensionRun.depth + 2), portal.x, portal.y + 78);
+        ctx.restore();
+      }
+    }
+
     // META-VIS-02b: neblina de densidad (capa 1, bajo entidades). Contexto
     // compartido de render: t, saturación por cantidad viva, urgencia por HP.
     if (drawMetaOverlays && NV.drawDensityFog && densityField) {
@@ -3639,16 +4152,18 @@
 
     // Límites físicos: silueta y exterior EN MUNDO, siempre legibles (NO HUD).
     // Nunca desplaza bounds de gameplay ni emisores asociados al borde real.
-    if (NV.drawSectorPerimeter) NV.drawSectorPerimeter(ctx, arenaW(), arenaH(), wave, {
+    if (NV.drawSectorPerimeter) NV.drawSectorPerimeter(ctx, arenaW(), arenaH(), visualWave, {
       tier: vbp ? vbp.tier : 'full',
+      preview: dimensionContentEnabled,
     });
 
     // HUD anclado a la vista, nunca al centro del mapa ni al zoom cinemático.
     ctx.save(); ctx.setTransform(scaleX, 0, 0, scaleY, -vx * scaleX, -vy * scaleY);
     // Barra de progreso de oleada — con contador de enemigos vivos y élites
     if (showHUD && state === 'playing' && !boss) {
-            const maxWaveTimer = NV.waveDuration(wave, waveEvent);
-      const timeProgress = Math.max(0, Math.min(1, 1 - (waveTimer / maxWaveTimer)));
+      const maxWaveTimer = NV.waveDuration(wave, waveEvent);
+      const fieldDuration = dimensionRun ? dimensionRun.duration : maxWaveTimer;
+      const timeProgress = Math.max(0, Math.min(1, 1 - (waveTimer / fieldDuration)));
       const barW = 220, barH = 7;
       const barX = vx + (vw - barW) / 2, barY = vy + 9;
 
@@ -3658,7 +4173,8 @@
       const heavy = NV.heavyHostileCount(enemies);
       const cleared = Math.max(0, waveSpawned - alive);
       // Una barra llena significa victoria posible: tiempo y asalto despejado.
-      const progress = waveGoal ? Math.min(timeProgress, cleared / waveGoal.total) : timeProgress;
+      const inertiaObjective = fieldEventSession && fieldEventSession.objectiveView();
+      const progress = inertiaObjective ? inertiaObjective.collected / inertiaObjective.required : waveTimer > 0 ? timeProgress : waveSpawned > 0 ? cleared / waveSpawned : 1;
 
       // Cápsula compacta: mejora la lectura sin sumar otra pieza al HUD.
       ctx.save();
@@ -3702,7 +4218,9 @@
       ctx.fillStyle = '#dffcff';
       ctx.font = '800 10px system-ui';
       ctx.textAlign = 'center';
-      ctx.fillText('OLEADA ' + wave + (waveTimer <= 0 ? ' · LIMPIEZA' : ' · ' + Math.ceil(waveTimer) + 's'), vx + vw / 2, barY + 18);
+      const fieldLabel = dimensionRun ? ' · U' + (dimensionRun.depth + 1) + '/4' : '';
+      const fieldReady = dimensionRun && dimensionRun.phase !== 'combat';
+      ctx.fillText('OLEADA ' + wave + fieldLabel + (fieldReady ? dimensionRun.phase === 'opening' ? ' · ABRIENDO CRUCE' : ' · CRUCE ABIERTO' : inertiaObjective ? ' · NÚCLEOS ' + inertiaObjective.collected + '/' + inertiaObjective.required : waveTimer <= 0 ? ' · LIMPIEZA' : ' · ' + Math.ceil(waveTimer) + 's'), vx + vw / 2, barY + 18);
       ctx.restore();
       const mobilePresentation = !!(NV.capabilities && NV.capabilities.isMobile);
       // En móvil el panel de sistema contiene estos detalles al abrirse: no tapamos la arena
@@ -3722,7 +4240,7 @@
           ctx.fillStyle = waveTimer <= 0 ? '#f5d67c' : '#a9dce8';
           ctx.font = '700 9px system-ui';
           ctx.fillText('BAJAS ' + waveDefeats, viewX() + 12, viewY() + 57);
-          ctx.fillText('FALTAN APARECER ' + Math.max(0, waveGoal.total - waveSpawned + arriving), viewX() + 12, viewY() + 71);
+          ctx.fillText(inertiaObjective ? (fieldReady ? 'ALCANZÁ EL CRUCE' : 'DESTRUÍ LOS NÚCLEOS') : waveTimer > 0 ? 'DESPLIEGUE ACTIVO' : 'RESTANTES ' + alive, viewX() + 12, viewY() + 71);
         }
       }
     }
@@ -3830,6 +4348,7 @@
     // atacantes (atkFlash activo) => el enemigo que golpea queda por encima
     // visualmente y no es tapado por los superpuestos. Solo orden de dibujo.
     if (NV.prepareEnemyVisualBudget) NV.prepareEnemyVisualBudget(enemies, player);
+    if (NV.drawDimensionalThreatFields) NV.drawDimensionalThreatFields(ctx, enemies);
     for (const e of enemies) if (!(e.atkFlash > 0)) drawEnemy(e);
     for (const e of enemies) if (e.atkFlash > 0) drawEnemy(e);
     const autoTargetInRange = currentAutoTarget ? (Math.hypot(currentAutoTarget.x - player.x, currentAutoTarget.y - player.y) <= (currentWeapon.range || Infinity)) : false;
@@ -3929,10 +4448,38 @@
     } else drawPlayer();
     // F3: Hook visuals (world transform activo) — tras enemigos/jugador, ANTES del restore.
     if (NV.drawHookEffects && hookSystem) NV.drawHookEffects(ctx, hookSystem, player);
+    if (state === 'playing' && dimensionRun && dimensionRun.phase === 'opening') {
+      ctx.save(); ctx.globalAlpha = Math.max(0, 1 - dimensionRun.age / 1.2) * 0.45;
+      ctx.strokeStyle = NV.BLACK_HOLE_MODELS[dimensionRun.depth].color; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(player.x, player.y, 26 + dimensionRun.age * 145, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    }
     // El feedback de daño usa coordenadas de mundo y la cámara cinematográfica.
     if (drawMetaOverlays && NV.drawDamageFeedback) NV.drawDamageFeedback(ctx, player, damageFeedback, metaRenderEnv);
     ctx.setTransform(scaleX, 0, 0, scaleY, -vx * scaleX, -vy * scaleY);
     // Retícula Canvas barata: geometría fija, sin glow, partículas ni DOM por frame.
+    if (state === 'playing' && !combatLabMode && dimensionRun && dimensionRun.portal) {
+      const p = dimensionRun.portal, color = NV.BLACK_HOLE_MODELS[p.model].color;
+      ctx.save();
+      const targetX = vx + (worldScaleX * p.x + worldOffsetX) / scaleX;
+      const targetY = vy + (worldScaleY * p.y + worldOffsetY) / scaleY;
+      const outside = targetX < vx + 42 || targetX > vx + vw - 42 || targetY < vy + 85 || targetY > vy + vh - 100;
+      const gx = Math.max(vx + 42, Math.min(vx + vw - 42, targetX));
+      const gy = Math.max(vy + 90, Math.min(vy + vh - 110, targetY));
+      if (outside) {
+        ctx.translate(gx, gy); ctx.rotate(Math.atan2(p.y - player.y, p.x - player.x));
+        ctx.fillStyle = color; ctx.globalAlpha = 0.75 + Math.sin(dimensionRun.age * 3) * 0.15;
+        ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(-7, -7); ctx.lineTo(-3, 0); ctx.lineTo(-7, 7); ctx.closePath(); ctx.fill();
+        ctx.rotate(-Math.atan2(p.y - player.y, p.x - player.x)); ctx.translate(-gx, -gy);
+      }
+      ctx.globalAlpha = 1; ctx.textAlign = 'center';
+      const panelW = Math.min(vw - 32, 380), panelX = vx + (vw - panelW) / 2, panelY = vy + vh - 91;
+      ctx.fillStyle = 'rgba(3,7,15,0.86)'; ctx.beginPath(); ctx.roundRect(panelX, panelY, panelW, 45, 9); ctx.fill();
+      ctx.fillStyle = color; ctx.font = '700 12px system-ui';
+      ctx.fillText('CAMPO DESPEJADO · CRUCE ' + (dimensionRun.depth + 1) + '/3', vx + vw / 2, panelY + 17);
+      ctx.fillStyle = '#d1dce8'; ctx.font = '11px system-ui';
+      ctx.fillText(dimensionRun.phase === 'opening' ? 'La singularidad se está abriendo…' : dimensionRun.phase === 'transit' ? 'Atravesando hacia otro universo…' : 'Dirigite a la singularidad para continuar', vx + vw / 2, panelY + 34);
+      ctx.restore();
+    }
     if (state === 'playing' && !paused && NV.input.getEffectiveFirePolicy() === 'manual' && combatIntent.aimActive) {
       const ax = combatIntent.aimWorldX, ay = combatIntent.aimWorldY;
       ctx.save();
@@ -3962,6 +4509,12 @@
     }
 
     ctx.setTransform(scaleX, 0, 0, scaleY, -vx * scaleX, -vy * scaleY);
+
+    if (state === 'playing' && dimensionRun && (dimensionRun.phase === 'transit' || dimensionRun.arrival > 0)) {
+      ctx.save(); ctx.fillStyle = '#000008';
+      ctx.globalAlpha = dimensionRun.phase === 'transit' ? Math.sin(dimensionRun.transit / 1.15 * Math.PI / 2) : dimensionRun.arrival / 0.8;
+      ctx.fillRect(vx, vy, vw, vh); ctx.restore();
+    }
 
     if (state === 'player_dying' || state === 'gameover' || state === 'wave_end' || state === 'shop_enter' || state === 'shop') {
       const progress = presentationProgress();
@@ -4002,20 +4555,23 @@
 
     // Pantalla de pausa (tecla P)
     if (paused) {
+      const challenge=NV.optionalChallengeStatus(expeditionRun,wave);
+      const pauseY=vy+vh/2-(challenge?Math.min(45,vh*.1):0);
       ctx.fillStyle = 'rgba(5, 7, 20, 0.68)';
       ctx.fillRect(vx, vy, vw, vh);
       ctx.textAlign = 'center';
       ctx.fillStyle = '#7cf8ff';
       ctx.shadowBlur = 30; ctx.shadowColor = '#7cf8ff';
       ctx.font = 'bold 56px system-ui';
-      ctx.fillText('⏸ PAUSA', vx + vw / 2, vy + vh / 2 - 20);
+      ctx.fillText('⏸ PAUSA', vx + vw / 2, pauseY - 20);
       ctx.shadowBlur = 0;
       ctx.fillStyle = '#aaa';
       ctx.font = '18px system-ui';
-      ctx.fillText(NV.capabilities&&NV.capabilities.isMobile?'Abrí ☰ y tocá Reanudar':'Pulsa P para continuar', vx + vw / 2, vy + vh / 2 + 24);
+      ctx.fillText(NV.capabilities&&NV.capabilities.isMobile?'Abrí ☰ y tocá Reanudar':'Pulsa P para continuar', vx + vw / 2, pauseY + 24);
       ctx.fillStyle = '#666';
       ctx.font = '12px system-ui';
-      ctx.fillText('Oleada ' + wave + ' · Puntos ' + score, vx + vw / 2, vy + vh / 2 + 54);
+      ctx.fillText('Oleada ' + wave + ' · Puntos ' + score, vx + vw / 2, pauseY + 54);
+      NV.drawPauseChallenge(ctx,vx,vy,vw,vh,challenge);
     }
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -4277,7 +4833,9 @@
     try {
       if (drawCleanupBody) {
         const ctx = renderCtx;
-        if (typeof NV.hasCommonEnemyVisual === 'function' && NV.hasCommonEnemyVisual(e.enemyTypeId)) {
+        if (NV.drawDimensionalThreatBody && NV.drawDimensionalThreatBody(ctx, e)) {
+          // Modelo compacto propio; geometría de amenaza dibujada debajo del roster.
+        } else if (typeof NV.hasCommonEnemyVisual === 'function' && NV.hasCommonEnemyVisual(e.enemyTypeId)) {
           NV.drawEnemy(ctx, e, frame, player, frameVisualRhythm, visualTimeSeconds);
         } else if (NV.SPECTRAL_ENEMY_MODE && typeof NV.drawSpectralEnemy2D === 'function') {
           NV.drawSpectralEnemy2D(ctx, e, frame, player, frameVisualRhythm);
@@ -4417,6 +4975,7 @@
         drawLobbyPreview();
       }
       lastTime = now;
+      if (NV.updateFpsCounter) NV.updateFpsCounter(now);
       requestAnimationFrame(loop);
       return;
     }
@@ -4445,6 +5004,10 @@
       }
       if (NV.updateRhythmWidgetIcon) NV.updateRhythmWidgetIcon();
     }
+    if(NV.AudioPerimeter&&NV.AudioPerimeter.enabled){
+      audioPerimeterFrame.active=state==='playing';audioPerimeterFrame.paused=paused;
+      audioPerimeterFrame.hidden=!!document.hidden;NV.AudioPerimeter.tick(dt,audioPerimeterFrame);
+    }
 
     if ((state === 'menu' || state === 'shop' || state === 'shop_enter') && !paused) runMusic(dt);
     // El tiempo visual del piloto avanza solo mientras el lobby es la vista activa.
@@ -4462,6 +5025,7 @@
     if (!measurePhases) applyScreenShake();
     const perfDrawStart = performance.now();
     if (!measurePhases) draw();
+    drawDimensionEventObjective();
     const perfDrawEnd = performance.now();
     if (NV.performanceMonitor) {
       NV.performanceMonitor.record(now - perfPrevNow, phaseTimes ? phaseTimes.updateMs : perfDrawStart - perfUpdateStart, phaseTimes ? phaseTimes.drawMs : perfDrawEnd - perfDrawStart);
@@ -4483,6 +5047,7 @@
     updateMetaDiagnostics();
     updateEspectroBridge(dt);
     if (NV.webgpuPresentation) NV.webgpuPresentation.present(canvas);
+    if (NV.updateFpsCounter) NV.updateFpsCounter(now);
 
     requestAnimationFrame(loop);
   }
@@ -4549,9 +5114,11 @@
     return NV.expedition.save({ version: 1, character: player.character, wave, run: expeditionRun,
       player, inventory: inventory.map(w => w.id), currentWeapon: currentWeapon.id,
       levels: weaponLevels, kills: weaponKills, fus: weaponFus, consumables: consumableItems,
-      shopBought, upgradeSlots, score, shards, difficulty: NV.runDifficulty, savedAt: Date.now() });
+      shopBought, upgradeSlots, score, shards, difficulty: NV.runDifficulty,
+      coreSchedule:coreEncounterSchedule?coreEncounterSchedule.snapshot():null,savedAt: Date.now() });
   }
   function resumeExpedition() {
+    if (isolatedMode) return false;
     if (!NV.expedition || state !== 'menu' || combatLabMode) return false;
     const saved = NV.expedition.load();
     if (!saved) return false;
@@ -4569,6 +5136,7 @@
     consumableItems = saved.consumables; consumSel = 0;
     shopBought = saved.shopBought; upgradeSlots = saved.upgradeSlots;
     score = saved.score; shards = saved.shards; wave = saved.wave + 1;
+    if(dimensionContentEnabled&&NV.DimensionEvents)coreEncounterSchedule=NV.DimensionEvents.createCoreSchedule(null,saved.coreSchedule);
     // Mantener el último checkpoint si se cierra durante esta oleada.
     if (!metaFrozen) NV.expedition.save(saved);
     nextWave(); updateHUD(); notifyMobileWeapon(); notifyMobileConsumable();
@@ -4594,9 +5162,12 @@
   }
   NV.alpha = Object.freeze({
     version: '1.1.0-alpha.1',
-    snapshot: () => ({ state, paused, showHUD, hudHold, hudReveal, combatLab: combatLabMode, saveDisabled: metaFrozen, wave, score, shards,
+    snapshot: () => ({ state, paused, showHUD, hudHold, hudReveal, combatLab: combatLabMode, dimensionLab:dimensionLabMode, saveDisabled: metaFrozen, wave, score, shards,
       run: expeditionRun ? JSON.parse(JSON.stringify(expeditionRun)) : null,
-      mode: expeditionMode, hp: player.hp, maxHp: player.maxHp,
+      mode: expeditionMode, eventPreview:dimensionEventPreview, promotedContent:dimensionContentEnabled, hp: player.hp, maxHp: player.maxHp,
+      content: {baseline:'dimensional-20261012',enemies:ENEMY_TYPES.map(t=>t.id),elites:ELITE_TYPES.map(t=>t.visualId||t.id),
+        sceneryCount:dimensionContentEnabled?NV.DIMENSION_VISUALS.length:NV.SECTOR_VISUALS.length,
+        plasma:dimensionEventPlasmaProfile,coreSchedule:coreEncounterSchedule?coreEncounterSchedule.snapshot():null},
       inventory: inventory.map(w => ({ id: w.id, name: w.name, level: weaponLevels[w.id] || 1, role: w.pro })),
       weapon: currentWeapon && currentWeapon.id, character: player.character, event: waveEvent }),
     setMode: mode => { if (state === 'menu') expeditionMode = mode === 'endless' ? 'endless' : 'expedition'; },
@@ -4617,7 +5188,8 @@
       renderInventory(); updateHUD(); saveExpeditionCheckpoint(); sfx.shopBuy(); return true;
     },
     route: event => {
-      if (state !== 'shop' || !expeditionRun || (wave + 1) % 3 !== 0 || NV.expedition.isBossWave(expeditionRun, wave + 1) || !WAVE_EVENTS[event]) return false;
+      if (state !== 'shop' || !expeditionRun || (wave + 1) % 3 !== 0 || NV.expedition.isBossWave(expeditionRun, wave + 1) || !WAVE_EVENTS[event] ||
+        (NV.DimensionEvents && !NV.DimensionEvents.routeAllowed(event,dimensionContentEnabled))) return false;
       expeditionRun.event = event; saveExpeditionCheckpoint(); return true;
     },
   });
@@ -4630,10 +5202,17 @@
     frame,
     wave,
     waveTimer,
+    dimensionEvent: fieldEventSession ? fieldEventSession.snapshot() : null,
+    arena: { width: arenaW(), height: arenaH() },
+    dimension: dimensionRun ? { depth: dimensionRun.depth, phase: dimensionRun.phase,
+      duration: dimensionRun.duration, environment: dimensionRun.environments[dimensionRun.depth], seed: dimensionRun.seed, arrival: dimensionRun.arrival || 0,
+      bossWave: dimensionRun.bossWave, portal: dimensionRun.portal ? Object.assign({}, dimensionRun.portal) : null } : null,
     objective: waveGoal ? {
       defeats: waveDefeats, spawned: waveSpawned,
       cleared: Math.max(0, waveSpawned - enemies.filter(enemy => !enemy.dead).length),
-      required: waveGoal.total,
+      required: fieldEventSession && fieldEventSession.hasInertiaObjective() ? fieldEventSession.objectiveView().required : null,
+      mode: fieldEventSession && fieldEventSession.hasInertiaObjective() ? 'cores' : 'timed',
+      deploymentOpen: NV.waveDeploymentOpen(waveTimer, !!boss),
     } : null,
     wavePressure: wavePressure && wavePressure.mark ? {
       x: wavePressure.mark.x, y: wavePressure.mark.y,
@@ -4648,12 +5227,13 @@
       zoom: presentationZoom(),
     },
     enemies: enemies.filter((enemy) => !enemy.dead).length,
+    dimensionCoreShots: bullets.reduce((count,b)=>count+(!b.dead&&b.isEnemy&&b.sourceType==='dimension-core'?1:0),0),
     arrivals: enemies.reduce((count, enemy) => count + (!enemy.dead && enemy.arrival ? 1 : 0), 0),
     arrivalPuffs: enemies.reduce((count, enemy) => count + (!enemy.dead && enemy.arrival && enemy.arrival.stage === 'puff' ? 1 : 0), 0),
     outsideEnemies: enemies.reduce((count, enemy) => count + (!enemy.dead &&
       (!Number.isFinite(enemy.x) || !Number.isFinite(enemy.y) || enemy.x < 0 || enemy.y < 0 || enemy.x > arenaW() || enemy.y > arenaH()) ? 1 : 0), 0),
     hostileBudget: NV.getHostileBudget({ enemies, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES }),
-    softHostileTarget: boss ? NV.bossSupportTarget(wave, NV.runDifficulty) : NV.softHostileTarget(wave, NV.runDifficulty, NV.worldMetrics),
+    softHostileTarget: boss ? NV.bossSupportTarget(wave, NV.runDifficulty) : NV.fieldHostileTarget(wave, NV.runDifficulty, NV.worldMetrics),
     sectorHazards: hazards.filter(h => h.type === 'sectorHazard' && h.state !== 'dead').map(h => ({
       kind:h.kind, state:h.state, x:h.x, y:h.y, width:h.width, W:h.W, H:h.H, laserHead:!!h.laserHead, side:h.side, stateTime:h.stateTime,
     })),

@@ -186,7 +186,7 @@ t('game.js pasa rhythm solo al render de enemigo y colisiones siguen usando e.x/
   const g = fs.readFileSync('js/game.js', 'utf8');
   const bullets = fs.readFileSync('js/engine/bullets.js', 'utf8');
   if (!g.includes('NV.drawEnemy(ctx, e, frame, player, frameVisualRhythm, visualTimeSeconds)')) throw new Error('render enemigo no recibe rhythm/tiempo visual');
-  if (!bullets.includes('Math.hypot(b.x - e.x, b.y - e.y)') || !bullets.includes('d < e.radius + 4')) throw new Error('colisión de balas no usa datos reales');
+  if (!bullets.includes('const dx = b.x-e.x, dy = b.y-e.y') || !bullets.includes('dx*dx+dy*dy < contactRadius*contactRadius')) throw new Error('colisión de balas no usa datos reales');
 });
 
 console.log('RESULT enemy_eyes: pass=' + pass + ' fail=' + fail);

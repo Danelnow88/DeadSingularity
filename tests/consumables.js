@@ -21,7 +21,7 @@ t('CONSUMABLES centraliza los 7 consumibles reales en orden/precio actual', () =
   if (NV.CONSUMABLE_ORDER.join(',') !== expected.join(',')) throw new Error('orden=' + NV.CONSUMABLE_ORDER.join(','));
   const list = NV.consumableList();
   if (list.map((c) => c.key).join(',') !== expected.join(',')) throw new Error('lista=' + list.map((c) => c.key).join(','));
-  const prices = { potion: 10, overdrive: 18, shield: 22, bomb: 34, freeze: 26, magnet: 20, bounty: 30 };
+  const prices = { potion: 10, overdrive: 18, shield: 22, bomb: 34, freeze: 26, magnet: 20, bounty: 2 };
   for (const key of expected) {
     if (!NV.CONSUMABLES[key]) throw new Error('falta ' + key);
     if (NV.CONSUMABLES[key].price !== prices[key]) throw new Error(key + ' price=' + NV.CONSUMABLES[key].price);
@@ -136,10 +136,11 @@ t('killEnemy aplica RECOMPENSA: doble score + shard extra', () => {
     addFloatText(x, y, text, color){ texts.push({ x, y, text, color }); }, spawnExplosion(){}, triggerFlash(){}, sfx: { explosion(){}, levelup(){} },
     pickups: shards, weaponKillProgress: () => 1,
   };
+  st.player.bountyKills=3;
   const sc = NV.killEnemy(st);
-  if (sc !== 20) throw new Error('score=' + sc + ' (esperaba doble 20)');
+  if (sc !== 10) throw new Error('score=' + sc + ' (esperaba doble 20)');
   if (shards.length < 1 || !shards.some((s) => s.value === 1)) throw new Error('sin shard bounty');
-  if (!texts.some((t) => t.text === '+1 SHD BONUS' && t.color === '#ffd700')) throw new Error('sin feedback bounty');
+  if (st.player.bountyTokens!==1)throw new Error('sin tope de bonus');
 });
 
 t('applyConsumable preserva efectos y feedback de los 7 consumibles', () => {
@@ -162,9 +163,9 @@ t('applyConsumable preserva efectos y feedback de los 7 consumibles', () => {
   if (!NV.applyConsumable({ type: 'bomb' }, ctx) || enemies[0].hp !== 0 || boss.hp !== 184) throw new Error('bomb');
   if (!NV.applyConsumable({ type: 'freeze' }, ctx) || enemies[0].slowUntil !== 4) throw new Error('freeze');
   if (!NV.applyConsumable({ type: 'magnet' }, ctx) || !pickups[0].magnetPull || !weaponPickups[0].magnetPull) throw new Error('magnet');
-  if (!NV.applyConsumable({ type: 'bounty' }, ctx) || player.bounty !== 10) throw new Error('bounty');
+  if (!NV.applyConsumable({ type: 'bounty' }, ctx) || player.bounty !== 4) throw new Error('bounty');
   if (NV.applyConsumable({ type: 'unknown' }, ctx) !== false) throw new Error('unknown no devuelve false');
-  for (const text of ['+30 HP', 'OVERDRIVE', 'ESCUDO', '¡BOMBA DE VACÍO!', '¡CONGELADO!', 'IMÁN (2)', 'RECOMPENSA 10s']) {
+  for (const text of ['+30 HP', 'OVERDRIVE', 'ESCUDO', '¡BOMBA DE VACÍO!', '¡CONGELADO!', 'IMÁN (2)', 'RECOMPENSA 4s']) {
     if (!floatTexts.some((f) => f.text === text)) throw new Error('falta float ' + text);
   }
   for (const color of ['#ff5f9b', '#caa7ff', '#ffd700']) {
@@ -322,9 +323,9 @@ t('Recompensa: handler dispara onda dorada y comunica activación', () => {
     addFloatText(x, y, text, color) { texts.push({ x, y, text, color }); },
     triggerFlash() {}, spawnShockwave() { sw++; },
   });
-  if (player.bounty !== 10) throw new Error('bounty=' + player.bounty);
+  if (player.bounty !== 4) throw new Error('bounty=' + player.bounty);
   if (sw !== 1) throw new Error('sin onda dorada');
-  if (!texts.some((t) => t.text === 'RECOMPENSA 10s')) throw new Error('sin texto de activación');
+  if (!texts.some((t) => t.text === 'RECOMPENSA 4s')) throw new Error('sin texto de activación');
 });
 
 t('Overdrive: handler dispara onda/flash y render tiene aura violeta persistente', () => {

@@ -24,6 +24,7 @@
     shopNextWave: document.getElementById('shopNextWave'),
     upgradesOffers: document.getElementById('upgradesOffers'),
     weaponOffers: document.getElementById('weaponOffers'),
+    shopFusionOffers: document.getElementById('shopFusionOffers'),
     consumableOffers: document.getElementById('consumableOffers'),
     shopConsumableLoadout: document.getElementById('shopConsumableLoadout'),
     upgradeSlots: document.getElementById('upgradeSlots'),

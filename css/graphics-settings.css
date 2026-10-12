@@ -1,0 +1,45 @@
+/* Gráficos: una columna, ayudas por hover/foco/tap, un único scroll del modal. */
+#panelGraphics { padding: 8px 2px; color: #dce8ed; display: flex; flex-direction: column; height: 100%; min-height: 0; box-sizing: border-box; }
+#settingsPanel[data-settings-tab="graphics"] .settings-tab-panels { overflow: hidden; }
+.graphics-options { overflow-y: auto; overflow-x: hidden; flex: 1 1 auto; min-height: 0; padding-right: 7px; scrollbar-width: thin; scrollbar-color: #385361 transparent; }
+.graphics-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 12px; }
+.graphics-heading > span { font: 600 10px/1.4 system-ui, sans-serif; letter-spacing: .16em; color: #8999aa; }
+.graphics-heading button { background: transparent; border: 0; color: #90aab5; font: 500 12px system-ui, sans-serif; padding: 8px; cursor: pointer; }
+.graphics-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 46px; border-bottom: 1px solid #ffffff0d; }
+.graphics-help { border: 0; background: transparent; color: inherit; text-align: left; cursor: help; padding: 12px 0; font: 500 14px/1.4 system-ui, sans-serif; }
+.graphics-help span { color: #728794; margin-left: 5px; font-size: 12px; }
+.graphics-help:hover, .graphics-help:focus-visible { color: #7cf8ff; }
+#panelGraphics button:focus-visible, #panelGraphics select:focus-visible, .graphics-switch:focus-visible { outline: 2px solid #7cf8ff; outline-offset: 3px; }
+#settingsResolution, .graphics-action { max-width: 62%; min-height: 36px; border: 1px solid #8bbdc329; border-radius: 6px; padding: 6px 10px; color: #dce8ed; background: #101927; font: 500 12px system-ui, sans-serif; }
+#settingsResolution option { background: #101927; }
+#settingsResolution:disabled, .graphics-action:disabled { opacity: .55; }
+.graphics-action { cursor: pointer; }
+#panelGraphics .quality-options { display: flex; gap: 3px; margin: 0; }
+#panelGraphics .quality-options label { padding: 7px 9px; border: 1px solid transparent; border-radius: 5px; background: transparent; min-height: 0; }
+#panelGraphics .quality-options input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+#panelGraphics .quality-options label:has(input:checked) { background: #7cf8ff14; border-color: #7cf8ff4d; color: #7cf8ff; }
+#panelGraphics .quality-options label:focus-within { outline: 2px solid #7cf8ff; outline-offset: 2px; }
+#panelGraphics .quality-options b { font: 500 12px/1.4 system-ui, sans-serif; }
+.graphics-switch { appearance: none; width: 36px; height: 21px; border: 1px solid #718693; border-radius: 14px; background: #14202a; position: relative; cursor: pointer; flex-shrink: 0; margin: 10px 2px; }
+.graphics-switch::after { content: ''; position: absolute; width: 13px; height: 13px; border-radius: 50%; background: #97a6ad; top: 3px; left: 3px; }
+.graphics-switch:checked { border-color: #7cf8ff; background: #7cf8ff26; }
+.graphics-switch:checked::after { left: 18px; background: #7cf8ff; }
+.graphics-value { color: #899fac; font: 500 12px system-ui, sans-serif; }
+.graphics-status { flex: 0 0 auto; color: #8195a5; font: 400 11px/1.5 system-ui, sans-serif; margin: 10px 0 6px; }
+.graphics-description { flex: 0 0 auto; margin: 0; height: 76px; overflow-y: auto; box-sizing: border-box; padding: 8px 10px; border-left: 2px solid #7cf8ff45; background: #7cf8ff05; color: #a4b7c5; font: 400 12px/1.6 system-ui, sans-serif; scrollbar-width: thin; }
+@media (max-width: 480px) { .graphics-row { gap: 8px; } .graphics-help { font-size: 12px; } #panelGraphics .quality-options label { padding: 7px 6px; } #panelGraphics .quality-options b { font-size: 11px; } .graphics-quality-row { flex-wrap: wrap; padding-bottom: 8px; } }
+@media (orientation: landscape) and (max-height: 500px) {
+  #settingsPanel[data-settings-tab="graphics"] .settings-panel { padding: 10px 14px; }
+  #settingsPanel[data-settings-tab="graphics"] .settings-head { margin-bottom: 5px; }
+  #settingsPanel[data-settings-tab="graphics"] .settings-kicker { display: none; }
+  #settingsPanel[data-settings-tab="graphics"] .settings-head h2 { margin: 0; font-size: 18px; }
+  #settingsPanel[data-settings-tab="graphics"] .settings-tab { padding-top: 8px; padding-bottom: 8px; }
+  .graphics-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; align-content: start; }
+  .graphics-heading { grid-column: 1 / -1; margin-bottom: 0; }
+  .graphics-row { gap: 6px; min-height: 44px; }
+  .graphics-help { font-size: 12px; }
+  #panelGraphics .quality-options label { padding: 6px 4px; }
+  #panelGraphics .quality-options b { font-size: 10px; }
+  .graphics-description { height: 60px; font-size: 11px; line-height: 1.5; }
+  .graphics-status { margin-top: 5px; font-size: 10px; }
+}

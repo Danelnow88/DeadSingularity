@@ -14,6 +14,6 @@ const windupEnd = source.indexOf('// Rally del comandante:', windupStart);
 const windup = source.slice(windupStart, windupEnd);
 if (windupStart < 0 || windupEnd < 0) throw new Error('No se encontró el telégrafo del cañón del tanque');
 if (windup.includes('setLineDash') || windup.includes('ctx.lineTo(x2, y2)')) throw new Error('El telégrafo del tanque sigue cubriendo la arena con una línea larga');
-if (!windup.includes('const mark = 5 + progress * 2')) throw new Error('El telégrafo compacto del punto de impacto no está presente');
+if (windup.includes('const mark =') || !windup.includes('2 + progress * 2.5')) throw new Error('Debe cargar el cañón sin retícula de suelo');
 
 console.log('PASS limpieza visual: tanque con lectura compacta y sin telemetría sobrante');

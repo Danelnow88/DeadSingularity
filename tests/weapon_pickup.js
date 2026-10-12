@@ -67,7 +67,7 @@ t('al liberar espacio vuelve a recogerse normalmente', () => {
     const ok = NV2.spawnWeaponPickup(W6, wp, 900, 520, (t2) => banners.push(t2), {}, (w) => !maxFus(w));
     if (!ok) throw new Error('no generó pickup habiendo elegibles');
     if (wp.length !== 1 || wp[0].weapon.id !== 'smg') throw new Error('eligió inelegible: ' + (wp[0] && wp[0].weapon.id));
-    if (banners.length !== 1) throw new Error('sin banner de drop');
+    if (banners.length !== 0) throw new Error('anuncio innecesario de drop');
   });
 
   t('arma NO poseída y poseída fusionable siguen siendo candidatas', () => {

@@ -95,7 +95,7 @@ t('updateEnemies: daño de contacto tiene cooldown por enemigo aunque el jugador
   if (hits.length !== 1) throw new Error('contacto repetido durante cooldown del enemigo: ' + hits.length);
 });
 
-t('updateEnemies: resuelve amontonamiento de chase apilados (misma especie se fusiona) y evita cascada', () => {
+t('updateEnemies: separa chase apilados conservando todos los cuerpos y evita cascada', () => {
   function mkChase(i) {
     return {
       x: 410 + (i % 2), y: 400 + (i % 3), hp: 40, maxHp: 40, speed: 75, radius: 11, color: '#f07bad', shape: 'circle',
@@ -128,9 +128,10 @@ t('updateEnemies: resuelve amontonamiento de chase apilados (misma especie se fu
   if (!(after < before)) throw new Error('no redujo amontonamiento: before=' + before + ' after=' + after);
   // Misma especie apilada: la fusión la condensa (8 -> 1). Sin fusión el
   // amontonamiento igualmente se resuelve por separación (probado abajo).
-  if (alive.length !== 1) throw new Error('misma especie no se condensó: vivos=' + alive.length);
+  if (alive.length !== 8) throw new Error('se perdieron cuerpos individuales: vivos=' + alive.length);
 
   st.player.invuln = 0;
+  st.applyPlayerDamage = dmg => { hits.push(dmg); st.player.invuln=.5; return {applied:true,damage:dmg,killed:false}; };
   NV.updateEnemies(0.016, st);
   if (hits.length !== 1) throw new Error('primer golpe esperado: hits=' + hits.length);
   NV.updateEnemies(0.016, st);
@@ -227,7 +228,9 @@ t('spawn: kamikaze aparece desde oleada 10 y los demas tipos mantienen su umbral
   const w5 = poolAt(5), w9 = poolAt(9), w10 = poolAt(10);
   if (w5.includes('kamikaze')) throw new Error('kamikaze antes de tiempo (w5)');
   // Pool esperado: los 3 clásicos + los 3 espectros nuevos tempranos (waves 3-5).
-  if (w5.join(',') !== 'drone,runner,tank,specter_grunt,specter_archer,specter_guard') throw new Error('w5=' + w5.join(','));
+  const newIds = ['rift_weaver', 'void_devourer', 'dimension_sniper'];
+  if (w5.filter(id => !newIds.includes(id)).join(',') !== 'drone,runner,tank,specter_grunt,specter_archer,specter_guard') throw new Error('w5=' + w5.join(','));
+  for (const id of newIds) if (!w5.includes(id)) throw new Error('amenaza no desbloqueada: ' + id);
   if (!w9.includes('swarmlet') || w9.includes('kamikaze')) throw new Error('w9=' + w9.join(','));
   if (!w10.includes('kamikaze')) throw new Error('kamikaze no entra en w10');
   // Spawn headless con oleada >=10: deben salir kamikazes entre los generados.

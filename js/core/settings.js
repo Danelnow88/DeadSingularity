@@ -4,6 +4,7 @@
   const NV = window.NV = window.NV || {};
   const STORAGE_KEY = 'deadSingularitySettings';
   const QUALITY = ['auto', 'high', 'performance'];
+  const RESOLUTIONS = ['native', '720p', '1080p', '1440p'];
   const FIRE_POLICY = ['manual', 'legacy-auto'];
   // Categorías de audio con preferencia independiente. Orden = orden de las claves
   // en el JSON persistido. Cada una se aplica a un bus real del mixer (ver
@@ -27,8 +28,10 @@
     }),
     graphics: Object.freeze({
       quality: 'high',
+      resolution: 'native',
       particles: true,
       heavyVfx: true,
+      showFPS: false,
     }),
     controls: Object.freeze({
       firePolicy: 'manual',
@@ -78,8 +81,10 @@
       audio: audio,
       graphics: {
         quality: QUALITY.indexOf(graphics.quality) >= 0 ? graphics.quality : DEFAULTS.graphics.quality,
+        resolution: RESOLUTIONS.indexOf(graphics.resolution) >= 0 ? graphics.resolution : DEFAULTS.graphics.resolution,
         particles: typeof graphics.particles === 'boolean' ? graphics.particles : DEFAULTS.graphics.particles,
         heavyVfx: typeof graphics.heavyVfx === 'boolean' ? graphics.heavyVfx : DEFAULTS.graphics.heavyVfx,
+        showFPS: graphics.showFPS === true,
       },
       controls: {
         firePolicy: FIRE_POLICY.indexOf(controls.firePolicy) >= 0 ? controls.firePolicy : DEFAULTS.controls.firePolicy,
@@ -153,9 +158,18 @@
     save(); notify(); return true;
   };
   NV.setGraphicsOption = function (key, value) {
-    if (key !== 'particles' && key !== 'heavyVfx') return false;
+    if (key !== 'particles' && key !== 'heavyVfx' && key !== 'showFPS') return false;
     NV.settings.graphics[key] = !!value;
     save(); notify(); return true;
+  };
+  NV.setGraphicsResolution = function (value) {
+    if (RESOLUTIONS.indexOf(value) < 0) return false;
+    NV.settings.graphics.resolution = value;
+    save(); notify(); return true;
+  };
+  NV.resetGraphicsSettings = function () {
+    NV.settings.graphics = Object.assign({}, DEFAULTS.graphics);
+    save(); notify();
   };
   NV.setFirePolicy = function (policy) {
     if (FIRE_POLICY.indexOf(policy) < 0) return false;

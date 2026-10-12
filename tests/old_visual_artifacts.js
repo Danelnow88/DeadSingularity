@@ -6,6 +6,8 @@ const NV = {};
 vm.runInNewContext(fs.readFileSync('js/render/metaReadability.js', 'utf8'),
   { window: { NV }, Math, Map, WeakMap });
 const game = fs.readFileSync('js/game.js', 'utf8');
+NV.setMetaVisOption('contact', true); // El diagnóstico conserva su API, no se muestra por defecto.
+NV.setMetaVisOption('intent', true);
 let pass = 0;
 function test(name, fn) { fn(); pass++; console.log('  ok  ' + name); }
 

@@ -9,6 +9,8 @@ vm.runInNewContext(fs.readFileSync('js/data/gameData.js', 'utf8'), sandbox, { fi
 vm.runInNewContext(fs.readFileSync('js/render/metaReadability.js', 'utf8'), sandbox, { filename: 'metaReadability.js' });
 
 function trace() {
+  NV.setMetaVisOption('intent', true); // Diagnóstico opt-in; producción limpio.
+  NV.setMetaVisOption('contact', true);
   const strokes = [];
   const ctx = {
     strokeStyle: '', save() {}, restore() {}, beginPath() {}, closePath() {},

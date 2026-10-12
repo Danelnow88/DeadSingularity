@@ -292,6 +292,18 @@
   ],
   "enemies": [
     {
+      "id": "rift_weaver",
+      "data": { "id": "rift_weaver", "name": "COSTURERO", "hp": 90, "speed": 100, "radius": 16, "color": "#f1b377", "shape": "diamond", "score": 28, "xp": 30, "behavior": "ranged", "damage": 16, "minWave": 2, "weight": 0.5, "hostileClass": "light" }
+    },
+    {
+      "id": "void_devourer",
+      "data": { "id": "void_devourer", "name": "DEVORADOR DE ESPACIO", "hp": 130, "speed": 70, "radius": 22, "color": "#b49cff", "shape": "hex", "score": 42, "xp": 46, "behavior": "ranged", "damage": 15, "minWave": 4, "weight": 0.4, "hostileClass": "medium" }
+    },
+    {
+      "id": "dimension_sniper",
+      "data": { "id": "dimension_sniper", "name": "FRANCOTIRADOR DIMENSIONAL", "hp": 80, "speed": 110, "radius": 15, "color": "#6fe3e7", "shape": "triangle", "score": 30, "xp": 34, "behavior": "ranged", "damage": 19, "minWave": 3, "weight": 0.45, "hostileClass": "light" }
+    },
+    {
       "id": "drone",
       "data": {
         "id": "drone",
@@ -373,7 +385,7 @@
       "id": "swarmlet",
       "data": {
         "id": "swarmlet",
-        "name": "ENJAMBITO",
+        "name": "EJAMBRITO",
         "hp": 10,
         "speed": 115,
         "radius": 7,
@@ -983,11 +995,11 @@
         "key": "bounty",
         "name": "Recompensa",
         "useName": "RECOMPENSA",
-        "desc": "Durante 10 s: cada baja da +1 shard y x2 score.",
-        "price": 30,
+        "desc": "Durante 4 s: +1 token cada 4 bajas, máximo 3. Sin acumulación.",
+        "price": 2,
         "banner": "Recompensa guardada (F)",
         "color": "#ffd700",
-        "duration": 10
+        "duration": 4
       }
     }
   ]

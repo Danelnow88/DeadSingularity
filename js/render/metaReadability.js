@@ -21,12 +21,12 @@
 
   // Toggles individuales (accesibilidad: cada efecto puede apagarse solo).
   NV.META_VIS_OPTIONS = {
-    density: true,
-    contact: true,
+    density: false,
+    contact: false,
     damage: true,
     autofire: true,
-    intent: true,
-    legend: true,
+    intent: false,
+    legend: false,
   };
 
   NV.setMetaVisOption = function (key, enabled) {
@@ -88,6 +88,8 @@
 
   NV.drawContactReadability = function (ctx, e, player, debug, env) {
     if (!player || !e || e.dead) return false;
+    // Estas amenazas no dañan por contacto; su evento ya comunica el peligro real.
+    if (NV.isDimensionalThreat && NV.isDimensionalThreat(e)) return false;
     if (!NV.META_VIS_OPTIONS.contact) return false;
     const e2 = metaEnv(env);
     const contactRadius = e.radius + 20; // espejo visual exacto; no participa en colisión

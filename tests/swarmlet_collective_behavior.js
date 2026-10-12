@@ -183,5 +183,25 @@ t('20. caps hostiles conservados', function () {
   if (NV.BALANCE.MAX_HOSTILES !== 30 || NV.BALANCE.MAX_HEAVY_HOSTILES !== 7 || NV.BALANCE.SOFT_HEAVY_TARGET !== 4) throw new Error('caps alterados');
 });
 
+t('preview roster isolates removal and keeps swarm HP/damage', function () {
+  const NV=setupEngine(),preview=NV.dimensionTrialRoster();
+  const swarm=preview.enemies.find(e=>e.id==='swarmlet');
+  if(preview.enemies.some(e=>e.id==='drone'))throw Error('drone remains in preview');
+  if(!NV.ENEMY_TYPES.some(e=>e.id==='drone'))throw Error('normal drone removed');
+  if(swarm.hp!==10||swarm.damage!==8||swarm.speed!==140||swarm.minWave!==1||swarm.weight!==1.6)throw Error('trial stats');
+  const original=NV.ENEMY_TYPES.find(e=>e.id==='swarmlet');
+  if(original.speed!==115||original.minWave!==9||original.previewAgileSwarm)throw Error('normal swarm changed');
+});
+t('preview pair forms, commits and regroups with one contact attempt per charge', function () {
+  const NV=setupEngine(),enemies=[swarmlet(300,300),swarmlet(500,300)];
+  enemies.forEach(e=>{e.previewAgileSwarm=true;e.speed=140;});
+  const st=state(enemies);
+  NV.updateEnemies(.01,st);
+  if(enemies.some(e=>e.swarmState!=='form'))throw Error('pair did not form');
+  step(NV,st,.01,69);
+  if(enemies.some(e=>e.swarmState!=='commit'))throw Error('pair did not commit');
+  step(NV,st,.01,46);
+  if(enemies.some(e=>e.swarmState!=='regroup'))throw Error('pair failed to recover');
+});
 console.log('\nRESULT swarmlet_collective_behavior: pass=' + pass + ' fail=' + fail);
 process.exit(fail ? 1 : 0);

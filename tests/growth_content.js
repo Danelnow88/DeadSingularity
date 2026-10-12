@@ -3,7 +3,18 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const Content=require('../js/core/content.js'),{snapshot}=require('../tools/content-catalog.cjs');
 const parse=f=>JSON.parse(fs.readFileSync(f,'utf8').replace(/^\uFEFF/,''));
 const base=parse('content/catalog.json'),pack=parse('content/packages/example-training.json');
-assert.deepEqual(base,snapshot(require('node:path').resolve('reference/prototype')),'Catalogo base altera stats/arte originales');
+const additions = ['rift_weaver','void_devourer','dimension_sniper'];
+const historical = structuredClone(base);
+historical.enemies = historical.enemies.filter(e => !additions.includes(e.id));
+// A requested display-name correction is the only intentional catalog parity change.
+historical.enemies.find(e => e.id === 'swarmlet').data.name = 'EJAMBRITO';
+const original=snapshot(require('node:path').resolve('reference/prototype'));
+// The live catalog intentionally corrects this spelling; compare all other data unchanged.
+original.enemies.find(e => e.id === 'swarmlet').data.name = 'EJAMBRITO';
+assert.equal(base.consumables.find(c=>c.id==='bounty').data.duration,4,'duración económica de Recompensa');
+historical.consumables=historical.consumables.map(c=>c.id==='bounty'?original.consumables.find(v=>v.id==='bounty'):c);
+assert.deepEqual(historical,original,'Catalogo altera stats/arte originales');
+assert.deepEqual(base.enemies.filter(e => additions.includes(e.id)).map(e => e.id).sort(), additions.slice().sort());
 assert.deepEqual(Content.validateCatalog(base),base);
 const changed=Content.materialize(base,[pack]);
 assert.equal(changed.weapons.length,base.weapons.length+1);
@@ -42,4 +53,3 @@ n.shoot({player:{x:0,y:20,luck:-1000,permCrit:0,overdrive:0},enemies:[{x:100,y:2
 assert.equal(bullets.length,1);assert.equal(bullets[0].damage,12);assert.equal(bullets[0].wid,'training_pistol');
 assert.equal(bullets[0].impactType,'direct');
 console.log('PASS growth content: frozen parity, invalid packages, quota rollback, saved loadout and combat protection');
-

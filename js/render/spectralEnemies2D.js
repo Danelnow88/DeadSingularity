@@ -254,7 +254,7 @@
       return RESOLVED_ELITE_PROFILES[cacheKey];
     }
     if (e.enemyTypeId === 'boss_minion' && e.summonVariant === 'mutant') return MUTANT_CLONE_PROFILE;
-    return PROFILES[e.enemyTypeId] || PROFILES.drone;
+    return PROFILES[e.rosterVisualId || e.enemyTypeId] || PROFILES.drone;
   }
   function drawBody(ctx, e, frame, profile) {
     const r = e.radius * (profile.radiusMul || 1);
@@ -409,11 +409,11 @@
   }
   function isLabSpecter(e) {
     if (!e) return false;
-    const id = e.enemyTypeId || e.id || e.typeId || e.visualId;
+    const id = e.rosterVisualId || e.enemyTypeId || e.id || e.typeId || e.visualId;
     return Object.prototype.hasOwnProperty.call(LAB_SPECTER_IDS, id);
   }
   function labPoseIndex(e) {
-    const id = e.enemyTypeId || e.id || e.typeId || e.visualId;
+    const id = e.rosterVisualId || e.enemyTypeId || e.id || e.typeId || e.visualId;
     return LAB_SPECTER_IDS[id] || 0;
   }
   function isHydraFamily(e) {
@@ -1290,7 +1290,7 @@
     // ×0.65 de los cinco espectros de producción (scoped por enemyTypeId):
     // el cuerpo visual y la hitbox física se encogen juntos con el MISMO
     // multiplicador; RB6/Hydra y el resto de modelos quedan intactos.
-    const spectralScale = spectralBodyScale(e.enemyTypeId || e.id || e.typeId || e.visualId);
+    const spectralScale = spectralBodyScale(e.rosterVisualId || e.enemyTypeId || e.id || e.typeId || e.visualId);
     const labScale = (MODEL_SCALE_FACTORS[modelIdx] || 0.8) * bodyScale * spectralScale * (e.customScale || 1);
     const lookX = player ? player.x - e.x : 0;
     const lookY = player ? player.y - e.y : 0;
@@ -1839,27 +1839,6 @@
       ctx.beginPath(); ctx.arc(0, 0, e.radius + 9, 0, Math.PI * 2); ctx.stroke();
       ctx.globalAlpha = 1;
     }
-    if ((e.fusionLevel || 0) > 0) {
-      const lvl = e.fusionLevel || 1;
-      const pulse = 0.65 + Math.sin(frame * 0.16 + lvl) * 0.25;
-      const color = e.color || '#ffe04a';
-      ctx.save();
-      ctx.globalAlpha = 0.9;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 4;
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 22;
-      ctx.beginPath(); ctx.arc(0, 0, e.radius + 10 + pulse * 7, 0, Math.PI * 2); ctx.stroke();
-      ctx.shadowBlur = 0;
-      if (ctx.fillText) {
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 12px monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(NV.fusionMilestoneLabel ? NV.fusionMilestoneLabel(lvl) : ('FUSION ' + lvl), 0, -e.radius - 22);
-      }
-      ctx.restore();
-    }
     if ((e.fusionInterruptFlash || 0) > 0) {
       ctx.save();
       ctx.globalAlpha = Math.min(1, e.fusionInterruptFlash / 0.7);
@@ -1868,7 +1847,7 @@
       ctx.beginPath(); ctx.arc(0, 0, e.radius + 13, 0.35, Math.PI * 1.55); ctx.stroke();
       ctx.setLineDash([]); ctx.restore();
     }
-    if (e.atkFlash > 0 && player) {
+    if (e.atkFlash > 0 && player && e.enemyTypeId !== 'tank') {
       const r = e.radius;
       const atk = Math.min(1, Math.max(0, e.atkFlash / 0.45));
       const fwd = Math.atan2(player.y - e.y, player.x - e.x);

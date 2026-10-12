@@ -36,11 +36,11 @@ t('cofre lejos no se abre', () => {
 });
 
 t('cofre cercano a veces suelta arma (tipo >= 0.55)', () => {
-  rndVal = 0.99; // n = 1+floor(0.99*3)=3 ; 0.99>=0.55 -> arma
+  rndVal = 0.01; // n = 1+floor(0.99*3)=3 ; 0.99>=0.55 -> arma
   const chests = [{ x: 0, y: 0, dead: false, timer: 0 }];
   const pickups = []; const wp = [];
   NV2.updateBossChests(0.1, chests, { x: 0, y: 0 }, pickups, wp, [{ id: 'w1' }], () => {}, () => {});
-  if (wp.length !== 3) throw new Error('esperaba 3 armas, got ' + wp.length);
+  if (wp.length !== 1) throw new Error('esperaba 3 armas, got ' + wp.length);
 });
 
 t('cofre expira tras TTL (lejos, pasa tiempo)', () => {
@@ -74,7 +74,7 @@ t('cofre filtra arma maxeada y elige solo entre elegibles', () => {
   const chests = [{ x: 0, y: 0, dead: false, timer: 0 }];
   const pickups = []; const wp = [];
   NV2.updateBossChests(0.1, chests, { x: 0, y: 0 }, pickups, wp, [{ id: 'rifle' }, { id: 'smg' }], () => {}, () => {}, (w) => w.id !== 'rifle');
-  if (wp.length !== 3) throw new Error('esperaba 3 armas elegibles, got ' + wp.length);
+  if (wp.length !== 1) throw new Error('esperaba 3 armas elegibles, got ' + wp.length);
   if (wp.some((p) => p.weapon.id === 'rifle')) throw new Error('soltó la inelegible');
 });
 

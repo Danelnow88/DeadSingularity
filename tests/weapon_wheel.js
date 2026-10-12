@@ -77,5 +77,27 @@ t('game.js normaliza currentWeapon con fallback a pistola (fix wheel bug)', () =
   if (!g.includes('NV.cycleWeapon(list[base], list, dir)')) throw new Error('no delega a cycleWeapon pura normalizada');
 });
 
+t('ráfaga de rueda: filtra eventos cero y limita cambios sin textos flotantes', () => {
+  const g = fs.readFileSync('js/game.js', 'utf8');
+  const begin = g.indexOf('    let lastWeaponWheelAt = -Infinity;');
+  const end = g.indexOf('    // Click sobre un slot', begin);
+  let listener, now = 0, changes = 0, prevented = 0;
+  const context = {
+    state: 'playing', paused: false, Number,
+    performance: { now: () => now },
+    window: { addEventListener: (name, fn) => { listener = fn; } },
+    cycleWeapon: () => changes++,
+  };
+  vm.runInNewContext(g.slice(begin, end), context);
+  const event = (deltaY) => ({ deltaY, preventDefault: () => prevented++ });
+  listener(event(0));
+  for (let i = 0; i < 100; i++) { now = i; listener(event(1)); }
+  if (changes !== 1) throw new Error('ráfaga produjo ' + changes + ' cambios');
+  now = 200; listener(event(-1));
+  if (changes !== 2 || prevented !== 102) throw new Error('segundo gesto/scroll incorrecto');
+  const switching = g.slice(g.indexOf('    function equipFromInventory('), g.indexOf('    NV.input.cycleWeapon = cycleWeapon;'));
+  if (switching.includes('addFloatText')) throw new Error('cambio de arma imprime texto');
+});
+
 console.log('RESULT weapon_wheel: pass=' + pass + ' fail=' + fail);
 process.exit(fail ? 1 : 0);

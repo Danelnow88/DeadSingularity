@@ -157,7 +157,7 @@
   const MAX_DISPLAY_DAMAGE = 1000000;
   NV.formatDamageText = function (value) {
     if (!Number.isFinite(value) || value <= 0 || value > MAX_DISPLAY_DAMAGE) return null;
-    return String(Math.round(value * 100) / 100);
+    return String(Math.max(1, Math.round(value)));
   };
 
   // Empuja un texto flotante al array (por referencia). size opcional en px.
@@ -183,7 +183,7 @@
     return true;
   };
 
-  // Actualiza los textos flotantes; devuelve el array filtrado.
+  // Compactación estable: conserva orden/objetos, sin array nuevo por frame.
   NV.updateFloatTexts = function (dt, floatTexts) {
     for (const ft of floatTexts) {
       if (ft.bossReaction) {
@@ -197,7 +197,12 @@
         ft.life -= dt;
       }
     }
-    return floatTexts.filter((ft) => ft.life > 0);
+    let write = 0;
+    for (let read = 0; read < floatTexts.length; read++) {
+      if (floatTexts[read].life > 0) floatTexts[write++] = floatTexts[read];
+    }
+    floatTexts.length = write;
+    return floatTexts;
   };
 
   // Dash: segmentos pequeños en el MISMO array de trails. Los sparkles se derivan
@@ -329,14 +334,20 @@
     // secondaryShockwaves (P2): la onda marcada como decorativa puede omitirse
     // en tiers bajos; las ondas principales siempre se dibujan.
     if (o.secondary && NV.getVisualBudget && !NV.getVisualBudget().secondaryShockwaves) return shockwaves;
-    shockwaves.push({ x, y, life: 1, maxRadius: o.maxRadius || 130, color: o.color || '#ffcf76', width: o.width || 5, style: o.style });
+    shockwaves.push({ x, y, life: 1, maxRadius: o.maxRadius || 130, color: o.color || '#ffcf76',
+      innerColor: o.innerColor || null, width: o.width || 5, style: o.style });
     return shockwaves;
   };
 
-  // Avanza la vida de cada onda; devuelve el array filtrado.
+  // Avanza la vida y compacta en orden sin cambiar la animación.
   NV.updateShockwaves = function (dt, shockwaves) {
     if (!shockwaves) return [];
     for (const s of shockwaves) s.life -= dt * 2.2; // ~0.45s de expansión con easing rápido
-    return shockwaves.filter((s) => s.life > 0);
+    let write = 0;
+    for (let read = 0; read < shockwaves.length; read++) {
+      if (shockwaves[read].life > 0) shockwaves[write++] = shockwaves[read];
+    }
+    shockwaves.length = write;
+    return shockwaves;
   };
 })();

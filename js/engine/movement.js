@@ -72,8 +72,9 @@
     return player;
   };
 
-  NV.updatePlayerDash = function (player, dashIntent, moveX, moveY, aimX, aimY, aimActive, dt) {
+  NV.updatePlayerDash = function (player, dashIntent, moveX, moveY, aimX, aimY, aimActive, dt, rechargeDt) {
     dt = Math.max(0, Number(dt) || 0);
+    const rechargeStep = rechargeDt == null ? dt : Math.max(0,Number(rechargeDt)||0);
     const pressed = !!dashIntent;
     const pressEdge = pressed && !player.dashInputHeld;
     player.dashInputHeld = pressed;
@@ -110,9 +111,9 @@
     }
 
     if (player.dashRechargeDelay > 0) {
-      player.dashRechargeDelay = Math.max(0, player.dashRechargeDelay - dt);
+      player.dashRechargeDelay = Math.max(0, player.dashRechargeDelay - rechargeStep);
     } else if (player.dashStamina < player.dashStaminaMax) {
-      player.dashStamina = Math.min(player.dashStaminaMax, player.dashStamina + NV.BALANCE.DASH_REGEN_PER_SECOND * dt);
+      player.dashStamina = Math.min(player.dashStaminaMax, player.dashStamina + NV.BALANCE.DASH_REGEN_PER_SECOND * rechargeStep);
     }
     return false;
   };

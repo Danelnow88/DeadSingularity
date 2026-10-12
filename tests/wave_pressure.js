@@ -1,47 +1,40 @@
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const vm = require('node:vm');
-const sandbox = { window: { NV: {} } };
-vm.createContext(sandbox);
-for (const file of ['js/data/balance.js', 'js/engine/wavePressure.js']) {
-  vm.runInContext(fs.readFileSync(file, 'utf8'), sandbox, { filename: file });
+const fs = require('node:fs'), vm = require('node:vm');
+const NV = {};
+vm.runInNewContext(fs.readFileSync('js/engine/wavePressure.js','utf8'), {window:{NV}});
+for (const difficulty of ['easy','normal','hard']) {
+  let hits=0;
+  const state=NV.createWavePressure();
+  const st={state,difficulty,wave:1,active:true,player:{x:100,y:100,hp:100},enemies:[{x:100,y:100}],
+    applyPlayerDamage(){hits++;}};
+  for(let i=0;i<1200;i++)NV.updateWavePressure(.05,st);
+  assert.equal(hits,0,'pulso retirado todavía daña');
+  assert.equal(state.mark,null,'pulso retirado crea marcas');
+  state.mark={x:100,y:100,t:0}; NV.updateWavePressure(.05,st);
+  assert.equal(state.mark,null,'marca antigua persiste');
+  NV.drawWavePressure(new Proxy({}, {get(){throw Error('pulso retirado dibuja');}}),state);
 }
-const NV = sandbox.window.NV;
-const source = { x: 200, y: 200, dead: false };
-function setup(difficulty = 'easy') {
-  let hits = 0, deaths = 0;
-  const st = { state: NV.createWavePressure(), wave: 1, boss: null, active: true,
-    difficulty, player: { x: 450, y: 420, radius: 10, hp: 120 }, enemies: [source],
-    applyPlayerDamage: (_damage, options) => { hits++; assert.equal(options.cause, 'wave-targeted-pulse'); return { killed: false }; },
-    onPlayerKilled: () => deaths++,
-  };
-  return { st, hits: () => hits, deaths: () => deaths };
+for(const file of ['js/render/enemies.js','js/render/spectralEnemies2D.js']) {
+  const code=fs.readFileSync(file,'utf8');
+  assert(!code.includes('NV.fusionMilestoneLabel'),'nombre de fusión visible');
+  assert(code.includes("e.atkFlash > 0 && player && e.enemyTypeId !== 'tank'"),'tanque conserva aros de ataque');
 }
-const safe = setup();
-NV.updateWavePressure(1.9, safe.st);
-assert(safe.st.state.mark, 'debe fijar una marca desde un enemigo vivo');
-assert.equal(safe.hits(), 0, 'el aviso no causa daño');
-const target = { x: safe.st.state.mark.x, y: safe.st.state.mark.y };
-safe.st.player.x += 80;
-NV.updateWavePressure(1.1, safe.st);
-assert.equal(safe.hits(), 0, 'salir del círculo evita todo el daño');
-assert.equal(safe.st.state.mark, null);
-assert.equal(target.x, 450, 'el ataque captura la posición al iniciar el aviso');
-
-const idle = setup();
-for (let i = 0; i < 45; i++) NV.updateWavePressure(0.5, idle.st);
-assert(idle.hits() >= 5, 'inmovilidad prolongada debe recibir presión repetida');
-idle.st.enemies = [];
-idle.st.state.mark = null;
-NV.updateWavePressure(1, idle.st);
-assert.equal(idle.st.state.mark, null, 'sin enemigos vivos no aparece un aviso nuevo');
-
-for (const change of [{ wave: 5 }, { boss: {} }, { active: false }]) {
-  const t = setup(); Object.assign(t.st, change);
-  NV.updateWavePressure(20, t.st);
-  assert.equal(t.st.state.mark, null, 'jefe/laboratorio no reciben este ataque');
+console.log('PASS pulso global retirado, sin daño ni dibujos; fusión sin etiquetas; tanque sin aros');
+{
+  const tank={enemyTypeId:'tank',x:100,y:100}, player={x:400,y:100,hp:100};
+  const state=NV.createWavePressure(),bullets=[];
+  const st={state,wave:3,active:true,difficulty:'normal',player,enemies:[tank],bullets,
+    MAX_BULLETS:10,MAX_ENEMY_BULLETS:2,enemyBulletCount:()=>bullets.length,
+    applyPlayerDamage(){throw Error('artillería no puede dañar fuera del pipeline de proyectiles');}};
+  NV.updateWavePressure(1.8,st);assert.equal(bullets.length,1);
+  assert.equal(bullets[0].sourceEnemy,tank);assert.equal(bullets[0].vx,280);
+  const old=bullets[0].vy;player.y=400;NV.updateWavePressure(.1,st);
+  assert.equal(bullets[0].vy,old,'proyectil persigue');
+  NV.updateWavePressure(2,st);assert.equal(bullets.length,2);
+  NV.updateWavePressure(2,st);assert.equal(bullets.length,2,'excede cap');
+  bullets.length=0;st.threatView={x:300,y:0,width:600,height:520};
+  NV.updateWavePressure(2,st);assert.equal(bullets.length,0,'dispara fuera de cámara');
+  st.threatView=null;st.boss={};NV.updateWavePressure(2,st);assert.equal(bullets.length,0);
+  st.boss=null;st.enemies=[{...tank,enemyTypeId:'drone'}];NV.updateWavePressure(2,st);assert.equal(bullets.length,0);
+  console.log('PASS artillería física: cadencia, trayectoria fija, presupuesto, cámara y fuente');
 }
-const game = fs.readFileSync('js/game.js', 'utf8');
-assert(game.includes('NV.updateWavePressure(dt, {') && game.includes('NV.drawWavePressure(ctx, wavePressure)'));
-assert(fs.readFileSync('index.html', 'utf8').includes('js/engine/wavePressure.js'));
-console.log('OK wave_pressure');

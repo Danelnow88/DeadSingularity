@@ -3,24 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>DeadSingularity</title>
-    <link rel="icon" href="assets/brand/dead-singularity-mark.svg?nv=audio-20261002b" type="image/svg+xml" />
-    <link rel="stylesheet" href="css/styles.css?nv=audio-20261002b" />
-    <link rel="stylesheet" href="css/lobby-f093.css?nv=audio-20261002b" />
-    <link rel="stylesheet" href="css/alpha.css?nv=audio-20261002b" />
-    <link rel="stylesheet" href="css/lobby-layout.css?nv=lobby-20261003" />
-    <link rel="stylesheet" href="css/mobile.css?nv=thumb-columns-20261008e" />
-    <link rel="stylesheet" href="css/system-menu.css?nv=icons-ui-20261007" />
-    <link rel="stylesheet" href="css/shop-remaster.css?nv=shop-mobile-20261007g" />
-    <link rel="stylesheet" href="css/lobby-cosmos.css?nv=lobby-standard-20261008f" />
+    <title>DEADSINGULARITY</title>
+    <link rel="icon" href="assets/brand/dead-singularity-mark.svg?nv=promoted-20261012" type="image/svg+xml" />
+    <link rel="stylesheet" href="css/styles.css?nv=promoted-20261012" />
+    <link rel="stylesheet" href="css/lobby-f093.css?nv=promoted-20261012" />
+    <link rel="stylesheet" href="css/alpha.css?nv=promoted-20261012" />
+    <link rel="stylesheet" href="css/lobby-layout.css?nv=promoted-20261012" />
+    <link rel="stylesheet" href="css/mobile.css?nv=promoted-20261012" />
+    <link rel="stylesheet" href="css/system-menu.css?nv=promoted-20261012" />
+    <link rel="stylesheet" href="css/shop-remaster.css?nv=promoted-20261012" />
+    <link rel="stylesheet" href="css/lobby-cosmos.css?nv=promoted-20261012" />
+    <link rel="stylesheet" href="css/graphics-settings.css?nv=promoted-20261012" />
     <!-- Capa móvil: detección por capacidad (se carga primero; solo etiqueta <html>). -->
-    <script src="js/core/capabilities.js?nv=mobile-lifecycle-20261008c"></script>
+    <script src="js/core/capabilities.js?nv=promoted-20261012"></script>
     <!-- La distribución Canvas2D funciona offline. WebGL legado sólo a pedido. -->
   </head>
   <body>
     <main class="shell">
       <header class="hud">
-        <div class="logo"><span>DS</span> DeadSingularity</div>
+        <div class="logo"><span>DS</span> DEADSINGULARITY</div>
         <div id="rhythm-widget" class="rhythm-widget" title="Control de música externa (permite capturar audio de una pestaña o ventana)">
           <span class="rw-icon" aria-hidden="true">
             <svg class="mn" viewBox="0 0 32 32" width="20" height="20" focusable="false">
@@ -36,7 +37,7 @@
         <div class="stats" aria-label="Estado de la partida">
           <div class="stat stat-wave" title="Oleada"><span class="stat-icon" aria-hidden="true">W</span><span id="wave">Oleada 1</span></div>
           <div class="stat stat-score" title="Puntaje"><span class="stat-icon" aria-hidden="true"><svg class="stat-svg" viewBox="0 0 16 16" focusable="false"><path d="M3 13V8h2v5H3Zm4 0V4h2v9H7Zm4 0V2h2v11h-2Z" /></svg></span><span id="score">0</span></div>
-          <div class="stat shard" title="Fragmentos"><span class="stat-icon shard-icon" aria-hidden="true">◆</span><span id="shards">0</span></div>
+          <div class="stat shard" title="Tokens"><span class="stat-icon shard-icon" aria-hidden="true">◆</span><span id="shards">0</span></div>
           <div class="hp-bar" aria-label="Vida"><div id="hpFill"></div><span id="hpText">100/100</span></div>
         </div>
         <div class="hud-btns">
@@ -61,11 +62,11 @@
         </div>
         <button id="systemMenuToggle" class="system-menu-toggle" type="button" aria-label="Abrir sistema" aria-expanded="false">☰</button>
         <aside id="systemMenu" class="system-menu" aria-label="Menú de sistema" hidden>
-          <header class="system-menu-head"><div><span>SISTEMA</span><strong>DeadSingularity</strong></div><button id="systemMenuClose" type="button" aria-label="Cerrar menú">×</button></header>
+          <header class="system-menu-head"><div><span>SISTEMA</span><strong>DEADSINGULARITY</strong></div><button id="systemMenuClose" type="button" aria-label="Cerrar menú">×</button></header>
           <section class="system-readout" aria-label="Estado de partida">
             <div><small>OLEADA</small><strong id="systemWave">—</strong></div>
             <div><small>PUNTOS</small><strong id="systemScore">0</strong></div>
-            <div><small>FRAGMENTOS</small><strong id="systemShards">0</strong></div>
+            <div><small>TOKENS</small><strong id="systemShards">0</strong></div>
           </section>
           <div class="system-actions">
             <button type="button" data-system-action="pause">⏸ PAUSA</button>
@@ -92,7 +93,7 @@
             <span class="lobby-star star-a"></span><span class="lobby-star star-b"></span>
             <span class="lobby-star star-c"></span><span class="lobby-star star-d"></span>
           </div>
-          <header class="lobby-masthead"><div class="lobby-brand"><span class="lobby-brand-mark">DS</span><h1 id="lobbyTitle">DeadSingularity<span>.</span></h1></div><div class="lobby-header-actions"><span class="lobby-online">● SISTEMAS EN LÍNEA</span><button id="lobbySettingsBtn" type="button" aria-label="Ajustes">⚙</button><button id="lobbyFullscreenBtn" class="lobby-fullscreen hidden" type="button" aria-hidden="true">⛶ PANTALLA COMPLETA</button></div></header>
+          <header class="lobby-masthead"><div class="lobby-brand"><span class="lobby-brand-mark">DS</span><h1 id="lobbyTitle">DEADSINGULARITY</h1></div><div class="lobby-header-actions"><span class="lobby-online">● SISTEMAS EN LÍNEA</span><button id="lobbySettingsBtn" type="button" aria-label="Ajustes">⚙</button><button id="lobbyFullscreenBtn" class="lobby-fullscreen hidden" type="button" aria-hidden="true">⛶ PANTALLA COMPLETA</button></div></header>
           <section class="main-lobby-panel" aria-labelledby="lobbyTitle">
             <div class="main-lobby-copy">
               <div class="lobby-hero-info panel-piloto" aria-live="polite">
@@ -141,7 +142,7 @@
               <section class="card-mode card-infinito"><button id="lobbyModeEndless" class="mode-select" type="button" data-mode="endless" aria-pressed="false"><span class="mode-heading"><span>02</span><span>SIN LÍMITES</span></span><span class="infinity-symbol" aria-hidden="true">∞</span><strong>INFINITO</strong><span class="mode-description">Supervivencia sin fin</span></button><div class="infinite-record"><span>RÉCORD GLOBAL</span><strong id="lobbyInfiniteRecord">Oleada 0</strong></div></section>
             </div>
           </section>
-          <footer class="lobby-footer"><span>DeadSingularity / EXPLORA. RESISTE. EVOLUCIONA.</span><span>PROGRESO LOCAL ACTIVO</span></footer>
+          <footer class="lobby-footer"><span>DEADSINGULARITY / EXPLORA. RESISTE. EVOLUCIONA.</span><span>PROGRESO LOCAL ACTIVO</span></footer>
         </div>
 
         <div id="characterSelectScreen" class="overlay lobby-screen character-select-screen hidden">
@@ -173,7 +174,7 @@
               <h2 class="shop-title">TIENDA</h2>
               <span id="shopWave" hidden>1</span>
             </div>
-            <div class="shard-bar"><span class="shard-glyph">◆</span><span id="shopShards">0</span></div>
+            <div class="shard-bar" title="Tokens · moneda única de la expedición"><span class="shard-glyph">◆</span><span id="shopShards">0</span></div>
           </div>
           <div id="shopTabs" class="shop-tabs" role="tablist" aria-label="Secciones de la tienda">
             <button type="button" class="shop-tab shop-tab-upgrades active" data-tab="upgrades" role="tab">MEJORAS</button>
@@ -196,6 +197,7 @@
                 <div id="invSlots" class="inv-slots"></div>
               </div>
               <div id="weaponOffers" class="offers offers-weapons"></div>
+              <div id="shopFusionOffers" class="offers shop-fusion-offers hidden" aria-label="Componente raro · compra adicional separada"></div>
             </div>
             <div class="shop-section shop-section-protocols" data-shop-tab="consumables">
               <div class="shop-section-title"><span class="section-chip">PRT</span> CONSUMIBLES</div>
@@ -358,14 +360,22 @@
               <p class="settings-note">En móvil se conserva el auto clásico. Los mandos estándar y Steam Input usan la misma lógica que teclado/mouse.</p>
             </div>
             <div id="panelGraphics" class="settings-tab-panel" role="tabpanel" aria-labelledby="tabGraphics" aria-hidden="true" data-tab="graphics" hidden>
-              <div class="quality-options" role="radiogroup" aria-label="Calidad visual">
-                <label><input type="radio" name="graphicsQuality" value="auto" /><span><b>Auto</b><small>Equilibra detalle cuando hay muchas élites.</small></span></label>
-                <label><input type="radio" name="graphicsQuality" value="high" /><span><b>Alta</b><small>Calidad visual completa actual.</small></span></label>
-                <label><input type="radio" name="graphicsQuality" value="performance" /><span><b>Rendimiento</b><small>Simplifica VFX secundarios antes.</small></span></label>
+              <div class="graphics-options">
+              <div class="graphics-heading"><span>PANTALLA Y DETALLE</span><button id="settingsGraphicsReset" type="button">Restaurar</button></div>
+              <div class="graphics-row">
+                <button type="button" class="graphics-help" data-help="Resolución interna del juego. 1080p y 1440p (QHD/2K) aumentan la nitidez y el trabajo de la GPU. Se conserva la proporción de la pantalla; no cambia el tamaño de los menús. En móvil se ajusta automáticamente." aria-describedby="settingsGraphicsHelp">Resolución <span aria-hidden="true">ⓘ</span></button>
+                <select id="settingsResolution" aria-label="Resolución interna"><option value="native">Automática · ventana</option><option value="720p">1280 × 720 · HD</option><option value="1080p">1920 × 1080 · Full HD</option><option value="1440p">2560 × 1440 · QHD / 2K</option></select>
               </div>
-              <label class="settings-toggle"><input id="settingsParticles" type="checkbox" /><span><b>Partículas mejoradas</b><small>Partículas decorativas de enemigos.</small></span></label>
-              <label class="settings-toggle"><input id="settingsHeavyVfx" type="checkbox" /><span><b>VFX intensos de élites</b><small>Halos y geometría secundaria de la familia Hidra.</small></span></label>
-              <p class="settings-note">Los ajustes gráficos no cambian enemigos, daño, vida, spawns ni dificultad.</p>
+              <div class="graphics-row"><button type="button" class="graphics-help" data-help="Pantalla completa ocupa todo el monitor y oculta las barras del navegador. También podés salir con Escape. La resolución elegida se conserva." aria-describedby="settingsGraphicsHelp">Pantalla <span aria-hidden="true">ⓘ</span></button><button id="settingsFullscreen" class="graphics-action" type="button">Pantalla completa</button></div>
+              <div class="graphics-row graphics-quality-row"><button type="button" class="graphics-help" data-help="Completa mantiene todo el detalle actual. Adaptativa ajusta efectos secundarios cuando aumenta la carga. Ligera simplifica esos efectos de forma fija. Ninguna cambia enemigos, daño ni dificultad." aria-describedby="settingsGraphicsHelp">Calidad <span aria-hidden="true">ⓘ</span></button><div class="quality-options" role="radiogroup" aria-label="Calidad visual"><label><input type="radio" name="graphicsQuality" value="high" /><span><b>Completa</b></span></label><label><input type="radio" name="graphicsQuality" value="auto" /><span><b>Adaptativa</b></span></label><label><input type="radio" name="graphicsQuality" value="performance" /><span><b>Ligera</b></span></label></div></div>
+              <div class="graphics-row"><button type="button" class="graphics-help" data-help="Activa las partículas decorativas de los enemigos. Apagarlas reduce trabajo de dibujo; los ataques y sus avisos siguen visibles." aria-describedby="settingsGraphicsHelp">Partículas <span aria-hidden="true">ⓘ</span></button><input id="settingsParticles" type="checkbox" class="graphics-switch" aria-label="Partículas decorativas" /></div>
+              <div class="graphics-row"><button type="button" class="graphics-help" data-help="Activa halos y geometría secundaria de élites de la familia Hidra. Apagarlos simplifica su presentación sin cambiar su comportamiento." aria-describedby="settingsGraphicsHelp">Efectos de élites <span aria-hidden="true">ⓘ</span></button><input id="settingsHeavyVfx" type="checkbox" class="graphics-switch" aria-label="Efectos de élites" /></div>
+              <div class="graphics-row"><button type="button" class="graphics-help" data-help="Reduce los destellos de pantalla y las sacudidas de cámara para mayor comodidad visual. Los avisos de ataques siguen visibles. Restaurar gráficos conserva esta preferencia de accesibilidad." aria-describedby="settingsGraphicsHelp">Reducir destellos <span aria-hidden="true">ⓘ</span></button><input id="settingsReducedEffects" type="checkbox" class="graphics-switch" aria-label="Reducir destellos y sacudidas" /></div>
+              <div class="graphics-row"><button type="button" class="graphics-help" data-help="VSync automático: el navegador y Electron coordinan el dibujo con el refresco de tu monitor. El juego no puede desactivar esa sincronización mediante un ajuste web." aria-describedby="settingsGraphicsHelp">VSync <span aria-hidden="true">ⓘ</span></button><span class="graphics-value">Automático</span></div>
+              <div class="graphics-row"><button type="button" class="graphics-help" data-help="Muestra los cuadros por segundo en una esquina. Sirve para observar la fluidez; elegir 1440p no garantiza más FPS." aria-describedby="settingsGraphicsHelp">Mostrar FPS <span aria-hidden="true">ⓘ</span></button><input id="settingsShowFPS" type="checkbox" class="graphics-switch" aria-label="Mostrar FPS" /></div>
+              </div>
+              <p id="settingsResolutionStatus" class="graphics-status" role="status"></p>
+              <p id="settingsGraphicsHelp" class="graphics-description" role="status">Pasá el mouse, enfocá o tocá el nombre de una opción para conocer su función.</p>
             </div>
           </div>
         </section>
@@ -383,86 +393,102 @@
       </div>
     </main>
 
-    <script src="js/core/state.js?nv=growth-1"></script>
-    <script src="js/core/content.js?nv=growth-1"></script>
-    <script src="js/data/catalog.js?nv=growth-1"></script>
-    <script src="js/core/runtime.js?nv=growth-1"></script>
-    <script src="js/core/storageMigration.js?nv=growth-1"></script>
-    <script src="js/data/gameData.js?nv=audio-20261002b"></script>
-    <script src="js/data/bossDesignLab.js?nv=boss-lab-20261007"></script>
-    <script src="js/data/balance.js?nv=audio-20261002b"></script>
-    <script src="js/core/settings.js?nv=audio-20261002b"></script>
-    <script src="js/core/utils.js?nv=audio-20261002b"></script>
-    <script src="js/core/viewport.js?nv=mobile-20261004"></script>
-    <script src="js/core/inputIntent.js?nv=audio-20261002b"></script>
-    <script src="js/data/consumables.js?nv=audio-20261002b"></script>
-    <script src="js/core/extensions.js?nv=growth-1"></script>
-    <script src="js/core/services.js?nv=growth-1"></script>
-    <script src="js/audio/voices.js?nv=groove-20261003"></script>
-    <script src="js/audio/synth.js?nv=musicfix-20261004"></script>
-    <script src="js/audio/soundtrack.js?nv=musicfix-20261004"></script>
-    <script src="js/audio/weaponSfx.js?nv=audio-20261002b"></script>
-    <script src="js/audio/uiAudio.js?nv=audio-20261002b"></script>
-    <script src="js/ui/dom.js?nv=audio-20261002b"></script>
-    <script src="js/ui/settingsPanel.js?nv=audio-20261002b"></script>
-    <script src="js/ui/characters.js?nv=audio-20261002b"></script>
-    <script src="js/render/canvas.js?nv=audio-20261002b"></script>
-    <script src="js/render/sectors.js?nv=audio-20261002b"></script>
-    <script src="js/render/projectiles.js?nv=audio-20261002b"></script>
-    <script src="js/render/specialEffects.js?nv=audio-20261002b"></script>
-    <script src="js/render/consumableEffects.js?v=shield-2&amp;nv=audio-20261002b"></script>
-    <script src="js/render/spectralEnemies2D.js?nv=boss-lab-20261007"></script>
-    <script src="js/render/enemies.js?nv=audio-20261002b"></script>
-    <script src="js/render/metaReadability.js?nv=audio-20261002b"></script>
-    <script src="js/render/visualBudget.js?nv=audio-20261002b"></script>
-    <script src="js/render/hazards.js?nv=audio-20261002b"></script>
-    <script src="js/render/espectroLite.js?nv=audio-20261002b"></script>
-    <script src="js/render/bosses.js?nv=boss-lab-20261007"></script>
-    <script src="js/render/bossDesignLab.js?nv=boss-mobile-20261007h"></script>
-    <script src="js/data/pilotAnimationBaseline.js?nv=audio-20261002b"></script>
-    <script src="js/render/pilotGeometry.js?nv=audio-20261002b"></script>
-    <script src="js/render/pilotAppearance.js?nv=audio-20261002b"></script>
-    <script src="js/render/player.js?nv=audio-20261002b"></script>
-    <script src="js/render/weaponIcons.js?nv=icons-redraw-20261007"></script>
-    <script src="js/render/consumableIcons.js?nv=icons-redraw-20261007"></script>
-    <script src="js/render/metaSkillIcons.js?nv=icons-redraw-20261007"></script>
-    <script src="js/render/hud.js?nv=audio-20261002b"></script>
-    <script src="js/engine/rhythm.js?nv=audio-20261002b"></script>
-    <script src="js/engine/fx.js?nv=audio-20261002b"></script>
-    <script src="js/engine/drones.js?nv=audio-20261002b"></script>
-    <script src="js/engine/meteors.js?nv=audio-20261002b"></script>
-    <script src="js/engine/pickups.js?nv=audio-20261002b"></script>
-    <script src="js/engine/movement.js?nv=audio-20261002b"></script>
-    <script src="js/engine/consumables.js?nv=audio-20261002b"></script>
-    <script src="js/engine/metaDiagnostics.js?nv=audio-20261002b"></script>
-    <script src="js/engine/hostileBudget.js?nv=audio-20261002b"></script>
-    <script src="js/engine/enemySpawnRegistry.js?nv=audio-20261002b"></script>
-    <script src="js/engine/performanceMonitor.js?nv=audio-20261002b"></script>
-      <script src="js/engine/cameraSafety.js?nv=audio-20261002b"></script>
-      <script src="js/engine/hazards.js?nv=audio-20261002b"></script>
-      <script src="js/engine/sectorEncounters.js?nv=audio-20261002b"></script>
-      <script src="js/engine/enemies.js?nv=audio-20261002b"></script>
-      <script src="js/engine/enemyArrival.js?nv=spawn-icon-20261003"></script>
-      <script src="js/engine/wavePressure.js?nv=audio-20261002b"></script>
-    <script src="js/engine/combat.js?nv=audio-20261002b"></script>
-    <script src="js/engine/playerStun.js?nv=audio-20261002b"></script>
-    <script src="js/engine/playtestTelemetry.js?nv=audio-20261002b"></script>
-    <script src="js/engine/expedition.js?nv=audio-20261002b"></script>
-    <script src="js/engine/boss.js?nv=audio-20261002b"></script>
-    <script src="js/engine/bossEncounters.js?nv=audio-20261002b"></script>
-    <script src="js/engine/bullets.js?nv=audio-20261002b"></script>
-    <script src="js/engine/flame.js?nv=audio-20261002b"></script>
-    <script src="js/engine/weapons.js?nv=audio-20261002b"></script>
-    <script src="js/engine/special.js?nv=audio-20261002b"></script>
-    <script src="js/game.js?nv=boss-lab-20261007"></script>
-    <script src="js/ui/onboarding.js?nv=audio-20261002b"></script>
-    <script src="js/ui/gamepadControls.js?nv=audio-20261002b"></script>
-    <script src="js/ui/alpha.js?nv=shop-footer-20261007g"></script>
-    <script src="js/ui/systemMenu.js?nv=system-20261007"></script>
-  <script src="js/ui/lobbyViewport.js?nv=lobby-comfort-20261008i"></script>
-  <script src="js/ui/lobbyAtmosphere.js?nv=lobby-comfort-20261008i"></script>
+    <script src="js/core/state.js?nv=promoted-20261012"></script>
+    <script src="js/core/content.js?nv=promoted-20261012"></script>
+    <script src="js/data/catalog.js?nv=promoted-20261012"></script>
+    <script src="js/core/runtime.js?nv=promoted-20261012"></script>
+    <script src="js/core/storageMigration.js?nv=promoted-20261012"></script>
+    <script src="js/data/gameData.js?nv=promoted-20261012"></script>
+    <script src="js/data/bossDesignLab.js?nv=promoted-20261012"></script>
+    <script src="js/data/balance.js?nv=promoted-20261012"></script>
+    <script src="js/core/settings.js?nv=promoted-20261012"></script>
+    <script src="js/core/utils.js?nv=promoted-20261012"></script>
+    <script src="js/core/viewport.js?nv=promoted-20261012"></script>
+    <script src="js/core/inputIntent.js?nv=promoted-20261012"></script>
+    <script src="js/data/consumables.js?nv=promoted-20261012"></script>
+    <script src="js/core/extensions.js?nv=promoted-20261012"></script>
+    <script src="js/core/services.js?nv=promoted-20261012"></script>
+    <script src="js/audio/voices.js?nv=promoted-20261012"></script>
+    <script src="js/audio/synth.js?nv=promoted-20261012"></script>
+    <script src="js/audio/soundtrack.js?nv=promoted-20261012"></script>
+    <script src="js/audio/weaponSfx.js?nv=promoted-20261012"></script>
+    <script src="js/audio/uiAudio.js?nv=promoted-20261012"></script>
+    <script src="js/ui/dom.js?nv=promoted-20261012"></script>
+    <script src="js/ui/settingsPanel.js?nv=promoted-20261012"></script>
+    <script src="js/ui/fpsCounter.js?nv=promoted-20261012"></script>
+    <script src="js/ui/characters.js?nv=promoted-20261012"></script>
+    <script src="js/render/canvas.js?nv=promoted-20261012"></script>
+    <script src="js/render/sectors.js?nv=promoted-20261012"></script>
+    <script src="js/render/blackHoles.js?nv=promoted-20261012"></script>
+    <script src="js/render/dimensionalThreats.js?nv=promoted-20261012"></script>
+    <script src="js/render/projectiles.js?nv=promoted-20261012"></script>
+    <script src="js/render/specialEffects.js?nv=promoted-20261012"></script>
+    <script src="js/render/consumableEffects.js?v=shield-2&amp;nv=promoted-20261012"></script>
+    <script src="js/render/spectralEnemies2D.js?nv=promoted-20261012"></script>
+    <script src="js/render/enemies.js?nv=promoted-20261012"></script>
+    <script src="js/render/metaReadability.js?nv=promoted-20261012"></script>
+    <script src="js/render/visualBudget.js?nv=promoted-20261012"></script>
+    <script src="js/render/hazards.js?nv=promoted-20261012"></script>
+    <script src="js/render/espectroLite.js?nv=promoted-20261012"></script>
+    <script src="js/render/bosses.js?nv=promoted-20261012"></script>
+    <script src="js/render/bossDesignLab.js?nv=promoted-20261012"></script>
+    <script src="js/data/pilotAnimationBaseline.js?nv=promoted-20261012"></script>
+    <script src="js/render/pilotGeometry.js?nv=promoted-20261012"></script>
+    <script src="js/render/pilotAppearance.js?nv=promoted-20261012"></script>
+    <script src="js/render/player.js?nv=promoted-20261012"></script>
+    <script src="js/render/weaponIcons.js?nv=promoted-20261012"></script>
+    <script src="js/render/consumableIcons.js?nv=promoted-20261012"></script>
+    <script src="js/render/metaSkillIcons.js?nv=promoted-20261012"></script>
+    <script src="js/render/hud.js?nv=promoted-20261012"></script>
+    <script src="js/engine/rhythm.js?nv=promoted-20261012"></script>
+    <script src="js/engine/audioPerimeterMotion.js?nv=promoted-20261012"></script>
+    <script src="js/render/audioVisualizerStyles.js?nv=promoted-20261012"></script>
+    <script src="js/render/audioPerimeter.js?nv=promoted-20261012"></script>
+    <script src="js/engine/fx.js?nv=promoted-20261012"></script>
+    <script src="js/engine/drones.js?nv=promoted-20261012"></script>
+    <script src="js/engine/meteors.js?nv=promoted-20261012"></script>
+    <script src="js/engine/pickups.js?nv=promoted-20261012"></script>
+    <script src="js/engine/movement.js?nv=promoted-20261012"></script>
+    <script src="js/engine/consumables.js?nv=promoted-20261012"></script>
+    <script src="js/engine/metaDiagnostics.js?nv=promoted-20261012"></script>
+    <script src="js/engine/hostileBudget.js?nv=promoted-20261012"></script>
+    <script src="js/engine/enemySpawnRegistry.js?nv=promoted-20261012"></script>
+    <script src="js/engine/performanceMonitor.js?nv=promoted-20261012"></script>
+      <script src="js/engine/cameraSafety.js?nv=promoted-20261012"></script>
+      <script src="js/engine/hazards.js?nv=promoted-20261012"></script>
+      <script src="js/engine/sectorEncounters.js?nv=promoted-20261012"></script>
+      <script src="js/engine/dimensionalThreats.js?nv=promoted-20261012"></script>
+      <script src="js/engine/enemies.js?nv=promoted-20261012"></script>
+      <script src="js/engine/enemyArrival.js?nv=promoted-20261012"></script>
+      <script src="js/engine/wavePressure.js?nv=promoted-20261012"></script>
+      <script src="js/engine/dimensions.js?nv=promoted-20261012"></script>
+       <script src="js/experiments/dimensionRules.js?nv=promoted-20261012"></script>
+      <script src="js/engine/coreEvasion.js?nv=promoted-20261012"></script>
+      <script src="js/engine/inertiaChamber.js?nv=promoted-20261012"></script>
+      <script src="js/engine/dimensionEvents.js?nv=promoted-20261012"></script>
+      <script src="js/render/inertiaRig.js?nv=promoted-20261012"></script>
+      <script src="js/render/inertiaChamber.js?nv=promoted-20261012"></script>
+      <script src="js/experiments/pursuit.js?nv=promoted-20261012"></script>
+    <script src="js/engine/combat.js?nv=promoted-20261012"></script>
+    <script src="js/engine/playerStun.js?nv=promoted-20261012"></script>
+    <script src="js/engine/playtestTelemetry.js?nv=promoted-20261012"></script>
+    <script src="js/engine/expedition.js?nv=promoted-20261012"></script>
+    <script src="js/engine/boss.js?nv=promoted-20261012"></script>
+    <script src="js/engine/bossEncounters.js?nv=promoted-20261012"></script>
+    <script src="js/engine/bullets.js?nv=promoted-20261012"></script>
+    <script src="js/engine/flame.js?nv=promoted-20261012"></script>
+    <script src="js/engine/weapons.js?nv=promoted-20261012"></script>
+    <script src="js/engine/special.js?nv=promoted-20261012"></script>
+    <script src="js/game.js?nv=promoted-20261012"></script>
+    <script src="js/ui/onboarding.js?nv=promoted-20261012"></script>
+    <script src="js/ui/gamepadControls.js?nv=promoted-20261012"></script>
+    <script src="js/ui/alpha.js?nv=promoted-20261012"></script>
+    <script src="js/ui/lobbyFit.js?nv=promoted-20261012"></script>
+    <script src="js/ui/systemMenu.js?nv=promoted-20261012"></script>
+  <script src="js/ui/lobbyViewport.js?nv=promoted-20261012"></script>
+  <script src="js/ui/lobbyAtmosphere.js?nv=promoted-20261012"></script>
     <!-- Último: necesita NV.input (expuesto por game.js) y NV.viewport. -->
-    <script src="js/ui/mobileControls.js?nv=mobile-ergonomics-20261008"></script>
-  <script src="js/core/bootstrap.js?nv=growth-1"></script>
+    <script src="js/ui/mobileControls.js?nv=promoted-20261012"></script>
+    <script src="js/core/bootstrap.js?nv=promoted-20261012"></script>
   </body>
 </html>

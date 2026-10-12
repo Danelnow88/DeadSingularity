@@ -2,7 +2,9 @@ const assert = require('assert');
 const fs = require('fs');
 
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-assert.equal(pkg.productName, 'DeadSingularity');
+assert.equal(pkg.productName, 'DEADSINGULARITY');
+assert.equal(pkg.build.productName, 'DEADSINGULARITY');
+assert.equal(pkg.build.win.executableName, 'DeadSingularity', 'la marca visible no cambia el ejecutable');
 assert.equal(pkg.license, 'UNLICENSED');
 assert(pkg.scripts['measure:performance'].includes('--json'));
 

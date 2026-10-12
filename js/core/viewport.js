@@ -2,7 +2,7 @@
 // Centraliza todo lo concerniente a la presentación y entrada posicional:
 //  - métricas semánticas del mundo (referencia, vista runtime y arena gameplay);
 //  - escala uniforme de display y offsets de letterbox/pillarbox;
-//  - devicePixelRatio efectivo (cap en móvil; SIEMPRE 1 en escritorio);
+//  - resolución interna (automática en móvil; seleccionable en escritorio);
 //  - fullscreen + orientation lock (landscape) con fallback silencioso;
 //  - safe areas (leídas de custom properties definidas en CSS);
 //  - conversión reusable screen↔game y game↔screen;
@@ -55,7 +55,7 @@
   const LOGICAL_W = REFERENCE_W;
   const LOGICAL_H = REFERENCE_H;
   // Cap de DPR en móvil: evita resolver a resoluciones físicas absurdas.
-  // En escritorio el DPR efectivo es SIEMPRE 1 → comportamiento original intacto.
+  // En escritorio el valor automático conserva DPR 1; presets escalan sólo render.
   const MOBILE_DPR_CAP = 2;
 
   let listeners = [];
@@ -239,7 +239,11 @@
         const pixelBudgetDpr=Math.sqrt(2000000/Math.max(1,cssW*cssH));
         viewport.dpr = Math.min((w && w.devicePixelRatio) || 1, MOBILE_DPR_CAP,Math.max(1,pixelBudgetDpr));
       } else {
-        viewport.dpr = 1;// escritorio idéntico al comportamiento original
+        // Resolución interna: la caja CSS y las coordenadas del mundo no cambian.
+        const resolution = NV.settings && NV.settings.graphics && NV.settings.graphics.resolution;
+        const sizes = { '720p': [1280, 720], '1080p': [1920, 1080], '1440p': [2560, 1440] };
+        const size = sizes[resolution];
+        viewport.dpr = size ? Math.min(size[0] / cssW, size[1] / cssH) : 1;
       }
       viewport.orientation = orientation;
       if (cameraFocus) viewport.followPlayer(cameraFocus.x, cameraFocus.y);
@@ -254,7 +258,7 @@
 
     // DPR que debe usar el backing store del canvas (game.js → resizeCanvas()).
     getEffectiveDpr() {
-      return viewport.isMobile ? viewport.dpr : 1;
+      return viewport.dpr;
     },
 
     // --- Conversión SCREEN -> VIEW lógico del juego (reusable, exacta) ---
@@ -389,6 +393,12 @@
   NV.viewport = viewport;
   NV.screenToGame = (x, y) => viewport.screenToGame(x, y);
   NV.gameToScreen = (x, y) => viewport.gameToScreen(x, y);
+  // Se notifica sólo en cambios de resolución, nunca por frame ni por volumen.
+  let lastResolution = NV.settings && NV.settings.graphics && NV.settings.graphics.resolution;
+  if (typeof NV.onSettingsChange === 'function') NV.onSettingsChange((settings) => {
+    const next = settings.graphics.resolution;
+    if (next !== lastResolution) { lastResolution = next; viewport.refresh(); }
+  });
 
   // --- Reacción a todos los cambios de viewport ---
   const onViewportChange = () => viewport.refresh();

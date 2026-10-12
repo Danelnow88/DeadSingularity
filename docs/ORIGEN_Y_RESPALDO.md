@@ -1,15 +1,17 @@
 # DeadSingularity V1 — estado actual
 
+Estado de limpieza 10/10/2026: el archivo histórico grande fue enviado a la
+Papelera de Windows (restaurable); el respaldo fuente actual sigue en
+`local/archivo/actual`. Ver `docs/LIMPIEZA_PROYECTO_2026-10-10.md`.
+
 La única carpeta de trabajo es C:\Users\party\Desktop\DeadSingularity V1.
 Abrir ABRIR_V1.cmd para jugar o ABRIR_V1_WEB.cmd para navegador.
 Versión actual: 1.1.0-alpha.1. Código, herramientas y entregas están en esta carpeta.
 
-Los respaldos anteriores están en local/archivo/DeadSingularity-historial.
-Son archivos de recuperación, no otro proyecto; no necesitan abrirse para trabajar.
-Se verificaron cinco ZIP archivo por archivo y se conservaron los historiales Git.
-La consolidación cambió ubicación y nombres exteriores, sin modificar los ZIP.
-Los nombres históricos pueden permanecer dentro de esos archivos y de la referencia
-congelada: preservan la evidencia original y no aparecen en el juego actual.
+El archivo histórico de recuperación (incluidos los cinco ZIP previamente
+verificados y sus historiales) está ahora en la Papelera de Windows, no dentro
+del proyecto; puede restaurarse. El respaldo fuente vigente se conserva en
+`local/archivo/actual`.
 
 El contenido del directorio de trabajo anterior fue retirado a la Papelera después
 de preservar y verificar sus novedades y sus 777 archivos Git. Sólo queda su carpeta
