@@ -421,3 +421,6 @@ html.nv-mobile .joystick-zone.active .joystick-base { border-color:#abf8ff; back
 html.nv-mobile .joystick-zone.active .joystick-thumb { background:#9defff; }
 html.nv-mobile .touch-btn:focus-visible,
 html.nv-mobile .switch-indicator:focus-visible { outline:2px solid #fff; outline-offset:3px; }
+
+/* Full-screen permanent upgrades must not grow beyond the touch viewport. */
+html.nv-mobile :is(#permShop,#gameOver) { transform:none!important; }

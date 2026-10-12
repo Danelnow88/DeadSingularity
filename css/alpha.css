@@ -83,7 +83,7 @@ html:not(.nv-mobile) .shell > .game-box {
 .nv-tutorial-step { margin-top:4px; font:700 13px/1.35 system-ui,sans-serif; }
 .nv-tutorial-progress { margin-left:auto; color:#89a8ba; }
 .nv-tutorial-skip { pointer-events:auto; border:0; background:transparent; color:#a9bdca; font:700 9px system-ui; cursor:pointer; padding:2px 4px; }
-.nv-mobile .nv-tutorial { top:5px; width:min(360px,68%); padding:6px 9px; }
+.nv-mobile .nv-tutorial { top:calc(env(safe-area-inset-top,0px) + 56px); left:calc(env(safe-area-inset-left,0px) + 8px); transform:none; width:min(300px,calc(100% - 210px)); padding:6px 9px; }
 .nv-mobile .nv-tutorial-step { font-size:10px; }
 html[data-large-text="true"] .alpha-dialog,html[data-large-text="true"] .settings-panel { font-size:17px; }
 html[data-large-text="true"] .alpha-note,html[data-large-text="true"] .alpha-manual-grid span,html[data-large-text="true"] .settings-note { font-size:14px; }

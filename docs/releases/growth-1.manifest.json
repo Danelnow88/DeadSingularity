@@ -5,8 +5,8 @@
   "files": [
     {
       "path": "index.html",
-      "size": 41950,
-      "sha256": "6744ddb31d696e112bc441c8f515a875edb94e5e3c7392dddf854450d8e88946"
+      "size": 41965,
+      "sha256": "74c67dfaf1e7821bb1c5433c11b8d5ba12d319acecb297d9f82c696acbf04beb"
     },
     {
       "path": "AVISOS.md",
@@ -525,8 +525,8 @@
     },
     {
       "path": "css/alpha.css",
-      "size": 8114,
-      "sha256": "88f52a3205a6dc30345a83c458212e8537312a56c3b74197d9a39797ddc6644a"
+      "size": 8231,
+      "sha256": "2d25fba54b5ab1891cd4f6311926f371c3d4caa59e88f7138dbfe42e563f9329"
     },
     {
       "path": "css/graphics-settings.css",
@@ -550,13 +550,13 @@
     },
     {
       "path": "css/mobile.css",
-      "size": 29100,
-      "sha256": "b10556a0ecdaeda0dbab89517d74126c424190076d882fbf82e4e276b86facdf"
+      "size": 29249,
+      "sha256": "0d611fd527553b2651dc55a1c0ec365e0106c4abd9d8b7b9836408d49f7e657f"
     },
     {
       "path": "css/shop-remaster.css",
-      "size": 30821,
-      "sha256": "9fdc552d7cda326cb0c86a9210846bbdbec29d21a4cfd869fe4d4d97edf12e81"
+      "size": 33885,
+      "sha256": "34345d80163a171b823923b34fb4ca44c407ac785da29e7cef238e6b8a5d7011"
     },
     {
       "path": "css/styles.css",

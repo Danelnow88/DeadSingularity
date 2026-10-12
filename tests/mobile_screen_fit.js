@@ -1,0 +1,14 @@
+'use strict';
+const fs=require('node:fs'),assert=require('node:assert/strict');
+const shop=fs.readFileSync('css/shop-remaster.css','utf8'),mobile=fs.readFileSync('css/mobile.css','utf8'),alpha=fs.readFileSync('css/alpha.css','utf8');
+const narrow=shop.slice(shop.indexOf('/* Low-width phones'));
+assert(narrow.includes('@media (max-width:740px) and (orientation:landscape)'));
+assert(narrow.includes('.shop-tabs { display:flex!important'));
+assert(narrow.includes('.shop-grid { display:block!important'));
+for(const tab of ['upgrades','weapons','consumables'])assert(narrow.includes('[data-active-tab="'+tab+'"] [data-shop-tab="'+tab+'"]'));
+assert(narrow.includes('overflow-y:auto!important'));
+assert(narrow.includes('min-height:44px'),'touch footer must remain reachable');
+assert(mobile.includes(':is(#permShop,#gameOver) { transform:none!important; }'));
+assert(alpha.includes('top:calc(env(safe-area-inset-top,0px) + 56px)'),'tutorial must clear mobile life HUD');
+assert(alpha.includes('width:min(300px,calc(100% - 210px))'),'tutorial must leave room for touch loadout');
+console.log('PASS narrow-mobile shop tabs, readable offers, reachable footer and full-screen overlay bounds');

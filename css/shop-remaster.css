@@ -670,3 +670,31 @@
     order:0;
   }
 }
+
+/* Low-width phones use the existing touch tabs instead of three cramped columns. */
+@media (max-width:740px) and (orientation:landscape) {
+  html.nv-mobile #shop.shop-screen { display:flex; flex-direction:column; gap:6px; padding:8px; }
+  html.nv-mobile #shop .shop-terminal-head { flex:0 0 auto; min-height:44px!important; padding:5px 8px; gap:6px; }
+  html.nv-mobile #shop .shop-terminal-head::after { display:none; }
+  html.nv-mobile #shop .shop-title { font-size:16px; }
+  html.nv-mobile #shop .alpha-prep-trigger { font-size:10px; padding:4px 6px; min-height:36px; }
+  html.nv-mobile #shop .shop-tabs { display:flex!important; flex:0 0 auto; gap:6px; order:0; }
+  html.nv-mobile #shop .shop-tab { flex:1; min-width:0; min-height:44px; padding:4px; font-size:11px; }
+  html.nv-mobile #shop .shop-grid { display:block!important; flex:1 1 auto; width:100%; height:auto; min-height:0; overflow-y:auto!important; overflow-x:hidden!important; order:0; }
+  html.nv-mobile #shop .shop-section[data-shop-tab] { display:none!important; width:100%; height:auto!important; margin:0; padding:8px; overflow:visible!important; }
+  html.nv-mobile #shop[data-active-tab="upgrades"] [data-shop-tab="upgrades"],
+  html.nv-mobile #shop[data-active-tab="weapons"] [data-shop-tab="weapons"],
+  html.nv-mobile #shop[data-active-tab="consumables"] [data-shop-tab="consumables"] { display:flex!important; flex-direction:column; }
+  html.nv-mobile #shop .shop-section > .offers { grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr)); grid-template-rows:none; grid-auto-rows:auto; overflow:visible!important; gap:6px; }
+  html.nv-mobile #shop .shop-section > .offers > .offer { display:grid; grid-template-columns:32px minmax(0,1fr) auto; grid-template-rows:auto auto auto; min-height:74px; height:auto; max-height:none; padding:6px; gap:3px 6px; }
+  html.nv-mobile #shop .offer .offer-icon { grid-column:1; grid-row:1 / span 3; width:32px; height:32px; align-self:center; }
+  html.nv-mobile #shop .offer .offer-name { grid-column:2; grid-row:1; width:100%; font-size:12px; white-space:normal; overflow:visible; }
+  html.nv-mobile #shop .offer .offer-desc { display:block; grid-column:2; grid-row:2; height:auto; max-height:none; width:100%; white-space:normal; font-size:10px; line-height:1.25; text-align:left; }
+  html.nv-mobile #shop .offer .offer-badge { grid-column:2; grid-row:3; font-size:9px; }
+  html.nv-mobile #shop .offer .offer-price { grid-column:3; grid-row:1 / span 3; position:static; align-self:center; margin:0; font-size:11px; }
+  html.nv-mobile #shop .shop-bottom-bar { display:grid; grid-template-columns:1fr 1fr; flex:0 0 auto; width:100%; height:44px; gap:8px; }
+  html.nv-mobile #shop .shop-inspector { display:none; }
+  html.nv-mobile #shop .shop-bottom-bar > .alpha-save-quit { grid-column:1; }
+  html.nv-mobile #shop .shop-bottom-bar > .shop-deploy { grid-column:2; }
+  html.nv-mobile #shop .shop-bottom-bar > :is(.alpha-save-quit,.shop-deploy) { position:static; min-height:44px; width:100%; max-width:none; padding:6px; font-size:11px; }
+}
