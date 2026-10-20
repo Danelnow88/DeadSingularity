@@ -107,6 +107,11 @@
   // Actualiza posiciones y vida; compactación IN-PLACE (cero allocations por
   // frame) y las partículas muertas vuelven al pool. Devuelve el mismo array.
   NV.updateParticles = function (dt, particles) {
+    if (!(dt > 0)) return particles;
+    // Decorative motion uses seconds, retaining the approved 60 Hz reference.
+    // This is not projectile physics or gameplay damping.
+    const drag = Math.pow(0.96, dt * 60);
+    const shrink = Math.pow(0.992, dt * 60);
     let w = 0;
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
@@ -119,9 +124,9 @@
       }
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      p.vx *= 0.96; p.vy *= 0.96; // fricción: acota el radio efectivo de la onda
+      p.vx *= drag; p.vy *= drag;
       p.life -= dt;
-      if (p.spiral) p.size *= 0.992;
+      if (p.spiral) p.size *= shrink;
       if (p.life > 0) { particles[w++] = p; }
       else if (PARTICLE_POOL.length < PARTICLE_POOL_MAX) { PARTICLE_POOL.push(p); }
     }

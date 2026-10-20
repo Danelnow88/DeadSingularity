@@ -102,17 +102,17 @@ const game = fs.readFileSync('js/game.js', 'utf8');
 const enemiesSource = fs.readFileSync('js/engine/enemies.js', 'utf8');
 const renderSource = fs.readFileSync('js/render/enemies.js', 'utf8');
 
-t('1 Hook unlocks at wave 15', function () {
-  if (NV.BALANCE.HOOK_UNLOCK_WAVE !== 15) throw new Error('unlock=' + NV.BALANCE.HOOK_UNLOCK_WAVE);
+t('1 Hook is available from first appearance', function () {
+  if (NV.BALANCE.HOOK_UNLOCK_WAVE !== 1) throw new Error('unlock=' + NV.BALANCE.HOOK_UNLOCK_WAVE);
   // Presencia del archer (composición): inactiva antes del desbloqueo, activa después.
   if (NV.hookSourcePresenceMult(14) !== 1) throw new Error('presence active before unlock');
   if (!(NV.hookSourcePresenceMult(15) > 1)) throw new Error('presence inactive at unlock');
   if (NV.hookSourcePresenceMult(30) !== NV.BALANCE.HOOK_SOURCE_PRESENCE_MULT) throw new Error('presence cap changed');
 });
 
-t('2 wave 14 cannot reserve Hook', function () {
-  const r = reserve(NV, 'specter_archer', 14);
-  if (r.hookSystem.phase !== 'idle' || r.hookSystem.srcEnemy !== null || r.source.hookOwner) throw new Error('reserved at wave 14');
+t('2 wave 3 can reserve Hook', function () {
+  const r = reserve(NV, 'specter_archer', 3);
+  if (r.hookSystem.phase !== 'windup' || r.hookSystem.srcEnemy !== r.source || !r.source.hookOwner) throw new Error('not reserved at first appearance');
 });
 
 t('3 wave 15 can reserve Hook', function () {
@@ -157,7 +157,7 @@ t('8 aim snapshot occurs at END of windup', function () {
   NV.updateHookSystem(0.25, hs, [source], target);
   if (hs.projectile) throw new Error('snapshot before windup end');
   target.x = 100; target.y = 300;
-  NV.updateHookSystem(0.301, hs, [source], target);
+  NV.updateHookSystem(NV.BALANCE.HOOK_WINDUP_TIME - 0.25 + 0.001, hs, [source], target);
   if (!hs.projectile || Math.abs(hs.projectile.vx) > 1e-6 || hs.projectile.vy < 559.99) throw new Error('did not snapshot final target');
 });
 
@@ -173,11 +173,11 @@ t('9 projectile does not home', function () {
   if (hs.projectile.vx !== vx || hs.projectile.vy !== vy) throw new Error('projectile homed');
 });
 
-t('10 projectile max range = 430', function () {
-  if (NV.BALANCE.HOOK_PROJECTILE_MAX_RANGE !== 430) throw new Error('range=' + NV.BALANCE.HOOK_PROJECTILE_MAX_RANGE);
+t('10 projectile max range = 520', function () {
+  if (NV.BALANCE.HOOK_PROJECTILE_MAX_RANGE !== 520) throw new Error('range=' + NV.BALANCE.HOOK_PROJECTILE_MAX_RANGE);
   const source = enemy('specter_archer', 0, 0), target = player(1000, 0);
   const hs = activeHook(NV, 'projectile', source);
-  hs.projectile = { x: 0, y: 0, vx: 560, vy: 0, dist: 429 };
+  hs.projectile = { x: 0, y: 0, vx: 560, vy: 0, dist: 519 };
   NV.updateHookSystem(0.01, hs, [source], target);
   if (hs.phase !== 'idle') throw new Error('projectile exceeded max range');
 });
@@ -190,12 +190,12 @@ t('11 only one global Hook sequence at once', function () {
   if (owners.length !== 1 || hs.srcEnemy !== owners[0]) throw new Error('owners=' + owners.length);
 });
 
-t('12 post-release global lockout = 0.85', function () {
-  if (NV.BALANCE.HOOK_GLOBAL_LOCKOUT_POST_RELEASE !== 0.85) throw new Error('lockout constant');
+t('12 post-release global lockout = 1.0', function () {
+  if (NV.BALANCE.HOOK_GLOBAL_LOCKOUT_POST_RELEASE !== 1.0) throw new Error('lockout constant');
   const source = enemy('specter_archer'), hs = activeHook(NV, 'tether', source);
   hs.tether = { srcX: source.x, srcY: source.y };
   NV.breakHookTether(hs);
-  near(hs.lockoutTimer, 0.85, 'lockout');
+  near(hs.lockoutTimer, 1.0, 'lockout');
   // Cadencia (verificación de runtime): el cooldown del source nunca por debajo del
   // lockout (suelo real del sistema) y el ciclo total dentro de la ventana 2-5s,
   // con el orden easy > normal > hard intacto.
@@ -248,12 +248,12 @@ t('16 pull is dt-correct at 30/60/120 FPS equivalents', function () {
     for (let i = 0; i < frames; i++) NV.applyHookPull(1 / fps, hs, target, false);
     return target.x;
   }
-  near(distanceAt(30), 255, '30fps');
-  near(distanceAt(60), 255, '60fps');
-  near(distanceAt(120), 255, '120fps');
+  near(distanceAt(30), 520, '30fps');
+  near(distanceAt(60), 520, '60fps');
+  near(distanceAt(120), 520, '120fps');
 });
 
-t('17 dash breaks tether immediately', function () {
+t('17 two separate successful dashes break tether', function () {
   const source = enemy('specter_archer', 300, 100), target = player(100, 100);
   NV.configurePlayerMovement(target, 200, 0); NV.configurePlayerDash(target);
   const hs = activeHook(NV, 'tether', source); hs.tether = { srcX: source.x, srcY: source.y };
@@ -261,7 +261,11 @@ t('17 dash breaks tether immediately', function () {
   NV.updatePlayerDash(target, true, 1, 0, 0, 0, false, 0);
   const x = target.x;
   if (NV.applyHookPull(1 / 60, hs, target, wasDashing)) throw new Error('pull applied on dash break');
-  if (hs.phase !== 'idle' || hs.srcEnemy !== null || target.x !== x) throw new Error('tether not broken immediately');
+  if (hs.phase !== 'tether' || hs.dashEscapeCount !== 1 || target.x !== x) throw new Error('first dash should loosen one barb only');
+  NV.updatePlayerDash(target,false,1,0,0,0,false,.15);
+  NV.updatePlayerDash(target,true,1,0,0,0,false,0);
+  NV.applyHookPull(1/60,hs,target,false);
+  if(hs.phase!=='idle'||hs.srcEnemy!==null||target.dashStamina!==0)throw Error('second separate dash did not break tether');
 });
 
 t('18 dash invulnerability behavior remains unchanged', function () {
@@ -272,21 +276,21 @@ t('18 dash invulnerability behavior remains unchanged', function () {
   if (fs.readFileSync('js/engine/movement.js', 'utf8').includes('player.invuln =')) throw new Error('dash grants invulnerability');
 });
 
-t('19 tether duration max = 0.50', function () {
-  if (NV.BALANCE.HOOK_PULL_DURATION !== 0.50) throw new Error('duration=' + NV.BALANCE.HOOK_PULL_DURATION);
+t('19 tether duration max = 2 seconds', function () {
+  if (NV.BALANCE.HOOK_PULL_DURATION !== 2.0) throw new Error('duration=' + NV.BALANCE.HOOK_PULL_DURATION);
   const source = enemy('specter_archer', 100, 100), target = player(200, 100);
-  const hs = activeHook(NV, 'tether', source); hs.tether = { srcX: 100, srcY: 100 }; hs.tetherTimer = 0.50;
-  NV.updateHookSystem(0.499, hs, [source], target);
+  const hs = activeHook(NV, 'tether', source); hs.tether = { srcX: 100, srcY: 100 }; hs.tetherTimer = 2.0;
+  NV.updateHookSystem(1.999, hs, [source], target);
   if (hs.phase !== 'tether') throw new Error('ended early');
   NV.updateHookSystem(0.002, hs, [source], target);
   if (hs.phase !== 'idle') throw new Error('exceeded duration');
 });
 
-t('20 tether breaks beyond 470 distance', function () {
-  const source = enemy('specter_archer', 0, 0), target = player(471, 0);
+t('20 safety release beyond 1200 distance', function () {
+  const source = enemy('specter_archer', 0, 0), target = player(1201, 0);
   const hs = activeHook(NV, 'tether', source); hs.tether = { srcX: 0, srcY: 0 }; hs.tetherTimer = 0.3;
   NV.updateHookSystem(0, hs, [source], target);
-  if (NV.BALANCE.HOOK_TETHER_MAX_RANGE !== 470 || hs.phase !== 'idle') throw new Error('distance break failed');
+  if (NV.BALANCE.HOOK_TETHER_MAX_RANGE !== 1200 || hs.phase !== 'idle') throw new Error('distance break failed');
 });
 
 t('21 source death cleans Hook state', function () {

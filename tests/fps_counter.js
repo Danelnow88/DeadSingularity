@@ -7,8 +7,15 @@ const output=elements[0];assert(output.hidden);assert.equal(NV.settings.graphics
 NV.setGraphicsOption('showFPS',true);assert(!output.hidden);assert.equal(JSON.parse(store.deadSingularitySettings).graphics.showFPS,true);
 for(let i=0;i<=84;i++)NV.updateFpsCounter(i*1000/165);
 assert.equal(output.textContent,'165 FPS');
+assert.equal(NV.getFpsCounterSnapshot().metric,'raf-callbacks');
+assert.equal(NV.getFpsCounterSnapshot().presentedFPS,null,'rAF was advertised as optical presentation');
+assert(NV.getFpsCounterSnapshot().worstMs<6.2);
+NV.setGraphicsOption('showFPS',false);NV.setGraphicsOption('showFPS',true);
+let stamp=0;NV.updateFpsCounter(stamp);
+for(let i=0;i<100;i++){stamp+=(i%3===0?2:1)*1000/165;NV.updateFpsCounter(stamp);}
+assert(Math.abs(parseInt(output.textContent,10)-124)<=1,'missed refresh intervals hidden by the median');
 NV.setGraphicsOption('showFPS',false);const text=output.textContent;NV.updateFpsCounter(99999);assert.equal(output.textContent,text);assert(output.hidden);
-NV.setGraphicsOption('showFPS',true);NV.updateFpsCounter(0);NV.updateFpsCounter(1000);assert.equal(output.textContent,'1 FPS','clamped gameplay dt used instead of real presentation');
+NV.setGraphicsOption('showFPS',true);NV.updateFpsCounter(0);NV.updateFpsCounter(1000);assert.equal(output.textContent,'1 FPS','clamped gameplay dt used instead of actual rAF timestamps');
 events.visibilitychange();assert.equal(output.textContent,'-- FPS');
 NV.resetSettings();assert(output.hidden);assert.equal(JSON.parse(store.deadSingularitySettings).graphics.showFPS,false);
 const saved=store.deadSingularitySettings;store.deadSingularitySettings=JSON.stringify({graphics:{showFPS:true}});

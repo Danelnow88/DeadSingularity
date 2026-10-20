@@ -6,6 +6,66 @@
   'use strict';
   const NV = window.NV;
 
+  // Contact-only runner: 2/3 feints, stopped anticipation, medium committed dash.
+  const RUNNER_SWIM = Object.freeze({ near:120, far:220, inTime:.22, outTime:.25, windup:.26, recovery:.48, dashMult:1.85, dashCap:320 });
+  function runnerSwimState(e,state,timer) {
+    if(NV.enemyState){e.intent.state=state;e.intent.stateTimer=timer;}
+    else{e.flankState=state;e.stateTimer=timer;}
+  }
+  function runnerSwimWindup(e,player) {
+    e.committedTargetX=player.x;e.committedTargetY=player.y;
+    e.commitDirX=player.x-e.x;e.commitDirY=player.y-e.y;
+    runnerSwimState(e,'windup',RUNNER_SWIM.windup);
+  }
+  function updateRunnerSwim(e,player,dt,spd,kbx,kby,dashCap) {
+    if(e.flankSide!==-1&&e.flankSide!==1)e.flankSide=Math.random()<.5?-1:1;
+    if(e.runnerFeintGoal!==2&&e.runnerFeintGoal!==3){e.runnerFeintGoal=Math.random()<.5?2:3;e.runnerFeints=0;}
+    if(NV.enemyState){
+      if(!e.intent){e.intent=NV.enemyState.createIntent(e);e.intent.preferredRange=170;}
+      NV.enemyState.updateIntent(e,dt);
+    }else{if(!e.flankState)e.flankState='positioning';e.stateTimer=Math.max(0,(e.stateTimer||0)-dt);}
+    const state=NV.enemyState?e.intent.state:e.flankState,timer=NV.enemyState?e.intent.stateTimer:e.stateTimer;
+    const dx=player.x-e.x,dy=player.y-e.y,dist=Math.hypot(dx,dy),inv=1/Math.max(dist,1);
+    let vx=0,vy=0;
+    if(state==='idle'||state==='positioning'){
+      if(dist>RUNNER_SWIM.far||dist<RUNNER_SWIM.near){
+        const radial=dist>RUNNER_SWIM.far?1:-1;
+        vx=(dx*inv*radial-dy*inv*e.flankSide*.20)*spd*.85;
+        vy=(dy*inv*radial+dx*inv*e.flankSide*.20)*spd*.85;
+      }else if(timer<=0){
+        if(e.runnerFeints>=e.runnerFeintGoal)runnerSwimWindup(e,player);
+        else runnerSwimState(e,'feint_in',RUNNER_SWIM.inTime);
+      }
+    }else if(state==='feint_in'){
+      vx=dx*inv*spd*.70;vy=dy*inv*spd*.70;
+      if(timer<=0)runnerSwimState(e,'feint_out',RUNNER_SWIM.outTime);
+    }else if(state==='feint_out'){
+      vx=-dx*inv*spd*.65;vy=-dy*inv*spd*.65;
+      if(timer<=0){
+        e.runnerFeints++;
+        if(e.runnerFeints>=e.runnerFeintGoal&&dist>=75&&dist<=RUNNER_SWIM.far+10){runnerSwimWindup(e,player);vx=vy=0;}
+        else runnerSwimState(e,'positioning',0);
+      }
+    }else if(state==='windup'){
+      // Destination frozen at anticipation; the player can dodge, never homing.
+      if(timer<=0){
+        e.runnerDashSpeed=Math.min(spd*RUNNER_SWIM.dashMult,dashCap);
+        e.runnerDashDuration=Math.min(.80,Math.max(.45,Math.hypot(e.commitDirX,e.commitDirY)/Math.max(e.runnerDashSpeed,1)));
+        runnerSwimState(e,'attack',e.runnerDashDuration);
+      }
+    }else if(state==='attack'||state==='COMMIT'){
+      const len=Math.max(Math.hypot(e.commitDirX||0,e.commitDirY||0),1);
+      const speed=Math.min(e.runnerDashSpeed||spd*RUNNER_SWIM.dashMult,spd*RUNNER_SWIM.dashMult,dashCap);
+      vx=(e.commitDirX||0)/len*speed;vy=(e.commitDirY||0)/len*speed;
+      if(timer<=0){runnerSwimState(e,'recovery',RUNNER_SWIM.recovery);vx=vy=0;}
+    }else if(state==='recovery'){
+      vx=-dx*inv*spd*.45;vy=-dy*inv*spd*.45;
+      if(timer<=0){e.runnerFeints=0;e.runnerFeintGoal=Math.random()<.5?2:3;runnerSwimState(e,'positioning',0);}
+    }else runnerSwimState(e,'positioning',0);
+    e.x+=(vx+kbx)*dt;e.y+=(vy+kby)*dt;
+    if(NV.enemyState)NV.enemyState.computeSteering(e);
+  }
+
   function getDiffMult(kind) { return (typeof NV.difficultySafeMult === "function") ? NV.difficultySafeMult(kind, NV.runDifficulty) : 1; }
 
   function canSpawn(st, count, heavyCount) {
@@ -633,7 +693,9 @@
 
   NV.predictHookPullDestination = function (source, player, W, H) {
     const direction = hookPullVector(source, player);
-    const distance = NV.BALANCE.HOOK_PULL_EXTERNAL_SPEED * NV.BALANCE.HOOK_PULL_DURATION;
+    const separation = Math.max(50, (source?.radius || 12) + (player?.radius || 20) + 18);
+    const distance = Math.min(NV.BALANCE.HOOK_PULL_EXTERNAL_SPEED * NV.BALANCE.HOOK_PULL_DURATION,
+      Math.max(0, Math.hypot((source?.x||0)-(player?.x||0),(source?.y||0)-(player?.y||0)) - separation));
     const x = player && Number.isFinite(player.x) ? player.x : 0;
     const y = player && Number.isFinite(player.y) ? player.y : 0;
     return {
@@ -975,6 +1037,7 @@
     if (type.previewHook) entity.previewHook = true;
     if (type.previewMotionPolish) entity.previewMotionPolish = true;
     if (type.previewAgileSwarm) entity.previewAgileSwarm = true;
+    if (type.paintedSwarmlet) entity.paintedSwarmlet = true;
     reportSpawnCandidate(st, NV.describeEnemySpawnCandidate(type, position.x, position.y, false));
     st.enemies.push(entity);
     if (NV.beginEnemyArrival) NV.beginEnemyArrival(entity, st);
@@ -1003,6 +1066,8 @@
     };
     if (type.id) entity.enemyTypeId = type.id;
     if (type.visualId) entity.visualId = type.visualId;
+    if (type.refinedEliteBody) entity.refinedEliteBody = true;
+    if (type.refinedEliteReadability) entity.refinedEliteReadability = true;
     reportSpawnCandidate(st, NV.describeEnemySpawnCandidate(type, position.x, position.y, true));
     st.enemies.push(entity);
     if (NV.beginEnemyArrival) NV.beginEnemyArrival(entity, st);
@@ -1342,10 +1407,11 @@
   const SPIT_RECOVERY = 1.0;
   const SPIT_CYCLE = 1.6;
   const SPIT_BULLET_SPEED = 250;
+  const SPITTER_COSMIC_BULLET_SPEED = 325; // +30% only for ESCOPURAS; other ranged keep 250.
   const SPIT_LEAD_FACTOR = 0.5;
   const SPIT_LEAD_CAP = 60;
   const SPIT_STRAFE_HOLD = 1.6;
-    // ===== F3: Hook/Pull system (specter_archer only, wave >= 15) =====
+    // ===== F3: Hook/Pull system (specter_archer only, available from first appearance) =====
   // El hookSystem es GLOBAL (game-owned, creado en game.js via NV.createHookSystem).
   // Fases: idle -> windup -> projectile -> tether -> idle (+ lockoutTimer).
   // La reservacion del source se hace en el loop principal (ver bloque 'ranged');
@@ -1366,6 +1432,7 @@
     hookSystem.phase = 'idle';
     hookSystem.windupTimer = 0;
     hookSystem.tetherTimer = 0;
+    hookSystem.dashEscapeCount = 0;
     hookSystem.projectile = null;
     hookSystem.tether = null;
     hookSystem.srcEnemy = null;
@@ -1385,12 +1452,19 @@
     }
     hookSystem.phase = 'idle';
     hookSystem.tetherTimer = 0;
+    hookSystem.dashEscapeCount = 0;
     hookSystem.projectile = null;
     hookSystem.tether = null;
     hookSystem.srcEnemy = null;
     hookSystem.lockoutTimer = NV.BALANCE.HOOK_GLOBAL_LOCKOUT_POST_RELEASE;
     return true;
   };
+
+  // The source must be on camera throughout preparation; a launched hook keeps its flight.
+  function archerHookSourceVisible(source) {
+    return !!source && (!NV.viewport || !NV.viewport.intersectsWorldRect
+      || NV.viewport.intersectsWorldRect(source.x, source.y, 0, 0));
+  }
 
   // State machine del Hook. Tick de lockout, cooldown enemigo-local, y fases.
   // Called AFTER the main enemy loop (movement/contact resolved) so the pull
@@ -1426,15 +1500,22 @@
 
     // 4. State machine
     if (hookSystem.phase === 'windup') {
+      if (!archerHookSourceVisible(src)) {
+        NV.resetHookState(hookSystem);
+        return;
+      }
       hookSystem.windupTimer -= dt;
       if (hookSystem.windupTimer <= 0) {
         // Lanzar projectile: SNAPSHOT del jugador al FINAL del windup
         hookSystem.windupTimer = 0;
         if (src) {
-          const pdx = player.x - src.x, pdy = player.y - src.y;
+          let pdx = player.x - src.x, pdy = player.y - src.y;
           const dist = Math.hypot(pdx, pdy);
-          const invD = Math.max(dist, 1);
-          const spd = B.HOOK_PROJECTILE_SPEED * (src.previewHook ? 1.08 : 1);
+          const spd = B.HOOK_PROJECTILE_SPEED;
+          // Partial, capped lead at launch; trajectory stays fixed and remains dodgeable.
+          const flight=dist/spd;let lx=(player.moveVx||0)*flight*.65,ly=(player.moveVy||0)*flight*.65;
+          const lead=Math.hypot(lx,ly);if(lead>80){lx*=80/lead;ly*=80/lead;}
+          pdx+=lx;pdy+=ly;const invD=Math.max(1,Math.hypot(pdx,pdy));
           hookSystem.projectile = {
             x: src.x, y: src.y,
             vx: pdx / invD * spd, vy: pdy / invD * spd,
@@ -1449,27 +1530,33 @@
       if (!p) { NV.resetHookState(hookSystem); return; }
       const cameraReady = !NV.cameraThreatReady || NV.cameraThreatReady(p, dt,
         { x:p.x-5, y:p.y-5, w:10, h:10 }, .30);
-      const mx = p.vx * dt, my = p.vy * dt;
-      p.x += mx; p.y += my;
-      p.dist += Math.hypot(mx, my);
-
-      // max range: miss
-      if (p.dist >= B.HOOK_PROJECTILE_MAX_RANGE) {
-        NV.resetHookState(hookSystem);
-        return;
-      }
-      // hit: distancia al jugador < radio
-      const d = Math.hypot(p.x - player.x, p.y - player.y);
-      if (cameraReady && d < (player.radius || 20) + (src.previewHook ? 4 : 0)) {
+      const oldX=p.x,oldY=p.y,speed=Math.hypot(p.vx,p.vy);
+      const travel=Math.min(Math.max(0,B.HOOK_PROJECTILE_MAX_RANGE-p.dist),speed*Math.max(0,dt));
+      const mx=speed>0?p.vx/speed*travel:0,my=speed>0?p.vy/speed*travel:0;
+      p.x+=mx;p.y+=my;p.dist+=travel;
+      // Swept head collision prevents a fast hook stepping over the player at low FPS.
+      const length2=mx*mx+my*my;
+      const along=length2>0?Math.max(0,Math.min(1,((player.x-oldX)*mx+(player.y-oldY)*my)/length2)):0;
+      const dx=oldX+mx*along-player.x,dy=oldY+my*along-player.y;
+      const hitRadius=(player.radius||20)+7;
+      if (cameraReady && !player.dashActive && dx*dx+dy*dy <= hitRadius*hitRadius) {
         // Hit: crear tether (snapshot posicion del source)
         hookSystem.tether = { srcX: src.x, srcY: src.y };
         hookSystem.tetherTimer = B.HOOK_PULL_DURATION;
+        hookSystem.dashEscapeCount = 0;
         hookSystem.projectile = null;
         hookSystem.phase = 'tether';
         const synergyContext = context || {};
         requestArcherCoreSynergy(src, player, enemies, synergyContext.hazards,
           synergyContext.W, synergyContext.H);
-      }
+        // Nearby pursuers get one bounded chance to close in; no damage, attack-speed or spawn buff.
+        const landing=NV.predictHookPullDestination(src,player,synergyContext.W,synergyContext.H);
+        const allies=enemies.filter(e=>e!==src&&!e.dead&&!e.isElite&&!e.isBoss&&!e.waveCleanup&&!(e.stun>0)
+          && ['chase','flank','swarm','kami'].includes(e.behavior)
+          && Math.hypot(e.x-landing.x,e.y-landing.y)<=240);
+        allies.sort((a,b)=>Math.hypot(a.x-landing.x,a.y-landing.y)-Math.hypot(b.x-landing.x,b.y-landing.y));
+        for(let i=0;i<Math.min(3,allies.length);i++)allies[i].hookOpportunityTimer=.9;
+      } else if (p.dist >= B.HOOK_PROJECTILE_MAX_RANGE) NV.resetHookState(hookSystem);
     } else if (hookSystem.phase === 'tether') {
       hookSystem.tetherTimer -= dt;
       if (hookSystem.tetherTimer <= 0) {
@@ -1486,22 +1573,28 @@
   // Player-side Hook update (testeable). Orden contractual: dash update ->
   // normal movement -> Hook external pull -> arena clamp (el clamp lo hace
   // game.js). wasDashing = player.dashActive ANTES del dash update de este
-  // frame. Dash press-edge durante tether: break inmediato, sin pull ese
+  // frame. Dos inicios de dash distintos rompen el tether; durante cada dash no hay pull ese
   // frame (aplica cooldown source + lockout global). Pull externo directo
   // sobre player.x/y: NO muta moveVx/moveVy, NO toca movement.js.
   // Retorna true si aplico pull este frame.
   NV.applyHookPull = function (dt, hookSystem, player, wasDashing) {
     if (!hookSystem || !player) return false;
     if (hookSystem.phase === 'tether' && !wasDashing && player.dashActive) {
-      NV.breakHookTether(hookSystem);
+      hookSystem.dashEscapeCount = Math.min(2, (hookSystem.dashEscapeCount || 0) + 1);
+      if (hookSystem.dashEscapeCount >= 2) NV.breakHookTether(hookSystem);
       return false;
     }
     if (hookSystem.phase !== 'tether' || !hookSystem.srcEnemy || player.dashActive) return false;
     const direction = hookPullVector(hookSystem.srcEnemy, player);
     if (!direction) return false;
-    const pullSpd = NV.BALANCE.HOOK_PULL_EXTERNAL_SPEED;
-    player.x += direction.x * pullSpd * dt;
-    player.y += direction.y * pullSpd * dt;
+    const outwardSpeed=Math.max(0,-(player.moveVx||0)*direction.x-(player.moveVy||0)*direction.y);
+    const pullSpd = NV.BALANCE.HOOK_PULL_EXTERNAL_SPEED + outwardSpeed;
+    const src=hookSystem.srcEnemy;
+    const separation=Math.max(50,(src.radius||12)+(player.radius||20)+18);
+    const remaining=Math.max(0,Math.hypot(player.x-src.x,player.y-src.y)-separation);
+    const step=Math.min(remaining,pullSpd*Math.max(0,dt));
+    player.x += direction.x * step;
+    player.y += direction.y * step;
     return true;
   };
 
@@ -1603,7 +1696,9 @@
       const hitSlowActive = e.hitSlowUntil > 0;
       const hitSlowMult = hitSlowActive ? NV.hitSlowFor(e.isElite ? "ELITE" : "NORMAL").multiplier : 1;
       const rallyMult = e.rallyTimer > 0 ? COMMANDER_RALLY_SPEED_MULT : 1;
-      const spd = eventSpeed * (e.slowUntil > 0 ? 0.5 : 1) * hitSlowMult * rallyMult;
+      if(e.hookOpportunityTimer>0)e.hookOpportunityTimer=Math.max(0,e.hookOpportunityTimer-dt);
+      const opportunityMult=e.hookOpportunityTimer>0?1.10:1;
+      const spd = eventSpeed * (e.slowUntil > 0 ? 0.5 : 1) * hitSlowMult * rallyMult * opportunityMult;
       let specterChargeContactActive = false;
       let swarmContactActive = e.enemyTypeId !== 'swarmlet';
       let swarmCommitContactActive = false;
@@ -2247,20 +2342,25 @@
               const aimX = (Number.isFinite(e.tankCannonTargetX) ? e.tankCannonTargetX : player.x) - e.x;
               const aimY = (Number.isFinite(e.tankCannonTargetY) ? e.tankCannonTargetY : player.y) - e.y;
               const aimDist = Math.max(1, Math.hypot(aimX, aimY));
+              const pressureShot = e.tankPressureShot;
+              const shellSpeed = pressureShot ? pressureShot.speed : TANK_CANNON_BULLET_SPEED;
+              e.tankCannonShotEmitted = false;
               if (bullets.length < MAX_BULLETS && st.enemyBulletCount() < MAX_ENEMY_BULLETS) {
                 bullets.push({
                   x: e.x, y: e.y,
-                  vx: aimX / aimDist * TANK_CANNON_BULLET_SPEED,
-                  vy: aimY / aimDist * TANK_CANNON_BULLET_SPEED,
-                  damage: Math.round(e.damage * 1.25), radius: 9,
+                  vx: aimX / aimDist * shellSpeed,
+                  vy: aimY / aimDist * shellSpeed,
+                  damage: pressureShot ? pressureShot.damage : Math.round(e.damage * 1.25), radius: pressureShot ? pressureShot.radius : 9,
                   color: e.color, isEnemy: true, dead: false,
                   stunChance: 0, stunDuration: 0,
                   sourceEnemy: e, sourceType: 'tank', projectileStyle: 'tankShell',
                 });
+                e.tankCannonShotEmitted = true;
                 if (st.sfx && st.sfx.enemyAttack) st.sfx.enemyAttack('tank', { x: e.x, worldWidth: st.W });
               }
+              e.tankPressureShot = null;
               e.tankCannonFired = true;
-              e.atkFlash = 0.42;
+              e.atkFlash = 0;
               shake = Math.max(shake, 0.08);
               e.tankCannonState = 'recovery';
               e.tankCannonTimer = TANK_CANNON_RECOVERY;
@@ -2280,6 +2380,7 @@
             e.tankCannonTargetX = player.x;
             e.tankCannonTargetY = player.y;
             e.tankCannonFired = false;
+            e.tankCannonShotEmitted = false;
           } else {
             e.tankCannonState = 'approach';
             const radial = dist > TANK_CANNON_MAX_RANGE ? 1 : (dist < TANK_CANNON_MIN_RANGE ? -0.32 : 0);
@@ -2446,6 +2547,8 @@
           const angle = Math.atan2(st.player.y - e.y, st.player.x - e.x);
           e.x += Math.cos(angle) * spd * dt + kbx * dt;
           e.y += Math.sin(angle) * spd * dt + kby2 * dt;
+        } else if (e.behavior === 'flank' && e.enemyTypeId === 'runner') {
+          updateRunnerSwim(e,st.player,dt,spd,kbx,kby2,st.waveEvent==='mines'?Math.min(RUNNER_SWIM.dashCap,NV.BALANCE?.MINEFIELD_SPEED_CAP||260):RUNNER_SWIM.dashCap);
         } else if (e.behavior === 'flank') {
           // RUNNER (F06): flanqueador. F05 (NV.enemyState) es la UNICA fuente
           // autoritativa de state lifecycle CUANDO disponible; fallback interno si no.
@@ -2667,6 +2770,28 @@
             e.x += Math.cos(angle) * spd * dt + kbx * dt;
             e.y += Math.sin(angle) * spd * dt + kby2 * dt;
           }
+        } else if (e.enemyTypeId === 'specter_archer') {
+          const dx = player.x - e.x, dy = player.y - e.y, distance = Math.hypot(dx, dy), inv = Math.max(1, distance);
+          const ownsHook = hookSystem && hookSystem.srcEnemy === e && hookSystem.phase !== 'idle';
+          e.spitState = 'positioning';e.spitTimer = 0;e.shootTimer = 0;
+          if (e.intent) { e.intent.state = 'positioning'; e.intent.stateTimer = 0; }
+          if (!ownsHook) {
+            const radial = distance > 360 ? .75 : distance < 180 ? -.55 : 0;
+            const strafe = radial === 0 ? .20 : 0;
+            e.x += (dx / inv * radial - dy / inv * strafe) * spd * dt + kbx * dt;
+            e.y += (dy / inv * radial + dx / inv * strafe) * spd * dt + kby2 * dt;
+            forEachGridNeighbor(e, grid, other => {
+              if (other.dead) return;
+              const ox=e.x-other.x,oy=e.y-other.y,d=Math.hypot(ox,oy),minimum=(e.radius+other.radius)*.7;
+              if(d>0&&d<minimum){const push=(minimum-d)*1.2*dt/d;e.x+=ox*push;e.y+=oy*push;}
+            });
+          }
+          if (archerHookSourceVisible(e) && wave >= NV.BALANCE.HOOK_UNLOCK_WAVE && distance >= 80 && distance <= NV.BALANCE.HOOK_PROJECTILE_MAX_RANGE - 25
+              && (e.hookCooldown || 0) <= 0 && hookSystem && hookSystem.phase === 'idle' && (hookSystem.lockoutTimer || 0) <= 0) {
+            e.hookOwner=true;e.hookWindup=true;hookSystem.srcEnemy=e;
+            hookSystem.phase='windup';hookSystem.windupTimer=NV.BALANCE.HOOK_WINDUP_TIME;
+            if(st.sfx && st.sfx.telegraph)st.sfx.telegraph({x:e.x,worldWidth:st.W});
+          }
         } else if (e.behavior === 'ranged') {
           // SPITTER / ESCOPURAS (F07): F05 es la autoridad de estados.
           // Banda [SPIT_NEAR, SPIT_FAR]: lejos -> approach, en banda ->
@@ -2727,13 +2852,14 @@
             else { e.spitState = next; e.spitTimer = timer; }
             rState = next; rTimer = timer;
           };
+          const spitProjectileSpeed = e.enemyTypeId === 'spitter' ? SPITTER_COSMIC_BULLET_SPEED : SPIT_BULLET_SPEED;
           const fireSpitterShot = () => {
             if (e.hookOwner) return; // F3: owner en Hook windup no dispara normal
             const tx0 = (e.spitAimX != null ? e.spitAimX : st.player.x);
             const ty0 = (e.spitAimY != null ? e.spitAimY : st.player.y);
             const ang = Math.atan2(ty0 - e.y, tx0 - e.x);
             if (bullets.length < MAX_BULLETS && st.enemyBulletCount() < MAX_ENEMY_BULLETS) {
-              bullets.push({ x: e.x, y: e.y, vx: Math.cos(ang) * SPIT_BULLET_SPEED, vy: Math.sin(ang) * SPIT_BULLET_SPEED, damage: e.damage, color: e.color, isEnemy: true, dead: false, stunChance: e.stunChance || 0, stunDuration: e.stunDuration || 0, sourceEnemy: e, sourceType: e.enemyTypeId || 'ranged', projectileStyle: HOSTILE_RANGED_STYLES[e.enemyTypeId] || 'genericBolt' });
+              bullets.push({ x: e.x, y: e.y, vx: Math.cos(ang) * spitProjectileSpeed, vy: Math.sin(ang) * spitProjectileSpeed, damage: e.damage, color: e.color, isEnemy: true, dead: false, stunChance: e.stunChance || 0, stunDuration: e.stunDuration || 0, sourceEnemy: e, sourceType: e.enemyTypeId || 'ranged', projectileStyle: HOSTILE_RANGED_STYLES[e.enemyTypeId] || 'genericBolt' });
               if (st.sfx && st.sfx.enemyAttack) st.sfx.enemyAttack(e.enemyTypeId, { x: e.x, worldWidth: st.W });
             }
             e.shootTimer = 0;
@@ -2750,7 +2876,7 @@
               setRState('retreat', 0.6);
             } else if (dist >= SPIT_NEAR && dist <= SPIT_FAR && e.shootTimer >= SPIT_CYCLE && !e.hookWindup) {
               const pvx = st.player.moveVx || 0, pvy = st.player.moveVy || 0;
-              const tof = dist / SPIT_BULLET_SPEED;
+              const tof = dist / spitProjectileSpeed;
               let lx = pvx * tof * SPIT_LEAD_FACTOR, ly = pvy * tof * SPIT_LEAD_FACTOR;
               const lm = Math.hypot(lx, ly);
               if (lm > SPIT_LEAD_CAP) { lx *= SPIT_LEAD_CAP / lm; ly *= SPIT_LEAD_CAP / lm; }
@@ -2813,23 +2939,7 @@
             }
           });
           if (NV.enemyState) NV.enemyState.computeSteering(e);
-          // ===== F3: Hook/Pull reservation (specter_archer only, wave >= 15) =====
-          // Condiciones: specter_archer, wave >= unlock, local cooldown <= 0,
-          // hookSystem idle, lockout <= 0, no owner, no normal ranged windup/attack.
-          if (e.enemyTypeId === 'specter_archer'
-              && wave >= NV.BALANCE.HOOK_UNLOCK_WAVE
-              && (e.hookCooldown || 0) <= 0
-              && hookSystem
-              && hookSystem.phase === 'idle'
-              && (hookSystem.lockoutTimer || 0) <= 0
-              && !e.hookOwner
-              && rState !== 'windup' && rState !== 'attack') {
-            e.hookOwner = true;
-            hookSystem.phase = 'windup';
-            hookSystem.windupTimer = NV.BALANCE.HOOK_WINDUP_TIME;
-            hookSystem.srcEnemy = e;
-            e.hookWindup = true;
-          }
+
         }
       }
 

@@ -15,8 +15,11 @@
   const particles = document.getElementById('settingsParticles');
   const heavyVfx = document.getElementById('settingsHeavyVfx');
   const showFPS = document.getElementById('settingsShowFPS');
+  const spaceTravel = document.getElementById('settingsSpaceTravel');
+  const spaceResponse = document.getElementById('settingsSpaceResponse');
   const resolution = document.getElementById('settingsResolution');
   const reducedEffects = document.getElementById('settingsReducedEffects');
+  const showGuides = document.getElementById('settingsShowGuides');
   const fullscreen = document.getElementById('settingsFullscreen');
   const graphicsReset = document.getElementById('settingsGraphicsReset');
   const graphicsHelp = document.getElementById('settingsGraphicsHelp');
@@ -59,7 +62,10 @@
     if (particles) particles.checked = !!g.particles;
     if (heavyVfx) heavyVfx.checked = !!g.heavyVfx;
     if (showFPS) showFPS.checked = !!g.showFPS;
+    if (spaceTravel) spaceTravel.checked = g.spaceTravel !== false;
+    if (spaceResponse) spaceResponse.checked = g.spaceResponse !== false;
     if (reducedEffects) reducedEffects.checked = !!(NV.settings.gameplay && NV.settings.gameplay.reducedEffects);
+    if (showGuides) showGuides.checked = !NV.settings.gameplay || NV.settings.gameplay.showGuides !== false;
     if (resolution) {
       const mobile = !!(NV.capabilities && NV.capabilities.isMobile);
       resolution.disabled = mobile;
@@ -163,8 +169,11 @@
   if (particles) particles.addEventListener('change', () => NV.setGraphicsOption('particles', particles.checked));
   if (heavyVfx) heavyVfx.addEventListener('change', () => NV.setGraphicsOption('heavyVfx', heavyVfx.checked));
   if (showFPS) showFPS.addEventListener('change', () => NV.setGraphicsOption('showFPS', showFPS.checked));
+  if (spaceTravel) spaceTravel.addEventListener('change', () => NV.setGraphicsOption('spaceTravel', spaceTravel.checked));
+  if (spaceResponse) spaceResponse.addEventListener('change', () => NV.setGraphicsOption('spaceResponse', spaceResponse.checked));
   if (resolution) resolution.addEventListener('change', () => NV.setGraphicsResolution(resolution.value));
   if (reducedEffects) reducedEffects.addEventListener('change', () => NV.setComfortOption('reducedEffects', reducedEffects.checked));
+  if (showGuides) showGuides.addEventListener('change', () => NV.setComfortOption('showGuides', showGuides.checked));
   if (graphicsReset) graphicsReset.addEventListener('click', () => NV.resetGraphicsSettings());
   if (fullscreen) fullscreen.addEventListener('click', async () => {
     if (!NV.viewport || fullscreen.disabled) return;

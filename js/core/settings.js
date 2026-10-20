@@ -32,6 +32,8 @@
       particles: true,
       heavyVfx: true,
       showFPS: false,
+      spaceTravel: true,
+      spaceResponse: true,
     }),
     controls: Object.freeze({
       firePolicy: 'manual',
@@ -41,6 +43,7 @@
       familyFriendly: true,
       reducedEffects: false,
       largeText: false,
+      showGuides: true,
     }),
   });
   const listeners = [];
@@ -85,6 +88,8 @@
         particles: typeof graphics.particles === 'boolean' ? graphics.particles : DEFAULTS.graphics.particles,
         heavyVfx: typeof graphics.heavyVfx === 'boolean' ? graphics.heavyVfx : DEFAULTS.graphics.heavyVfx,
         showFPS: graphics.showFPS === true,
+        spaceTravel: graphics.spaceTravel !== false,
+        spaceResponse: graphics.spaceResponse !== false,
       },
       controls: {
         firePolicy: FIRE_POLICY.indexOf(controls.firePolicy) >= 0 ? controls.firePolicy : DEFAULTS.controls.firePolicy,
@@ -94,6 +99,7 @@
         familyFriendly: gameplay.familyFriendly !== false,
         reducedEffects: gameplay.reducedEffects === true,
         largeText: gameplay.largeText === true,
+        showGuides: typeof gameplay.showGuides === 'boolean' ? gameplay.showGuides : DEFAULTS.gameplay.showGuides,
       },
     };
   }
@@ -158,7 +164,7 @@
     save(); notify(); return true;
   };
   NV.setGraphicsOption = function (key, value) {
-    if (key !== 'particles' && key !== 'heavyVfx' && key !== 'showFPS') return false;
+    if (key !== 'particles' && key !== 'heavyVfx' && key !== 'showFPS' && key !== 'spaceTravel' && key !== 'spaceResponse') return false;
     NV.settings.graphics[key] = !!value;
     save(); notify(); return true;
   };
@@ -199,7 +205,7 @@
     save(); notify(); return true;
   };
   NV.setComfortOption = function (key, value) {
-    if (!['familyFriendly', 'reducedEffects', 'largeText'].includes(key)) return false;
+    if (!['familyFriendly', 'reducedEffects', 'largeText', 'showGuides'].includes(key)) return false;
     NV.settings.gameplay[key] = !!value; applyComfortRoot(); save(); notify(); return true;
   };
   NV.resetSettings = function () {

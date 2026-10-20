@@ -1,0 +1,96 @@
+{
+  "version": "core-light-v2",
+  "method": "Offline hue-mask + three separable Gaussian convolutions; original sprite files unchanged",
+  "textures": [
+    {
+      "id": "runner",
+      "width": 352,
+      "height": 331,
+      "padding": 48,
+      "coreWidth": 256,
+      "coreHeight": 235,
+      "selectedPixels": 3477,
+      "bytes": 95352
+    },
+    {
+      "id": "tank",
+      "width": 352,
+      "height": 267,
+      "padding": 48,
+      "coreWidth": 256,
+      "coreHeight": 171,
+      "selectedPixels": 12707,
+      "bytes": 60925
+    },
+    {
+      "id": "swarmlet",
+      "width": 352,
+      "height": 297,
+      "padding": 48,
+      "coreWidth": 256,
+      "coreHeight": 201,
+      "selectedPixels": 4549,
+      "bytes": 75093
+    },
+    {
+      "id": "spitter",
+      "width": 352,
+      "height": 253,
+      "padding": 48,
+      "coreWidth": 256,
+      "coreHeight": 157,
+      "selectedPixels": 3171,
+      "bytes": 60628
+    },
+    {
+      "id": "wisp",
+      "width": 352,
+      "height": 300,
+      "padding": 48,
+      "coreWidth": 256,
+      "coreHeight": 204,
+      "selectedPixels": 3974,
+      "bytes": 46241
+    },
+    {
+      "id": "kamikaze",
+      "width": 352,
+      "height": 342,
+      "padding": 48,
+      "coreWidth": 256,
+      "coreHeight": 246,
+      "selectedPixels": 2553,
+      "bytes": 36115
+    },
+    {
+      "id": "specter_archer",
+      "width": 352,
+      "height": 241,
+      "padding": 48,
+      "coreWidth": 256,
+      "coreHeight": 145,
+      "selectedPixels": 1322,
+      "bytes": 49679
+    },
+    {
+      "id": "specter_guard",
+      "width": 352,
+      "height": 320,
+      "padding": 48,
+      "coreWidth": 256,
+      "coreHeight": 224,
+      "selectedPixels": 2596,
+      "bytes": 57612
+    },
+    {
+      "id": "specter_core",
+      "width": 337,
+      "height": 352,
+      "padding": 48,
+      "coreWidth": 241,
+      "coreHeight": 256,
+      "selectedPixels": 5786,
+      "bytes": 86867
+    }
+  ]
+}

@@ -238,6 +238,7 @@
   };
 
   NV.drawPlayer = function (ctx, player, CHARACTERS, frame, presentation, nativeAppearance = false) {
+    if (NV.presentationClock) frame = NV.presentationClock.resolveFrame(frame);
     const char = CHARACTERS[player.character];
     const appearance = !nativeAppearance && NV.pilotAppearance && NV.pilotAppearance.get(player.character);
     const detailFrame = appearance ? NV.pilotAppearance.detailFrame(appearance, frame) : frame;

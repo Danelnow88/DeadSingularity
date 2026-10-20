@@ -21,10 +21,12 @@
   const frameBuf = new Float32Array(WINDOW);
   const updateBuf = new Float32Array(WINDOW);
   const drawBuf = new Float32Array(WINDOW);
+  const callbackBuf = new Float32Array(WINDOW);
   const scratch = new Float32Array(WINDOW); // copia de trabajo para sort (preasignada)
 
   let sampleN = 0;          // muestras válidas (0..WINDOW)
   let fIdx = 0, uIdx = 0, dIdx = 0;
+  let callbackIdx = 0, callbackN = 0, worstCallback = 0;
   let worstFrame = 0, worstUpdate = 0, worstDraw = 0;
   let lastCompute = -1e9;
   let cached = null;
@@ -79,6 +81,13 @@
       }
     },
     setTelemetryProvider(fn) { telemetryProvider = typeof fn === 'function' ? fn : null; },
+    // Complete game callback CPU work, including input/audio/auxiliary stages.
+    // Still NOT GPU raster time or physical displayed frames.
+    recordCallback(ms) {
+      ms=clampMs(ms);callbackIdx=push(callbackBuf,callbackIdx,ms);
+      if(callbackN<WINDOW)callbackN++;
+      worstCallback=Math.max(worstCallback,ms);
+    },
     getSnapshot() {
       const now = Date.now();
       if (cached && now - lastCompute < COMPUTE_INTERVAL_MS) return cached;
@@ -101,6 +110,9 @@
         frame: stats(frameBuf, count),
         update: stats(updateBuf, count),
         draw: stats(drawBuf, count),
+        callback: stats(callbackBuf, callbackN),
+        metric: 'raf-callback-intervals',
+        presentedFPS: null,
         framesAbove6_06: a6,
         framesAbove6_94: a7,
         framesAbove8_33: a8,
@@ -108,13 +120,14 @@
         framesAbove16_7: a16,
         framesAbove25: a25,
         framesAbove33: a33,
-        worstSinceReset: { frame: worstFrame, update: worstUpdate, draw: worstDraw },
+        worstSinceReset: { frame: worstFrame, update: worstUpdate, draw: worstDraw, callback: worstCallback },
         telemetry: telemetryProvider ? telemetryProvider() : null,
       };
       return cached;
     },
     reset() {
-      frameBuf.fill(0); updateBuf.fill(0); drawBuf.fill(0); scratch.fill(0);
+      frameBuf.fill(0); updateBuf.fill(0); drawBuf.fill(0); callbackBuf.fill(0); scratch.fill(0);
+      callbackIdx=callbackN=worstCallback=0;
       sampleN = 0; fIdx = uIdx = dIdx = 0;
       worstFrame = worstUpdate = worstDraw = 0;
       cached = null; lastCompute = -1e9;

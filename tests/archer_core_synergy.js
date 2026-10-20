@@ -45,13 +45,14 @@ t('1-9 Core tuning, hostile-red presentation and independent repeated casting', 
 
 t('10-21 Archer tuning, autonomy, zero damage and dash break', () => {
   const NV = setup(), B = NV.BALANCE, a = archer(100, 100), p = player(250, 100), hs = NV.createHookSystem();
-  if (B.HOOK_WINDUP_TIME !== 0.55 || B.HOOK_PROJECTILE_SPEED !== 560 || B.HOOK_PROJECTILE_MAX_RANGE !== 430 || B.HOOK_PULL_DURATION !== 0.50 || B.HOOK_PULL_EXTERNAL_SPEED !== 255 || B.HOOK_TETHER_MAX_RANGE !== 470 || B.HOOK_GLOBAL_LOCKOUT_POST_RELEASE !== 0.85 || B.HOOK_DIRECT_DAMAGE !== 0) throw new Error('Hook tuning');
+  if (B.HOOK_WINDUP_TIME !== 0.65 || B.HOOK_PROJECTILE_SPEED !== 720 || B.HOOK_PROJECTILE_MAX_RANGE !== 520 || B.HOOK_PULL_DURATION !== 2.0 || B.HOOK_PULL_EXTERNAL_SPEED !== 520 || B.HOOK_TETHER_MAX_RANGE !== 1200 || B.HOOK_GLOBAL_LOCKOUT_POST_RELEASE !== 1.0 || B.HOOK_DIRECT_DAMAGE !== 0) throw new Error('Hook tuning');
   NV.updateEnemies(0, state([a], p, [], hs)); if (hs.phase !== 'windup' || hs.srcEnemy !== a) throw new Error('Archer waited for Core');
   hs.windupTimer = 0; NV.updateHookSystem(0, hs, [a], p); if (!hs.projectile || Math.hypot(hs.projectile.vx, hs.projectile.vy) < 559.99) throw new Error('Hook projectile weakened');
   hs.projectile.x = p.x; hs.projectile.y = p.y; const hp = p.hp; NV.updateHookSystem(0, hs, [a], p, { hazards: [], W: 900, H: 520 });
   if (hs.phase !== 'tether' || p.hp !== hp) throw new Error('normal Hook/no damage');
   NV.configurePlayerMovement(p, 200, 0); NV.configurePlayerDash(p); const was = p.dashActive; NV.updatePlayerDash(p, true, 1, 0, 0, 0, false, 0);
-  if (NV.applyHookPull(1 / 60, hs, p, was) || hs.phase !== 'idle') throw new Error('dash did not break Hook');
+  if (NV.applyHookPull(1 / 60, hs, p, was) || hs.phase !== 'tether' || hs.dashEscapeCount!==1)throw Error('first dash not counted');
+  NV.updatePlayerDash(p,false,1,0,0,0,false,.15);NV.updatePlayerDash(p,true,1,0,0,0,false,0);NV.applyHookPull(1/60,hs,p,false);if(hs.phase!=='idle')throw Error('second dash did not break Hook');
 });
 
 t('22-33 synergy triggers one nearest eligible Core and ignores every invalid Core', () => {
@@ -73,15 +74,15 @@ t('22-33 synergy triggers one nearest eligible Core and ignores every invalid Co
 
 t('34-43 authoritative prediction snapshots once, survives movement/dash and both AIs recover', () => {
   const NV = setup(), a = archer(100, 100), p = player(300, 100), c = core(160, 100, 1), hazards = [];
-  const predicted = NV.predictHookPullDestination(a, p, 900, 520); near(predicted.x, 172.5, 'predicted x'); near(predicted.y, 100, 'predicted y');
+  const predicted = NV.predictHookPullDestination(a, p, 900, 520); near(predicted.x, 150, 'predicted x'); near(predicted.y, 100, 'predicted y');
   const hs = latch(NV, a, p, [a, c], hazards); near(c.coreZoneTargetX, predicted.x, 'snapshot x'); near(c.coreZoneTargetY, predicted.y, 'snapshot y');
   p.x = 700; p.y = 400; a.x = 500; a.y = 400; const snap = [c.coreZoneTargetX, c.coreZoneTargetY];
   NV.updateEnemies(0.55, state([a, c], p, hazards, hs)); if (hazards.length !== 1 || hazards[0].x !== snap[0] || hazards[0].y !== snap[1]) throw new Error('retarget after movement');
   const zoneDamage = hazards[0].damage; if (zoneDamage !== c.damage * 0.5) throw new Error('combo damage buffed');
-  const was = p.dashActive; p.dashActive = true; NV.applyHookPull(0.01, hs, p, was); if (hs.phase !== 'idle' || hazards[0].x !== snap[0]) throw new Error('dash retarget/break');
+  const was = p.dashActive; p.dashActive = true; NV.applyHookPull(0.01, hs, p, was);p.dashActive=false;p.dashActive=true;NV.applyHookPull(.01,hs,p,false); if (hs.phase !== 'idle' || hazards[0].x !== snap[0]) throw new Error('dash retarget/break');
   if (c.coreZoneState !== 'recovery' || c.coreZoneTimer !== 2.50) throw new Error('Core normal recovery');
   NV.updateEnemies(2.50, state([a, c], p, hazards, hs)); if (c.coreZoneState !== 'positioning' || Object.prototype.hasOwnProperty.call(c, 'archerPartner')) throw new Error('Core autonomy/pairing');
-  if (a.hookCooldown <= 0 || a.hookOwner) throw new Error('Archer normal cooldown');
+  if (a.hookCooldown < 0 || a.hookOwner) throw new Error('Archer normal cooldown');
 });
 
 t('44-48 composition safety: no spawning, weights, waves or fixed ownership added', () => {

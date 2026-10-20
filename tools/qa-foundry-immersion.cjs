@@ -1,0 +1,52 @@
+'use strict';
+const {app,BrowserWindow,protocol,net}=require('electron');
+const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict');
+const {pathToFileURL}=require('node:url');
+const root=path.resolve(__dirname,'..'),out=path.join(root,'local/validation/foundry-immersion');
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+app.setPath('userData',fs.mkdtempSync(path.join(os.tmpdir(),'ds-foundry-')));app.on('window-all-closed',()=>{});
+protocol.registerSchemesAsPrivileged([{scheme:'dsv1',privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
+app.whenReady().then(async()=>{
+ fs.mkdirSync(out,{recursive:true});
+ const win=new BrowserWindow({width:1280,height:800,useContentSize:true,show:false,webPreferences:{sandbox:true,contextIsolation:true,offscreen:true,backgroundThrottling:false}});
+ const evaluate=s=>win.webContents.executeJavaScript(s,true);
+ const prepare=process.argv.find(a=>a.startsWith('--prepare-art='));
+ if(prepare){await win.loadURL('about:blank');
+  const data=fs.readFileSync(prepare.slice(14)).toString('base64');
+  const webp=await evaluate(`(async()=>{const i=new Image();i.src='data:image/png;base64,${data}';await i.decode();const c=document.createElement('canvas');c.width=1536;c.height=864;c.getContext('2d').drawImage(i,0,0,1536,864);return c.toDataURL('image/webp',.92).split(',')[1];})()`);
+  fs.writeFileSync(path.join(root,'assets/scenery/sky-foundry-clean-v2.webp'),Buffer.from(webp,'base64'));
+ }
+ protocol.handle('dsv1',request=>{const u=new URL(request.url),f=path.resolve(root,'.'+u.pathname);if(!f.startsWith(root+path.sep))return new Response('',{status:403});return net.fetch(pathToFileURL(f).toString());});
+ const errors=[];win.webContents.on('console-message',d=>{if(d.level==='error')errors.push(d.message);});
+ await win.loadURL('dsv1://project/index.html?fresh=1');await wait(1200);
+ await evaluate(`NV.setGraphicsOption('spaceTravel',false);NV.viewport.requestFullscreen=()=>Promise.resolve(false);document.getElementById('lobbyPlayBtn').click();true;`);await wait(500);
+ // Override only the scenery selector in this isolated QA page; no save changes.
+ await evaluate(`window.originalSector=NV.sectorVisualForWave;NV.sectorVisualForWave=()=>NV.dimensionSkyBaseline.profiles[1];true;`);
+ for(let i=0;i<50&&!(await evaluate('NV.foundryAtmosphere.diagnostics().ready'));i++)await wait(100);
+ assert(await evaluate('NV.foundryAtmosphere.diagnostics().active'),'GPU atmosphere not active');
+ fs.writeFileSync(path.join(out,'playing.png'),(await win.webContents.capturePage()).toPNG());
+ const first=await evaluate('NV.foundryAtmosphere.diagnostics()');await wait(1100);
+ const second=await evaluate('NV.foundryAtmosphere.diagnostics()');assert(second.frames>first.frames);assert.equal(second.uploads,2);
+ await evaluate('NV.input.setMoveVector(1,.3);true;');await wait(700);await evaluate('NV.input.setMoveVector(0,0);true;');
+ assert((await evaluate('NV.foundryAtmosphere.diagnostics()')).wakeEmissions>0,'walking does not perturb the dust');
+ fs.writeFileSync(path.join(out,'moving.png'),(await win.webContents.capturePage()).toPNG());
+ // Frozen visual clock: the GPU does not spin during pause.
+ await evaluate('window.dispatchEvent(new KeyboardEvent("keydown",{code:"KeyP",key:"p",bubbles:true}));true;');await wait(200);
+ assert(await evaluate('NV.getRuntimeSnapshot().paused'),'pause key did not pause gameplay');
+ const paused=await evaluate('NV.foundryAtmosphere.diagnostics()');await wait(450);const held=await evaluate('NV.foundryAtmosphere.diagnostics()');
+ assert.equal(held.frames,paused.frames,'sky advances while paused');
+ await evaluate('NV.foundryAtmosphere.setEnabled(false);true;');await wait(100);assert(!(await evaluate('NV.foundryAtmosphere.diagnostics()')).active);
+ assert.equal(await evaluate('getComputedStyle(document.querySelector(".foundry-sky")).display'),'none','disabled GPU layer covers gameplay');
+ await evaluate('NV.foundryAtmosphere.setEnabled(true);NV.sectorVisualForWave=originalSector;true;');
+ await win.loadURL('dsv1://project/index.html?fresh=1&mobile=1');win.setContentSize(844,390);await wait(900);
+ await evaluate(`NV.viewport.requestFullscreen=()=>Promise.resolve(false);document.getElementById('lobbyPlayBtn').click();NV.sectorVisualForWave=()=>NV.dimensionSkyBaseline.profiles[1];true;`);
+ for(let i=0;i<50&&!(await evaluate('NV.foundryAtmosphere.diagnostics().active'));i++)await wait(100);
+ assert(await evaluate('NV.foundryAtmosphere.diagnostics().active'),'mobile GPU layer missing');
+ const alignment=await evaluate(`(()=>{const a=NV.canvas.getBoundingClientRect(),b=document.querySelector('.foundry-sky').getBoundingClientRect();return {dx:a.x-b.x,dy:a.y-b.y,dw:a.width-b.width,dh:a.height-b.height};})()`);
+ assert(Object.values(alignment).every(v=>Math.abs(v)<1),'GPU layer misaligned: '+JSON.stringify(alignment));
+ fs.writeFileSync(path.join(out,'mobile.png'),(await win.webContents.capturePage()).toPNG());
+ await evaluate(`document.querySelector('.foundry-sky').getContext('webgl').getExtension('WEBGL_lose_context').loseContext();true;`);await wait(120);
+ assert(await evaluate('NV.foundryAtmosphere.diagnostics().failed&&!NV.foundryAtmosphere.diagnostics().active'),'lost context does not restore Canvas fallback');
+ assert.deepEqual(errors,[]);fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({pass:true,first,second,paused,held,errors},null,2));
+ console.log('PASS Foundry GPU: active, animated, exactly two uploads, movement, frozen pause, fallback, no console errors');app.exit(0);
+}).catch(e=>{console.error(e);app.exit(1);});

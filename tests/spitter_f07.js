@@ -153,7 +153,7 @@ t('ataque usa la familia de proyectiles existente, sin homing', function () {
   if (b.projectileStyle !== 'stunDroplet') throw new Error('projectileStyle=' + b.projectileStyle);
   if (b.damage !== 15) throw new Error('damage=' + b.damage);
   if (b.stunChance !== 0.5 || b.stunDuration !== 1.25) throw new Error('stun=' + b.stunChance + '/' + b.stunDuration);
-  if (Math.abs(Math.hypot(b.vx, b.vy) - 250) > 1e-6) throw new Error('speed=' + Math.hypot(b.vx, b.vy));
+  if (Math.abs(Math.hypot(b.vx, b.vy) - 325) > 1e-6) throw new Error('speed=' + Math.hypot(b.vx, b.vy));
   if (b.homing !== undefined || b.seek !== undefined || b.curve !== undefined) throw new Error('homing presente');
 });
 t('lead parcial y topado (factor 0.5, cap 60)', function () {

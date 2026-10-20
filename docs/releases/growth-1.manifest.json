@@ -5,8 +5,8 @@
   "files": [
     {
       "path": "index.html",
-      "size": 42041,
-      "sha256": "a0d712c9ffbf228ee2eaff3ce71793a90f13117e00187da3ded480aebcc9d549"
+      "size": 44050,
+      "sha256": "05e34d7cbaf85c28dca0590b2581dbbfc1d0240ca8e6c71ea67d7837456c3f88"
     },
     {
       "path": "AVISOS.md",
@@ -64,6 +64,11 @@
       "sha256": "ad2d026ff31cace68d6f55ef55deaceb35db26ee3cbf77cafd37bed11a177ec0"
     },
     {
+      "path": "js/core/presentationClock.js",
+      "size": 756,
+      "sha256": "301a4cadbc5eb0a2e8bce1b289fc1fdc1a036207e1a00e135c42a84dbd1fd188"
+    },
+    {
       "path": "js/core/runtime.js",
       "size": 2858,
       "sha256": "6feebdf06cc9edc443a8b437b544d5f530a43411be48422ceb84dbfc88566d4f"
@@ -75,8 +80,8 @@
     },
     {
       "path": "js/core/settings.js",
-      "size": 9661,
-      "sha256": "fc927139e22ba8cb94a89d00a9e8aa30f8b0f92a89fb35d0a441ab790145d0f8"
+      "size": 10036,
+      "sha256": "3c7278d39218610d7c0a47d19074d1527df601c4305951a3f6c6703b6f6379b3"
     },
     {
       "path": "js/core/state.js",
@@ -100,8 +105,8 @@
     },
     {
       "path": "js/data/balance.js",
-      "size": 28338,
-      "sha256": "a91a661a10864e93611f547e89613852a79f76b1d1c7e979300a46284ca24559"
+      "size": 28580,
+      "sha256": "04412a742fc51d00adf2b294be252c25b74dade4c0c64582f93dacd5b8c9484e"
     },
     {
       "path": "js/data/bossDesignLab.js",
@@ -120,8 +125,8 @@
     },
     {
       "path": "js/data/gameData.js",
-      "size": 23146,
-      "sha256": "e24bf88a67dc89362807baab42287b2887ad80dedd95d2ba32a3407fba063b84"
+      "size": 23236,
+      "sha256": "7b0aca99bf523056b0fcad386d782651b73180697d2284bf0536b3a50f577601"
     },
     {
       "path": "js/data/pilotAnimationBaseline.js",
@@ -185,8 +190,8 @@
     },
     {
       "path": "js/engine/dimensions.js",
-      "size": 2279,
-      "sha256": "f23f4f3a99723bd07680813e1458dd58f10262fb7f2bc5f951407a9c448e024e"
+      "size": 5427,
+      "sha256": "36c9dab6d63b298607b92699b6b8c826d5d19b4dbf1e04925d4a0f1542791c6d"
     },
     {
       "path": "js/engine/drones.js",
@@ -195,8 +200,8 @@
     },
     {
       "path": "js/engine/enemies.js",
-      "size": 144113,
-      "sha256": "19a7aefe5f08eb39fdd18d87963d475a59b1536b015f4e1874743b44bcb35714"
+      "size": 151882,
+      "sha256": "4423e48b68cc8c9135a01096d3041c21d82e35527e37e36e919a35b582856068"
     },
     {
       "path": "js/engine/enemyArrival.js",
@@ -225,8 +230,8 @@
     },
     {
       "path": "js/engine/fx.js",
-      "size": 16323,
-      "sha256": "027c0c1c641f018112f951af9ef4f4a68c6926bd842e6e003b49269a3d159c88"
+      "size": 16537,
+      "sha256": "b22864a779717f0b0101923b5558cc3a65fdcb2617a95ff3ddf068d6e5e31d43"
     },
     {
       "path": "js/engine/hazards.js",
@@ -260,8 +265,8 @@
     },
     {
       "path": "js/engine/performanceMonitor.js",
-      "size": 5231,
-      "sha256": "8343ab22814cbe4f4c78d14dce493621332f9063d267670b9623dda3015faa6d"
+      "size": 5888,
+      "sha256": "e58c3cf2ec64aadba382a7b86408fa256f730f57f71fda950f5ef09a8c80efdd"
     },
     {
       "path": "js/engine/pickups.js",
@@ -280,8 +285,8 @@
     },
     {
       "path": "js/engine/rhythm.js",
-      "size": 36868,
-      "sha256": "bb3c30ee987601a9903481b2913311b696b5c46d51a2629ac107431c89dcd7ab"
+      "size": 38277,
+      "sha256": "41a2859edc6c29ff183f26ad4e5c492e2bbdfc3bb2b84e1d599299d076037ed3"
     },
     {
       "path": "js/engine/sectorEncounters.js",
@@ -295,8 +300,8 @@
     },
     {
       "path": "js/engine/wavePressure.js",
-      "size": 1886,
-      "sha256": "6b0a98fe0e3270de76c92c60106ec60da205745eca21e6726fbbf9a976738023"
+      "size": 2158,
+      "sha256": "b5dca205d0de463eaa2d0d6187913856971b36e6c6ed8a8c15848fd62766a26e"
     },
     {
       "path": "js/engine/weapons.js",
@@ -320,8 +325,8 @@
     },
     {
       "path": "js/game.js",
-      "size": 260188,
-      "sha256": "9a1fdf9af18bbf4d5d7472cb80878d5dd8e8d3d1c5a69a9d3492aafa0754caf1"
+      "size": 264900,
+      "sha256": "c8e1dafae79e7538e91c9d264dfdd59219be02cbe6e2375db4a1eae04afa4c12"
     },
     {
       "path": "js/render/audioPerimeter.js",
@@ -340,18 +345,18 @@
     },
     {
       "path": "js/render/bossDesignLab.js",
-      "size": 16736,
-      "sha256": "8e2f0fb47a88abb39dca60e94121daf19b55fa3b9e633b8ca652c2af48704299"
+      "size": 16822,
+      "sha256": "3778309e3082356576a09c8cab574509a955af1245406f5b87b61a62dadef553"
     },
     {
       "path": "js/render/bosses.js",
-      "size": 2154,
-      "sha256": "3b7f240e2f2aa4e8e3adfcf88cbea2108630c020102efcd6ffd575eb05e946d2"
+      "size": 2262,
+      "sha256": "e410d43c50b0403c8f95eed73d195683a801c90fa2ab135549dff3191c3c1396"
     },
     {
       "path": "js/render/canvas.js",
-      "size": 5593,
-      "sha256": "0fddf706dd593e856410d7d8af428f234d9e1b1fc7e7328ea558a69fc5c9b1e4"
+      "size": 5673,
+      "sha256": "87e64025685d0c07a48a696c232dee46e4242e6e709d628c35c305f483564bb3"
     },
     {
       "path": "js/render/consumableEffects.js",
@@ -364,19 +369,34 @@
       "sha256": "824b77adfc783e2cb8fa8e00a8e4ea4b1c89b5b88a5e88941fa56aed5b2b2fe9"
     },
     {
+      "path": "js/render/cosmicBossArt.js",
+      "size": 61674,
+      "sha256": "66a84e03b5c316b4ef2371219d5c71cc29922481ac44f41b932474387158bc7b"
+    },
+    {
+      "path": "js/render/cosmicBossBridge.js",
+      "size": 2867,
+      "sha256": "a0216fa03049202984fbfb068b43416d3ed28d26c94c13d46654be19cd766973"
+    },
+    {
       "path": "js/render/dimensionalThreats.js",
       "size": 17256,
       "sha256": "d7a7b52faf534a9d56672f23553cc6a6b84be64a06160a89f75257468bdaa1f6"
     },
     {
       "path": "js/render/enemies.js",
-      "size": 56309,
-      "sha256": "13a8643222c0d08764081d21906acc8ab4bd84bc656d17f8f427eba8c1754a20"
+      "size": 41051,
+      "sha256": "fd1f70ac04f68429e67be50d93f778eb2b6e9ee5d7e14600d72ff9d67ae531c4"
     },
     {
       "path": "js/render/espectroLite.js",
       "size": 21040,
       "sha256": "86115edb53feff652cef59ed1815f52b1525daddc5c25c0e3558cc2f8dda62f7"
+    },
+    {
+      "path": "js/render/foundryAtmosphere.js",
+      "size": 10002,
+      "sha256": "88f0bc744608de8162cb60ab33c8615a6a5e72c2a0439a937e86826cf965490f"
     },
     {
       "path": "js/render/hazards.js",
@@ -385,13 +405,13 @@
     },
     {
       "path": "js/render/hud.js",
-      "size": 26777,
-      "sha256": "d1470c7cb1d93aabbee776bcf42fa1d337e05d8dcfe9d521260172b1d47674b5"
+      "size": 27084,
+      "sha256": "67fcdd544a32e22ab7b18d7eaf660caa27fd303c294d2652a8a239655c2279aa"
     },
     {
       "path": "js/render/inertiaChamber.js",
-      "size": 15270,
-      "sha256": "116f14d638a51dcddb7021974790867528a169d0732e0178376f199c0f032f93"
+      "size": 15695,
+      "sha256": "8c4eb5ded98d0a03e6a5b3dfb83ab0ff732c1119e994d1c511ea78a78736c2c6"
     },
     {
       "path": "js/render/inertiaRig.js",
@@ -400,8 +420,8 @@
     },
     {
       "path": "js/render/metaReadability.js",
-      "size": 11536,
-      "sha256": "ca998b7d9dd274bbcbd9f0b12dda860344e7a314a4e691ad6bc842bd8cbd6d64"
+      "size": 11617,
+      "sha256": "4524313234818c32fb5a7d70e4feeccdf7c84bb2262816dae3bef6eea2a5ee49"
     },
     {
       "path": "js/render/metaSkillIcons.js",
@@ -420,18 +440,58 @@
     },
     {
       "path": "js/render/player.js",
-      "size": 19359,
-      "sha256": "3c49f6ef1ee651150fdf977cf68047a529c2eb26c9d6d2100d5133b00b0bf67d"
+      "size": 19439,
+      "sha256": "d021b31bea028abb7b57d2b53f4a4a1dceaaffedef5a25e597046e731f8c4799"
+    },
+    {
+      "path": "js/render/portals.js",
+      "size": 5992,
+      "sha256": "601cb6e7643b65bcfa6ab5efd4fc08694ddebe74dc99177af449aad20bf826d5"
     },
     {
       "path": "js/render/projectiles.js",
-      "size": 24702,
-      "sha256": "56549032bde3f6c3ce7d8d02dd8f05d0f16b87a5ae74131696650761bb9b0fd2"
+      "size": 25806,
+      "sha256": "70767e504186709ae43c43ed4ffb69a9ca45e4bece089e4d620cefcf067a4475"
+    },
+    {
+      "path": "js/render/refinedElites.js",
+      "size": 14075,
+      "sha256": "59604787c963ff3a7a6f391d0f93b1b4e008ac4560936be7fce0c366639f2c6a"
     },
     {
       "path": "js/render/sectors.js",
-      "size": 26551,
-      "sha256": "a46b8052311b6b38b5133f40ee4341050b0056c0b127419367ca4876c7505594"
+      "size": 26927,
+      "sha256": "e168c52f096d3fcb40fed6179f945d2b5ec1a0afa45783bd1cdad81bf3af5eb6"
+    },
+    {
+      "path": "js/render/singularityCoreLight.js",
+      "size": 4557,
+      "sha256": "51312851fbe52924e795431c300b4d55c3e7f4335aced3879f02fcf1571f923e"
+    },
+    {
+      "path": "js/render/singularityFamily.js",
+      "size": 16504,
+      "sha256": "5e3f88b00e48fc6e6a3dbf8cc7d1b49acfa1de08738680e82456ea892d7532fe"
+    },
+    {
+      "path": "js/render/spaceEnvironment.js",
+      "size": 20002,
+      "sha256": "45074540719d3d8759a424151a92c2a1109b7c8c395feee00bf752423f3ff4dc"
+    },
+    {
+      "path": "js/render/spaceHabitat.js",
+      "size": 14611,
+      "sha256": "ae690b385fee252e4dfe4e8d7bda64c9198eeb9604a42141c6be116cbfb070de"
+    },
+    {
+      "path": "js/render/spaceResponse.js",
+      "size": 15355,
+      "sha256": "1be649a6c26b9533e91f7d5fa11dcf96528b55daee9295d93d3f68ffd0d0cea5"
+    },
+    {
+      "path": "js/render/spaceTrails.js",
+      "size": 4804,
+      "sha256": "207550fdce6ba9aae39c464d5630f779448c00c4434630edd99d7ff51de62d05"
     },
     {
       "path": "js/render/specialEffects.js",
@@ -440,8 +500,13 @@
     },
     {
       "path": "js/render/spectralEnemies2D.js",
-      "size": 128335,
-      "sha256": "954ba2d60fa418233d15b1fcc9eb1cb15826c20f01edd05ba7a76c4ab8899584"
+      "size": 130434,
+      "sha256": "608755ababc73f1188cc15d935e0768ad9343c9c3094ad466c727f34b167ca90"
+    },
+    {
+      "path": "js/render/tankArticulation.js",
+      "size": 1728,
+      "sha256": "8f73cc7b6606948f07ba6944711e5d76c1992be1d8f3a52d4b65c917b97d54d4"
     },
     {
       "path": "js/render/visualBudget.js",
@@ -485,8 +550,8 @@
     },
     {
       "path": "js/ui/fpsCounter.js",
-      "size": 1140,
-      "sha256": "b270e8d5179a8ca6990b63f1673dcf0e2a5235905aa7e60d93fa27aac3f6c7ac"
+      "size": 1745,
+      "sha256": "d68839490cb42db97fc8b85e3df63ab5fd81d5b9f5ad97dcf0ccc3c3616d0feb"
     },
     {
       "path": "js/ui/gamepadControls.js",
@@ -515,18 +580,23 @@
     },
     {
       "path": "js/ui/onboarding.js",
-      "size": 4310,
-      "sha256": "3634d7df5aa1c47a15eb265b3646564cdd1cbdcb6b533adc0173386ff13b081d"
+      "size": 4546,
+      "sha256": "27710fd621f7349ae47b0455abf2ed4217134ef348f0fb2efa1c76830d7c0e34"
     },
     {
       "path": "js/ui/settingsPanel.js",
-      "size": 12901,
-      "sha256": "806555a244e9335d19bd1056ad606e3138451b39e1f58ba6c424424f5d3c4636"
+      "size": 13745,
+      "sha256": "2ed506ca8d9c0a5c90d2d22eeed1712f0c8626cc439892e616c6c18f95522f70"
     },
     {
       "path": "js/ui/systemMenu.js",
       "size": 4234,
       "sha256": "35ed36fe8db7941e4249ffd870c4ad1f21084ad0e56ebabcd269130c92118719"
+    },
+    {
+      "path": "js/ui/weaponFusionPresentation.js",
+      "size": 1886,
+      "sha256": "2133eae4e06ad4da5d65261451c745d69021765b85b9adcc1d6b4b956c85bbae"
     },
     {
       "path": "css/alpha.css",
@@ -535,8 +605,8 @@
     },
     {
       "path": "css/graphics-settings.css",
-      "size": 4779,
-      "sha256": "0d0006fb576594fbedb86363019ed677d5009e7a5c98e99deb6a941a50728213"
+      "size": 5427,
+      "sha256": "613f2ec2c8606dd3e49fbe770d837fd91a13fb0cbb5c7fd365735a623bfc3a78"
     },
     {
       "path": "css/lobby-cosmos.css",
@@ -572,6 +642,11 @@
       "path": "css/system-menu.css",
       "size": 7880,
       "sha256": "3a8a4636594c1bfd39bf7293588038bc03f4964ac04f3aab36226dc444630ee0"
+    },
+    {
+      "path": "css/weapon-fusion.css",
+      "size": 1180,
+      "sha256": "d640b16d859df7b1121ba75b15f9b64a25d0d2748a4fcefb17641126520eecf8"
     },
     {
       "path": "assets/audio/main-theme-data.js",
@@ -624,6 +699,36 @@
       "sha256": "e1ec1c76489cda76cf1620e472dfbfef9dd845679d6d902d169226aa4350a8bc"
     },
     {
+      "path": "assets/elite-creatures/asesino-painted-v1.png",
+      "size": 1226123,
+      "sha256": "8ff328795c2f3053bc2ad556b60e55ab2bdab5005f26f4a080c41c1a8977bd00"
+    },
+    {
+      "path": "assets/elite-creatures/asesino-readable-v2.png",
+      "size": 1130915,
+      "sha256": "43bba5126904002b58562a0772be5deda3f117bc61105604bd80bc652cb742b0"
+    },
+    {
+      "path": "assets/elite-creatures/fantasma-painted-v1.png",
+      "size": 1293397,
+      "sha256": "65feea9bbfb00414821cfd2b4e49b96eab03ae71236fbf2dc644d8c03c638dee"
+    },
+    {
+      "path": "assets/elite-creatures/fantasma-readable-v2.png",
+      "size": 1103393,
+      "sha256": "75e6fc8e1e5d29f6cb4e71b6d3b476ab4fd7240fb9dd1769635f010a4e7cae37"
+    },
+    {
+      "path": "assets/elite-creatures/goliat-painted-v1.png",
+      "size": 1698698,
+      "sha256": "102a0f4eb3648b3f25a170a9a56747c201bd5d8141ceec5aec2aef7b60992794"
+    },
+    {
+      "path": "assets/elite-creatures/goliat-readable-v2.png",
+      "size": 1532602,
+      "sha256": "490bb613c8a78a5beccf39c99fbd0cfc7c64187fbe509c810f7818c9874cb092"
+    },
+    {
       "path": "assets/scenery/ash-moon-v1.webp",
       "size": 68200,
       "sha256": "1858a8c84a64595e393f1262886e1d1d44eb16fe59a9913e4603d1b53507d21d"
@@ -652,6 +757,11 @@
       "path": "assets/scenery/sky-drowned-vault-v1.webp",
       "size": 39090,
       "sha256": "fd272e892081fdb2ef208ec73d0c6318cb6417761682ac060dbe1649c1d6d7e8"
+    },
+    {
+      "path": "assets/scenery/sky-foundry-clean-v2.webp",
+      "size": 39460,
+      "sha256": "dfbf0493d3ddfbb11cea7ec610bbf3aa3a070b9a24cbaae9e85aa0c44a296872"
     },
     {
       "path": "assets/scenery/sky-foundry-v1.webp",
@@ -692,6 +802,131 @@
       "path": "assets/scenery/void-heart-v1.webp",
       "size": 97166,
       "sha256": "7feff186c488324467deedc677a6ee014b5daacbae9e4f3d888f0952eb078a75"
+    },
+    {
+      "path": "assets/singularity-family/README.md",
+      "size": 3481,
+      "sha256": "0f80caac19856fa67699c9b3b7fe1525faee95c10ac1fd98ac6095f765f9940f"
+    },
+    {
+      "path": "assets/singularity-family/approved-reference.png",
+      "size": 1774317,
+      "sha256": "5471f3e3cba1bee28d5a329e7263e00414d950260e41ae296a930cf9833f3c5d"
+    },
+    {
+      "path": "assets/singularity-family/kamikaze.png",
+      "size": 1242918,
+      "sha256": "6fdd906a3bf17925aec127098dc9515f3658a8b11fcbc7da45286fe7d0a6705e"
+    },
+    {
+      "path": "assets/singularity-family/lighting/kamikaze.png",
+      "size": 36115,
+      "sha256": "68199b192897186f50496830a12cfb838c0898878d763ca337e5697c47889315"
+    },
+    {
+      "path": "assets/singularity-family/lighting/manifest.json",
+      "size": 1953,
+      "sha256": "0c5d49c82044ecbc1185ccc1345550ea87c7a128a5ecd58d89590e1faad9cb0a"
+    },
+    {
+      "path": "assets/singularity-family/lighting/runner.png",
+      "size": 95352,
+      "sha256": "1b2a5bb618c21452d987c77475fc7b167af00f3be0e37ea3659b9c1e49871ac9"
+    },
+    {
+      "path": "assets/singularity-family/lighting/specter_archer.png",
+      "size": 49679,
+      "sha256": "9a40a7102e8cdfe3737a03c0687215989ac1f8e4d2f5d619b6dc9f4c05183eaf"
+    },
+    {
+      "path": "assets/singularity-family/lighting/specter_core.png",
+      "size": 86867,
+      "sha256": "586913bc5fe51015a781922270dd9a0e804d048cc492b82a8e08d103f9f06ad9"
+    },
+    {
+      "path": "assets/singularity-family/lighting/specter_guard.png",
+      "size": 57612,
+      "sha256": "3bfb98d0e0c4741a921118e6ca537a5945024e8b2dda841722be78cc261cdef9"
+    },
+    {
+      "path": "assets/singularity-family/lighting/spitter.png",
+      "size": 60628,
+      "sha256": "316e4da8010c2c140a672d9862d9f1fb4fe78bf0ea4fbad391c761d84c584ada"
+    },
+    {
+      "path": "assets/singularity-family/lighting/swarmlet.png",
+      "size": 75093,
+      "sha256": "998a2822ace65422ca2db967451025042a2dc399c2143b3c568045ff52d7f1db"
+    },
+    {
+      "path": "assets/singularity-family/lighting/tank.png",
+      "size": 60925,
+      "sha256": "85c58490bf7b5d9d73f96265a72499e360f7f68bff2c1e1cb6ee6c478fa0afce"
+    },
+    {
+      "path": "assets/singularity-family/lighting/wisp.png",
+      "size": 46241,
+      "sha256": "327e52472d0ab3a661ec5fd93638d8231fcb283a4c5dcfc5833ecdf72206d266"
+    },
+    {
+      "path": "assets/singularity-family/manifest.json",
+      "size": 19540,
+      "sha256": "8426d07ce28232dfbe33256f850675d7ba89af869e390fd9a35cbd723adc144a"
+    },
+    {
+      "path": "assets/singularity-family/runner.png",
+      "size": 1093722,
+      "sha256": "8cea7b63c0f4edcfc4517efbdd3669df93b1600852c72c68fab436a35d7dd52a"
+    },
+    {
+      "path": "assets/singularity-family/specter_archer.png",
+      "size": 1537596,
+      "sha256": "7f17f626fce9bef886ac0ef2b8899dc1471b9f111934775f68b0343a0d4259cd"
+    },
+    {
+      "path": "assets/singularity-family/specter_core.png",
+      "size": 1450840,
+      "sha256": "937e39b528a2d80279b96b03ea1d23b57bfd421d14a512a08dedd61053e8e0e9"
+    },
+    {
+      "path": "assets/singularity-family/specter_guard.png",
+      "size": 1345026,
+      "sha256": "37ac3fd348518c2e183b34a31d9df54f61066a5b58d932ad84737cd27d83278c"
+    },
+    {
+      "path": "assets/singularity-family/spitter.png",
+      "size": 1581697,
+      "sha256": "2c1a0ad61878d01c05313d36414c74c64b97a73a83727d99ecc9785bec7dfdfe"
+    },
+    {
+      "path": "assets/singularity-family/swarmlet.png",
+      "size": 894912,
+      "sha256": "7dac776e5d52aba004f727287a88d1cb5ddc21f5e2aa541de094de692362291d"
+    },
+    {
+      "path": "assets/singularity-family/tank-animation/body-retracted.png",
+      "size": 1217161,
+      "sha256": "9d4345660f475a6f2b91cf20bc4146548fc866a25f12b05aecbdd3f85600d0c2"
+    },
+    {
+      "path": "assets/singularity-family/tank-animation/sleeve-front.png",
+      "size": 69994,
+      "sha256": "c630cd180ad9e07814d59ba19415dd50d7e1967dabd3cf3c4faf736dd13c8fb7"
+    },
+    {
+      "path": "assets/singularity-family/tank-animation/sleeve-middle.png",
+      "size": 112480,
+      "sha256": "5f07c46a6b041716dffdf5d5b09a7fb7689f62670a575ef610857d11e07f3518"
+    },
+    {
+      "path": "assets/singularity-family/tank.png",
+      "size": 1774338,
+      "sha256": "c00deb8e67fbe81ea2bc6a8a2ed308b9e4e1396ca4868177393990f80614f414"
+    },
+    {
+      "path": "assets/singularity-family/wisp.png",
+      "size": 1610330,
+      "sha256": "861b9d156e0e82abcea74795ff5ee6e0a547fab54240da815cf3176740479c8a"
     }
   ]
 }

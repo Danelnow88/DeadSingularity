@@ -159,7 +159,10 @@ t('spawn guarda movementClass sin lista de IDs y update consume waveEvent', () =
   const src = fs.readFileSync('js/engine/enemies.js', 'utf8');
   if (!src.includes('movementClass: type.movementClass')) throw new Error('metadata ausente');
   if (!src.includes('minefieldEnemySpeed(e, st.waveEvent)')) throw new Error('speed efectiva ausente');
-  if (/runner|kamikaze.*\[|enemyTypeId.*movementClass/.test(src)) throw new Error('lista frágil de IDs');
+  // Scope the no-ID rule to minefield classification/speed, not unrelated AIs
+  // which legitimately dispatch a runner's species-specific movement.
+  const NV=sandbox().window.NV;
+  if (/runner|kamikaze|enemyTypeId/.test(String(NV.enemyMovementClass)+String(NV.minefieldEnemySpeed))) throw new Error('lista frágil de IDs');
 });
 
 t('updateEnemies real acelera movimiento durante mines y vuelve al base después', () => {

@@ -75,7 +75,7 @@ function fnBlock(src, marker) {
 }
 t('renderer dedicado existe y expone la API de consumibles', () => {
   if (!html.includes('js/render/consumableEffects.js')) throw new Error('script no cargado en index.html');
-  if (!/js\/render\/consumableEffects\.js\?v=[^"']+/.test(html)) throw new Error('renderer sin cache-buster de versión');
+  if (!/js\/render\/consumableEffects\.js\?nv=[a-f0-9]{12}/.test(html)) throw new Error('renderer sin cache-buster de contenido');
   // Orden real exigido por el PLAN: el renderer dedicado debe cargarse ANTES de
   // los renderers que lo invocan (spectral, enemies, player).
   const order = ['consumableEffects.js', 'spectralEnemies2D.js', 'enemies.js', 'player.js'];

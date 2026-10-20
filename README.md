@@ -1,12 +1,25 @@
 # DeadSingularity V1
 
+Accesos principales: `ABRIR_V1.cmd` (Electron), `ABRIR_V1_WEB.cmd` (web),
+`PRUEBAS.cmd` (roster actual y carpeta de muestras anteriores).
+Los antiguos `PROBAR_*.cmd` están en `tools/launchers/`, con sus rutas ajustadas.
+La captura de rendimiento y el boceto suelto se archivaron sin borrar en
+`local/archive/root-cleanup-20261016/`. Workbench histórico:
+`local/archive/pre-push-20261020/previews/archive/workbench.html`.
+Ver `docs/LIMPIEZA_PUBLICACION_2026-10-20.md`.
+
 Base aprobada 12/10/2026: todo el contenido dimensional actual está disponible
 también en el modo normal. El lobby ciruela sigue siendo una sesión sin guardar
 para futuros experimentos. Ver [alcance y entrega local](docs/PROMOCION_DIMENSIONAL_2026-10-12.md).
 Galerías canónicas: [enemigos](previews/enemy-roster-canonical.html) y
 [escenarios](previews/dimension-environments.html). El filtro por terreno queda
-pendiente; no se mezcló con esta promoción. Push/publicación requieren una
-decisión posterior.
+pendiente; no se mezcló con esta promoción. La publicación del estado actual
+fue autorizada el 20/10/2026 y se valida antes de desplegar en Pages.
+
+Actualización visual: diez jefes cósmicos integrados conservando sus mecánicas,
+familia de criaturas de basalto y presentación de fusión sin texto diminuto.
+La maqueta `PRUEBA DE CONCEPTO DE JEFES.html` es privada, no se publica ni se
+necesita para jugar, ejecutar pruebas o construir la versión web.
 
 Proyecto actual: C:\Users\party\Desktop\DeadSingularity V1.
 Versión 1.1.0-alpha.1; destino final Steam.
@@ -81,3 +94,6 @@ Pages:
 https://danelnow88.github.io/DeadSingularity/.
 
 Código y contenidos propios: UNLICENSED. Ver AVISOS.md y licencias del runtime.
+
+
+Referencia artística pendiente: [iluminación ambiental coloreada](docs/art-direction/iluminacion-ambiental/README.md), con criterios y capturas originales guardadas en el proyecto.

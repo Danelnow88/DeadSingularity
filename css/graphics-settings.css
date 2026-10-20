@@ -1,4 +1,10 @@
 /* Gráficos: una columna, ayudas por hover/foco/tap, un único scroll del modal. */
+.settings-guides { display: flex; align-items: center; gap: 16px; padding: 12px; margin: 12px 0; border: 1px solid #395365; border-radius: 8px; background: #101927; color: #e4f1f5; cursor: pointer; text-align: left; }
+.settings-guides > span { display: grid; gap: 6px; flex: 1; min-width: 0; }
+.settings-guides b { font: 600 15px/1.4 system-ui, sans-serif; }
+.settings-guides small { font: 400 12px/1.5 system-ui, sans-serif; color: #bed0db; }
+.settings-guides input { width: 22px; height: 22px; flex: 0 0 22px; margin: 0; accent-color: #7cf8ff; cursor: pointer; }
+.settings-guides:focus-within { outline: 2px solid #7cf8ff; outline-offset: 3px; }
 #panelGraphics { padding: 8px 2px; color: #dce8ed; display: flex; flex-direction: column; height: 100%; min-height: 0; box-sizing: border-box; }
 #settingsPanel[data-settings-tab="graphics"] .settings-tab-panels { overflow: hidden; }
 .graphics-options { overflow-y: auto; overflow-x: hidden; flex: 1 1 auto; min-height: 0; padding-right: 7px; scrollbar-width: thin; scrollbar-color: #385361 transparent; }

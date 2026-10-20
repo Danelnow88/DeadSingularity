@@ -15,16 +15,20 @@
     // Una única descarga global y sólo de artillería visible, nunca de perseguidores.
     const v=st.threatView;
     const sources=st.enemies.filter(e=>e.enemyTypeId==='tank' && !e.isElite && !e.dead && !e.arrival && !e.waveCleanup && !e.killResolved && !(e.stun>0)
+      && (!e.tankCannonState || e.tankCannonState === 'approach')
       && (!v || e.x>=v.x+20 && e.x<=v.x+v.width-20 && e.y>=v.y+20 && e.y<=v.y+v.height-20));
     if(!sources.length)return;
     if(!st.bullets || st.bullets.length>=st.MAX_BULLETS || st.enemyBulletCount()>=st.MAX_ENEMY_BULLETS)return;
     const e=sources[(s.serial||0)%sources.length],dx=st.player.x-e.x,dy=st.player.y-e.y,d=Math.max(1,Math.hypot(dx,dy));
     // Si están cuerpo a cuerpo, dejar espacio de reacción a la bala viajera.
     if(d<100)return;
-    st.bullets.push({x:e.x,y:e.y,vx:dx/d*280,vy:dy/d*280,damage:cfg.damage,radius:7,
-      color:'#ff956c',isEnemy:true,dead:false,sourceEnemy:e,sourceType:'tank',projectileStyle:'tankShell',stunChance:0,stunDuration:0});
-    e.atkFlash=.18;
-    if(st.sfx && st.sfx.enemyAttack)st.sfx.enemyAttack('tank',{x:e.x,worldWidth:st.W});
+    // Request the same aimed windup as normal artillery. Only updateEnemies emits shells.
+    // This used to fire immediately, even while the cannon was stowed or recovering.
+    e.tankCannonState='windup';e.tankCannonTimer=NV.ENEMY_ROLE_REWORK?.tank?.windup || .9;
+    e.tankCannonTargetX=st.player.x;e.tankCannonTargetY=st.player.y;
+    e.tankCannonFired=false;e.tankCannonShotEmitted=false;
+    e.tankPressureShot={damage:cfg.damage,speed:280,radius:9};
+    if(st.sfx && st.sfx.telegraph)st.sfx.telegraph({x:e.x,worldWidth:st.W});
     s.serial=(s.serial||0)+1;s.timer=cfg.interval;
   };
   NV.drawWavePressure = function () {};

@@ -72,7 +72,7 @@ test('los telegraphs actuales siguen independientes del feedback eliminado', () 
     { x: 240, y: 150 }, { t: 2 }), true);
   assert.ok(ranged.calls.some((call) => call.style === NV.META_VIS_PALETTE.info));
   const enemies = fs.readFileSync('js/render/enemies.js', 'utf8');
-  assert.ok(enemies.includes("hookSystem.phase === 'windup'") && enemies.includes("hookSystem.phase === 'tether'"));
+  assert.ok(enemies.includes("phase==='windup'") && enemies.includes("phase==='tether'"));
 });
 
 console.log('RESULT old_visual_artifacts: pass=' + pass + ' fail=0');

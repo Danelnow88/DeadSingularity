@@ -41,6 +41,7 @@ const sbx = {
 };
 vm.runInNewContext(fs.readFileSync('js/render/spectralEnemies2D.js', 'utf8'), sbx, { filename: 'spectralEnemies2D.js' });
 const NV = sbx.window.NV;
+NV.drawSingularitySpecter=(ctx,e)=>{ctx.calls.push('canonical:'+e.enemyTypeId);return true;};
 const player = { x: 200, y: 200 };
 
 t('NV.drawSpectralEnemy2D es función', () => { if (typeof NV.drawSpectralEnemy2D !== 'function') throw new Error('ausente'); });
@@ -54,7 +55,7 @@ for (const type of types) {
     const ctx = mkCtx();
     const enemy = { x: 100, y: 100, radius: 12, color: '#fff', shape: 'circle', enemyTypeId: type, dead: false };
     if (NV.drawSpectralEnemy2D(ctx, enemy, 30, player, null) !== true) throw new Error('esperaba true');
-    if (ctx.calls.length < 5) throw new Error('pocos trazos');
+    if (['specter_archer','specter_guard','specter_core'].includes(type)) {if(!ctx.calls.includes('canonical:'+type))throw Error('canonical route missing');} else if (ctx.calls.length < 5) throw new Error('pocos trazos');
   });
 }
 
@@ -146,7 +147,7 @@ t('specter_lite y specter_core mapean a los modelos del lab sin mutar datos', ()
     const snapshot = JSON.stringify(enemy);
     if (NV.drawSpectralEnemy2D(ctx, enemy, 30, player, null) !== true) throw new Error('esperaba true para ' + id);
     if (JSON.stringify(enemy) !== snapshot) throw new Error('mutó datos en ' + id);
-    if (ctx.calls.length < 5) throw new Error('pocos trazos para ' + id);
+    if(id==='specter_core'){if(!ctx.calls.includes('canonical:'+id))throw Error('current core bypassed');}else if (ctx.calls.length < 5) throw new Error('pocos trazos para ' + id);
   }
 });
 

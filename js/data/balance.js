@@ -360,6 +360,13 @@
     return 1.73 + 0.005 * (L - 50);
   };
 
+  // Purchased alternatives catch up without lowering mastery retained after a sale.
+  NV.weaponPurchaseLevel = function (levels, id) {
+    const lead = Math.max(1, ...Object.values(levels).filter(Number.isFinite));
+    const entry = Math.min(80, 1 + Math.floor((lead - 1) * 0.80));
+    return Math.max(levels[id] || 1, entry);
+  };
+
   // ---- Números de daño con código de color por intensidad (sin "CRITICAL!") ----
   // Normal → blanco · Golpe sustancial → cian · Crítico → rojo intenso + fuente mayor.
   // Definido aquí (data/) para que engine/bullets.js y engine/enemies.js puedan
@@ -445,37 +452,34 @@
     if (!d) return 1;
     return kind === "hp" ? d.hpMult : kind === "dmg" ? d.dmgMult : kind === "spawn" ? (d.spawnMult||1) : 1;
   };
-  // ===== F3: Hook/Pull (specter_archer only, wave >= 15) =====
+  // ===== F3: Hook/Pull (specter_archer only, available from its first appearance) =====
   // Constantes de balance para el sistema de gancho. Autoridad única: NV.BALANCE.
   // (Asignadas al objeto antes del Object.freeze de abajo: quedan congeladas igual.)
-  NV.BALANCE.HOOK_UNLOCK_WAVE = 15;
-  NV.BALANCE.HOOK_WINDUP_TIME = 0.55;
-  NV.BALANCE.HOOK_PROJECTILE_SPEED = 560;
-  NV.BALANCE.HOOK_PROJECTILE_MAX_RANGE = 430;
-  NV.BALANCE.HOOK_PULL_DURATION = 0.50;
-  NV.BALANCE.HOOK_PULL_EXTERNAL_SPEED = 255;
-  NV.BALANCE.HOOK_TETHER_MAX_RANGE = 470;
-  NV.BALANCE.HOOK_GLOBAL_LOCKOUT_POST_RELEASE = 0.85;
+  NV.BALANCE.HOOK_UNLOCK_WAVE = 1;
+  NV.BALANCE.HOOK_WINDUP_TIME = 0.65;
+  NV.BALANCE.HOOK_PROJECTILE_SPEED = 720;
+  NV.BALANCE.HOOK_PROJECTILE_MAX_RANGE = 520;
+  NV.BALANCE.HOOK_PULL_DURATION = 2.0;
+  NV.BALANCE.HOOK_PULL_EXTERNAL_SPEED = 520;
+  NV.BALANCE.HOOK_TETHER_MAX_RANGE = 1200;
+  NV.BALANCE.HOOK_GLOBAL_LOCKOUT_POST_RELEASE = 1.0;
   NV.BALANCE.HOOK_DIRECT_DAMAGE = 0;
   // F3 visibilidad: el specter_archer es la ÚNICA fuente del Hook y su peso base
   // (0.12 en gameData) lo dejaba ~8x más raro que los demás roles tácticos (1.0),
   // así que un jugador podía pasar minutos sin ver un intento. Este multiplicador
   // solo afecta al PESO EFECTIVO de selección (composición), nunca a stats, minWave
   // ni al número total de hostiles (soft target/MAX_HOSTILES intactos).
-  NV.BALANCE.HOOK_SOURCE_PRESENCE_FROM_WAVE = 15; // misma oleada que el desbloqueo
+  NV.BALANCE.HOOK_SOURCE_PRESENCE_FROM_WAVE = 15; // refuerzo tardío de composición; no bloquea la habilidad
   NV.BALANCE.HOOK_SOURCE_PRESENCE_MULT = 2.5;     // peso efectivo 0.12 -> 0.30
   Object.freeze(NV.BALANCE);
   // Cooldown enemigo-local por dificultad. F3: specter_archer solo.
-  // Llamar con NV.runDifficulty en runtime. Ajuste de frecuencia (verificación de
-  // runtime): con un único archer vivo, el ciclo real medido era ~6.4s (cooldown 5
-  // + lockout 0.75 + deferral del ciclo de disparo normal). Bajado a 3.0s en normal
-  // para que el intento entre en la ventana objetivo de 2-5s sin volverse continuo:
-  // el lockout global de 0.75s sigue siendo el suelo real cuando hay >1 archer.
+  // Recuperación local y pausa global transcurren a la vez: el nerf pequeño
+  // espacia intentos tanto con un arquero como con varios listos para enganchar.
   NV.hookCooldownForDifficulty = function (diffId) {
     const d = NV.difficultyGet(diffId != null ? diffId : (NV.runDifficulty != null ? NV.runDifficulty : 'normal'));
-    if (d.id === 'easy') return 4.0;
-    if (d.id === 'hard') return 2.25;
-    return 3.0; // normal + fallback
+    if (d.id === 'easy') return 3.2;
+    if (d.id === 'hard') return 2.0;
+    return 2.6; // normal + fallback
   };
   // Multiplicador de peso efectivo del specter_archer (composición, no stats).
   // 1.0 antes de la oleada de desbloqueo; HOOK_SOURCE_PRESENCE_MULT a partir de ella.
@@ -491,6 +495,7 @@
     return {
       phase: 'idle',          // idle | windup | projectile | tether
       windupTimer: 0,         // cuenta atrás HOOK_WINDUP_TIME
+      dashEscapeCount: 0,     // two separate successful dash starts break the tether
       tetherTimer: 0,         // cuenta atrás HOOK_PULL_DURATION
       lockoutTimer: 0,        // cuenta atrás HOOK_GLOBAL_LOCKOUT_POST_RELEASE
       projectile: null,       // { x, y, vx, vy, dist } — separado de bullets[]
@@ -509,6 +514,7 @@
     hs.phase = 'idle';
     hs.windupTimer = 0;
     hs.tetherTimer = 0;
+    hs.dashEscapeCount = 0;
     hs.lockoutTimer = 0;
     hs.projectile = null;
     hs.tether = null;

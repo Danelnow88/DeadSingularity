@@ -483,6 +483,7 @@ function renderBoss(ctx, boss, time, options){
 
 NV.drawBossDesign = function(ctx, boss, frame, options) {
   if (!boss || boss.isBoss !== true || boss.dead || boss.hp <= 0 || !boss.visual) return false;
+  if (NV.drawCosmicBoss && NV.drawCosmicBoss(ctx, boss, frame, options)) return true;
   ctx.save();
   try { renderBoss(ctx, boss, frame, options); } finally { ctx.restore(); }
   return true;

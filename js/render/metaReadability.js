@@ -150,6 +150,7 @@
   };
 
   NV.drawAutofireTarget = function (ctx, target, frame, player, inRange, debug, env) {
+    if (NV.presentationClock) frame = NV.presentationClock.resolveFrame(frame);
     if (!NV.META_VIS_OPTIONS.autofire) return false;
     const e2 = metaEnv(env);
     ctx.save();

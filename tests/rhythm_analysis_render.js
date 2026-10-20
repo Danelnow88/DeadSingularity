@@ -384,7 +384,7 @@ t('game.js usa fondo sectorial oscuro con fallback galaxia sin aclarar combate',
 t('game.js integra drawRhythmLayer después del starfield y antes de gameplay/HUD', () => {
   const g = fs.readFileSync('js/game.js', 'utf8');
   const star = g.indexOf('NV.drawStarfield(ctx, cameraW, cameraH, frame, player.x - cameraLeft, player.y - cameraTop, frameVisualRhythm,dimensionContentEnabled?starCamera:null)');
-  const rhythm = g.indexOf('NV.drawRhythmLayer(ctx, cameraW, cameraH, frame)');
+  const rhythm = g.indexOf('NV.drawRhythmLayer(ctx, cameraW, cameraH, frame, rbStep)');
   const bounds = g.indexOf('NV.drawSectorPerimeter(ctx', rhythm);
   const special = g.indexOf('if (specialVFX)', rhythm);
   if (!(star >= 0 && rhythm > star)) throw new Error('no va después del starfield');
@@ -398,7 +398,7 @@ t('game.js aplica aislamiento render-only a fondo, auxiliares, hazards y shake',
   if (!g.includes('frameVisualRhythm = (!rhythmVisualDiag || rhythmVisualDiag.auxiliary !== false) ? NV.rhythm : null')) throw new Error('gate auxiliar ausente');
   if (!g.includes('frameVisualRhythm ? minefieldState.groove : null')) throw new Error('groove visual de hazards no aislado');
   if (!g.includes("NV.drawEnemy(ctx, e, frame, player, frameVisualRhythm, visualTimeSeconds)")) throw new Error('enemigos comunes no aislados');
-  if (!g.includes('NV.drawSpectralEnemy2D(ctx, e, frame, player, frameVisualRhythm)')) throw new Error('espectrales no aislados');
+  if (!g.includes('NV.drawSpectralEnemy2D(ctx, e, frame, player, frameVisualRhythm, hookSystem)')) throw new Error('espectrales no aislados');
   if (!g.includes("rhythmVisualDiag.auxiliary !== false) && NV.rhythmShakeBoost")) throw new Error('shake no aislado');
 });
 

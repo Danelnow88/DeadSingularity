@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Núcleos · secuencias de luz · DeadSingularity</title>
+<style>
+*{box-sizing:border-box}body{margin:0;padding:24px;background:#070d1c;color:#e8eefb;font:15px/1.5 system-ui}main{max-width:1260px;margin:auto}h1{color:#9aeeff}a{color:#8de7ff}.intro{max-width:850px;color:#b5bfd3}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}.card{border:1px solid #2b3b56;border-radius:14px;padding:16px;background:#0c1526}.card h2{font-size:19px;margin:0}.card p{min-height:66px;color:#c0cadb;font-size:13px}canvas{width:100%;aspect-ratio:360/230;background:radial-gradient(ellipse,#142138,#050914);border-radius:9px}.phase{min-height:24px;font-size:13px;color:#a9dfea}.bar{height:5px;background:#26334a;border-radius:6px;overflow:hidden}.bar span{display:block;height:100%;width:0;background:var(--accent);transition:none}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}button{font:inherit;border-radius:8px;padding:8px 14px;background:#17273e;color:#eef7ff;border:1px solid #46617b;cursor:pointer}.scale{color:#95a4ba;font-size:11px}.warning{color:#b0bcd1;font-size:12px}button:focus-visible,a:focus-visible{outline:3px solid #9aeeff;outline-offset:3px}
+</style></head><body><main>
+<h1>Secuencias de luz de los núcleos</h1>
+<p class="intro">Cada núcleo conserva su color y anuncia una acción mediante su propia cadencia. Estas muestras recorren estados ilustrativos con los tiempos actuales del juego; la partida usa directamente los estados reales de cada enemigo.</p>
+<a href="enemy-roster-canonical.html">Volver al registro de enemigos</a>
+<div class="toolbar"><button id="pause">Pausar</button><button id="light" aria-pressed="true">Luz activada</button></div>
+<p id="status" role="status">Cargando los nueve núcleos…</p><div id="cards" class="grid"></div>
+<p class="warning">Arriba: vista ampliada. Abajo: tamaño de dibujo actual. Los huecos y el cuerpo conservan su forma; la señal procede del tejido coloreado y de su luz sobre las superficies cercanas.</p>
+</main>
+<script>window.NV=window.NV||{};</script>
+<script src="../js/render/singularityCoreLight.js?nv=archer-hook-v1"></script>
+<script src="../js/render/tankArticulation.js?nv=tank-sync-v2"></script>
+<script src="../js/render/singularityFamily.js?nv=basalt-nine-v1"></script>
+<script>
+(()=>{'use strict';
+ const N=window.NV;N.settings={graphics:{heavyVfx:true}};
+ const specs=[
+ ['runner','Corredor','#36d6fa','Dos acentos rápidos y luz sostenida al embestir.'],
+ ['tank','Tanque','#ff9b32','Un acento corto y una segunda carga más larga e intensa.'],
+ ['swarmlet','Enjambrito','#ed71a4','Carga sostenida al quedar listo; luz firme durante la embestida.'],
+ ['spitter','Escopuras','#b0e52a','Tres acentos crecientes y descarga al disparar.'],
+ ['wisp','Espíritu','#edf5ff','Carga antes de desaparecer y destello blanco al reaparecer.'],
+ ['kamikaze','Kamikaze','#ff646e','Alarma creciente que queda encendida al terminar la mecha.'],
+ ['specter_archer','Espectro Arquero','#f4cd40','Carga dorada para lanzar la soga; luz sostenida durante el vínculo.'],
+ ['specter_guard','Espectro Guardia','#36c797','Latido doble lento mientras protege a un aliado.'],
+ ['specter_core','Espectro Núcleo','#965cff','Una carga continua y creciente antes de colocar la zona.']];
+ const nodes=specs.map(([id,name,color,text])=>{
+  const el=document.createElement('article');el.className='card';el.style.setProperty('--accent',color);
+  el.innerHTML='<h2>'+name+'</h2><p>'+text+'</p><canvas width="720" height="460" aria-label="Luz de '+name+'"></canvas><div class="phase"></div><div class="bar"><span></span></div><div class="scale">Vista ampliada y tamaño actual</div>';
+  document.getElementById('cards').append(el);return{id,canvas:el.querySelector('canvas'),phase:el.querySelector('.phase'),bar:el.querySelector('.bar span'),e:{enemyTypeId:id,x:0,y:0,dead:false},ally:{dead:false}};
+ });
+ const intervals={runner:[.8,.26,.55,.48],tank:[.8,.9,1.05],swarmlet:[.5,.8,.45,.65],spitter:[.8,.6,1],wisp:[.8,.3,.48,.12,.55],kamikaze:[.9,.8,.5],specter_archer:[.8,.55,.3,2],specter_guard:[.8,2.4,.6],specter_core:[.8,.55,2.5]};
+ function sample(n,t){
+  const e=n.e,d=intervals[n.id];let phase=t%d.reduce((a,b)=>a+b,0),i=0;while(i<d.length-1&&phase>=d[i])phase-=d[i++];const remaining=d[i]-phase;
+  e.intent=undefined;e.spitState=undefined;e.spitTimer=undefined;e.flankState=undefined;e.stateTimer=undefined;e.armed=false;e.guardProtectionActive=false;e.guardTarget=n.ally;
+  e.swarmState='approach';e.swarmReady=false;e.wispPhaseState='drift';e.coreZoneState='positioning';e.tankCannonState='approach';
+  let label='En reposo',visible=true,hook;
+  switch(n.id){
+   case 'runner':e.flankState=['positioning','windup','attack','recovery'][i];e.stateTimer=remaining;label=['Se posiciona','Prepara la embestida','Embiste','Se recupera'][i];break;
+   case 'tank':e.tankCannonState=['approach','windup','recovery'][i];e.tankCannonTimer=remaining;label=['Se posiciona','Carga el cañón','Dispara y se recupera'][i];break;
+   case 'swarmlet':e.swarmState=['approach','form','commit','regroup'][i];e.swarmStateTimer=remaining;e.swarmReady=i===1&&remaining<=.22;label=['Se aproxima','Forma el grupo','Embestida colectiva','Se reagrupa'][i];break;
+   case 'spitter':e.spitState=['positioning','windup','recovery'][i];e.spitTimer=remaining;label=['Busca distancia','Prepara el disparo','Dispara y se recupera'][i];break;
+   case 'wisp':e.wispPhaseState=['drift','phase_out','mark','pulse','recovery'][i];e.wispPhaseTimer=remaining;visible=i!==2;label=['Se desplaza','Se desvanece','Cuerpo ausente · marca de reaparición','Reaparece y lanza el pulso','Se recupera'][i];break;
+   case 'kamikaze':e.armed=i===1;e.fuse=remaining;visible=i!==2;label=['Se aproxima','Mecha encendida','Explosión · reinicio de la muestra'][i];break;
+   case 'specter_archer':if(i>=1)hook={srcEnemy:e,phase:['windup','projectile','tether'][i-1],windupTimer:remaining};label=['Busca distancia','Prepara la soga','Lanza el gancho','Tensa el vínculo'][i];break;
+   case 'specter_guard':e.guardProtectionActive=i===1;label=i===1?'Protege a un aliado':'Busca un aliado';break;
+   case 'specter_core':e.coreZoneState=['positioning','windup','recovery'][i];e.coreZoneTimer=remaining;label=['Se posiciona','Prepara la zona','Coloca la zona y se recupera'][i];break;
+  }return{label,visible,hook};
+ }
+ let playing=true,last=null,time=0;
+ document.getElementById('pause').onclick=e=>{playing=!playing;e.currentTarget.textContent=playing?'Pausar':'Reanudar';};
+ document.getElementById('light').onclick=e=>{N.__singularityCoreLighting=N.__singularityCoreLighting===false;const on=N.__singularityCoreLighting!==false;e.currentTarget.textContent=on?'Luz activada':'Luz desactivada';e.currentTarget.setAttribute('aria-pressed',on);};
+ function frame(now){requestAnimationFrame(frame);if(last!==null&&playing)time+=Math.min(.05,(now-last)/1000);last=now;
+  const stats=N.singularityFamilyStats().species,ready=stats.length===9&&stats.every(s=>s.ready&&s.lightReady);
+  document.getElementById('status').textContent=ready?'Los nueve núcleos están cargados.':stats.some(s=>s.error||s.lightError)?'No se pudo cargar una imagen.':'Cargando los nueve núcleos…';
+  for(const n of nodes){const c=n.canvas.getContext('2d'),s=sample(n,time);c.setTransform(2,0,0,2,0,0);c.clearRect(0,0,360,230);
+   const draw=(x,y,z)=>{c.save();c.translate(x,y);c.scale(z,z);if(n.id.startsWith('specter_'))N.drawSingularitySpecter(c,n.e,null,time,s.hook);else{const spec=stats.find(a=>a.id===n.id);if(spec)c.scale(spec.localScale,spec.localScale);N.drawSingularityCommon(c,n.e,undefined,undefined,time);}c.restore();};
+   if(s.visible){draw(180,90,2.7);draw(180,190,1);}n.phase.textContent=s.label;n.bar.style.width=(100*N.singularityCoreIntensity(n.e,time,s.hook))+'%';
+  }
+ }requestAnimationFrame(frame);
+})();
+</script></body></html>

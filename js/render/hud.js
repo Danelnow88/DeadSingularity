@@ -286,6 +286,7 @@
       var equipped = k === equippedIdx;
       var glow = e ? (e.glow !== undefined ? e.glow : 0.3) : 0;
       var cnum = rgbaNum(e ? e.color : '#7cf8ff');
+      var fusionStyle = e && e.weapon && NV.weaponFusionPresentation ? NV.weaponFusionPresentation(e.fuse) : null;
       var pulseA = selected ? easeOut(selectionPulseT) : 0;
       var scale = 1 + 0.13 * pulseA;
       var ccx = x + cw / 2, ccy = y + ch / 2;
@@ -294,7 +295,7 @@
       ctx.save();
       if (scale > 1.01) { ctx.translate(ccx, ccy); ctx.scale(scale, scale); ctx.translate(-ccx, -ccy); }
       ctx.globalAlpha = 0.92;
-      ctx.fillStyle = grad || (e ? 'rgba(' + cnum + ',0.10)' : 'rgba(255,255,255,0.03)');
+      ctx.fillStyle = fusionStyle && fusionStyle.fused ? fusionStyle.background : grad || (e ? 'rgba(' + cnum + ',0.10)' : 'rgba(255,255,255,0.03)');
       roundedFill(ctx, x, y, cw, ch, RAD);
       ctx.globalAlpha = 1;
       var wTier = e && e.level ? weaponLevelTier(e.level) : null;
@@ -348,6 +349,7 @@
           ctx.fillText(e.badge, x + cw - 3, y + ch - 3);
         }
         ctx.textAlign = 'left';
+        if (fusionStyle && fusionStyle.fused && NV.drawWeaponFusionBadge) NV.drawWeaponFusionBadge(ctx, x + 1, y + 1, 9, e.fuse);
       }
       ctx.restore();
       var flT = 0;

@@ -20,21 +20,10 @@
   const WISP_HOSTILE_MARK_COLOR = '#d94b55';
   const DRONE_ROTORS = [[-24, -18], [24, -18], [-24, 18], [24, 18]];
   const DRONE_CRACK = [[-8, 0], [0, -3], [9, -1]];
-  const RUNNER_CRACK_TOP = [[-8, -3], [5, -4], [18, -3], [29, -1]];
-  const RUNNER_CRACK_BOTTOM = [[-8, 3], [5, 4], [18, 3], [29, 1]];
-  const TANK_FEET = [-18, 5, 26];
-  const TANK_CRACK_BODY = [[-18, 5], [2, 4], [20, 7]];
-  const TANK_CRACK_TURRET = [[-14, 9], [0, 7], [12, 9]];
   const SHIELDER_NODES = [[10, 0, 2.2], [22, 0, 2.8], [34, 0, 2.2]];
   const SHIELDER_CRACK_CENTER = [[15, 0], [24, 0], [37, 0]];
   const SHIELDER_CRACK_TOP = [[8, -10], [16, -5], [23, -2]];
   const SHIELDER_CRACK_BOTTOM = [[8, 10], [16, 5], [23, 2]];
-  const SWARMLET_ORBIT_SPEED = 1.35;
-  const SPITTER_EYES = [[-17, -6, 3.3, 3.8], [-7, -10, 3.1, 3.5], [7, -10, 3.1, 3.5], [17, -6, 3.3, 3.8]];
-  const SPITTER_TENTACLES = [-18, -8, 0, 8, 18];
-  const SPITTER_CRACK_BODY = [[-8, 1], [0, 4], [8, 1]];
-  const SPITTER_CRACK_NOZZLE = [[-1, 13], [0, 21], [1, 29]];
-  const KAMIKAZE_EYES = [[-8, 5], [8, 5], [0, -9]];
   const STATIC_RGBA_ALPHAS = [0.1, 0.18, 0.2, 0.22, 0.24, 0.28, 0.3, 0.32, 0.34, 0.36, 0.42, 0.46, 0.48, 0.5, 0.55, 0.56, 0.6, 0.62, 0.64, 0.72, 0.78, 0.8, 0.86, 0.88, 0.9, 0.92, 0.94, 0.95, 0.96];
 
   function prepareRgba(color) {
@@ -62,6 +51,7 @@
   function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
   function shortestAngle(from, to) { return Math.atan2(Math.sin(to - from), Math.cos(to - from)); }
   function smoothFacing(e, key, target, blend) {
+    if (NV.presentationClock) blend = NV.presentationClock.blend(blend);
     let cached = commonFacingCache.get(e);
     if (!cached) { cached = Object.create(null); commonFacingCache.set(e, cached); }
     let angle = cached[key];
@@ -71,6 +61,7 @@
     return angle;
   }
   function smoothScalar(e, key, target, blend) {
+    if (NV.presentationClock) blend = NV.presentationClock.blend(blend);
     let cached = commonFacingCache.get(e);
     if (!cached) { cached = Object.create(null); commonFacingCache.set(e, cached); }
     let value = cached[key];
@@ -87,22 +78,6 @@
     }
     return seed;
   }
-  function runnerFacing(e, dx, dy) {
-    const state = e.intent && e.intent.state ? e.intent.state : e.flankState;
-    let fx = dx, fy = dy;
-    if ((state === 'attack' || state === 'COMMIT') && (Math.abs(e.commitDirX || 0) + Math.abs(e.commitDirY || 0) > 1e-6)) {
-      fx = e.commitDirX; fy = e.commitDirY;
-    } else if (state === 'recovery') {
-      fx = -dx; fy = -dy;
-    } else if (state === 'idle' || state === 'positioning' || !state) {
-      const dist = Math.max(Math.hypot(dx, dy), 1);
-      const flankSide = e.flankSide === -1 ? -1 : 1;
-      const flankOffset = 90 + flankSide * 30;
-      fx = dx - (dy / dist) * flankOffset;
-      fy = dy + (dx / dist) * flankOffset;
-    }
-    return Math.atan2(fy, fx);
-  }
   function rgba(color, alpha) { return color.rgba[alpha] || ('rgba(' + color.rgb + ',' + alpha + ')'); }
   function neutralShadow(ctx) { ctx.shadowBlur = 0; }
   // Stable vector geometry keeps its native path identity between frames. Skia
@@ -115,19 +90,7 @@
     'drone-blade-0': p => p.ellipse(0, 0, 9, 2.1, 0, 0, TAU),
     'drone-blade-1': p => p.ellipse(0, 0, 9, 2.1, Math.PI, 0, TAU),
     'drone-face': p => p.ellipse(9, 0, 9, 7, 0, 0, TAU),
-    'runner-body': p => { p.moveTo(-22, 0); p.quadraticCurveTo(-10, -13, 14, -14); p.quadraticCurveTo(31, -12, 42, -3); p.quadraticCurveTo(48, 0, 42, 3); p.quadraticCurveTo(31, 12, 14, 14); p.quadraticCurveTo(-10, 13, -22, 0); p.closePath(); },
-    'runner-core': p => { p.moveTo(-6, 0); p.quadraticCurveTo(10, -7, 28, 0); p.quadraticCurveTo(10, 7, -6, 0); p.closePath(); },
-    'runner-nose': p => { p.moveTo(23, -6); p.lineTo(49, -2); p.lineTo(49, 2); p.lineTo(23, 6); p.quadraticCurveTo(30, 0, 23, -6); p.closePath(); },
-    'tank-body': p => { p.moveTo(-38, 6); p.lineTo(-18, -4); p.lineTo(18, -4); p.lineTo(33, 2); p.lineTo(37, 10); p.lineTo(26, 17); p.lineTo(-20, 17); p.lineTo(-36, 12); p.closePath(); },
-    'tank-top': p => { p.moveTo(-8, -9); p.lineTo(12, -9); p.lineTo(24, -4); p.lineTo(22, 3); p.lineTo(2, 4); p.lineTo(-10, 0); p.closePath(); },
-    'tank-turret': p => { p.moveTo(-8, -5); p.lineTo(8, -5); p.lineTo(15, -1); p.lineTo(14, 5); p.lineTo(-2, 6); p.lineTo(-9, 2); p.closePath(); },
-    'tank-barrel': p => { p.moveTo(0, -2.8); p.lineTo(32, -2.8); p.lineTo(40, -1.2); p.lineTo(40, 1.2); p.lineTo(32, 2.8); p.lineTo(0, 2.8); p.closePath(); },
-    'tank-plate': p => { p.moveTo(-24, 0); p.lineTo(-12, -6); p.lineTo(-4, -1); p.lineTo(-8, 8); p.lineTo(-22, 8); p.closePath(); },
     'shielder-body': p => { p.moveTo(-28, -16); p.quadraticCurveTo(-15, -30, 2, -18); p.quadraticCurveTo(8, 0, 2, 18); p.quadraticCurveTo(-15, 30, -28, 16); p.quadraticCurveTo(-35, 0, -28, -16); p.closePath(); },
-    'swarmlet-body': p => { p.moveTo(-8, -3); p.quadraticCurveTo(0, -7, 8, -2); p.lineTo(12, 0); p.lineTo(8, 2); p.quadraticCurveTo(0, 7, -8, 3); p.closePath(); },
-    'spitter-body': p => { p.moveTo(-30, -2); p.quadraticCurveTo(-23, -27, 0, -31); p.quadraticCurveTo(23, -27, 30, -2); p.quadraticCurveTo(22, 10, 0, 13); p.quadraticCurveTo(-22, 10, -30, -2); p.closePath(); },
-    'spitter-nozzle': p => { p.moveTo(-8, 10); p.quadraticCurveTo(-11, 24, -5, 34); p.quadraticCurveTo(0, 41, 7, 34); p.quadraticCurveTo(13, 24, 9, 10); p.quadraticCurveTo(4, 15, -1, 15); p.quadraticCurveTo(-5, 15, -8, 10); p.closePath(); },
-    'kamikaze-body': p => { p.moveTo(-15, -8); p.quadraticCurveTo(0, -17, 15, -8); p.quadraticCurveTo(18, 4, 7, 13); p.quadraticCurveTo(-7, 16, -16, 4); p.closePath(); },
   };
   for (let i = 0; i < DRONE_ROTORS.length; i++) {
     const [rx, ry] = DRONE_ROTORS[i];
@@ -135,10 +98,6 @@
       p.moveTo(Math.sign(rx) * 8, Math.sign(ry) * 5); p.quadraticCurveTo(rx * .55, ry * .55, rx, ry);
     };
   }
-  // Only the three fixed feet: never key this cache by entity, frame or size.
-  for (const x of TANK_FEET) COMMON_PATH_BUILDERS['tank-foot-' + x] = p => {
-    p.moveTo(x - 5, 16); p.lineTo(x + 5, 16); p.lineTo(x + 4, 23); p.lineTo(x - 4, 23); p.closePath();
-  };
   function commonPath(ctx, key) {
     const build = COMMON_PATH_BUILDERS[key];
     if (typeof Path2D !== 'function') { ctx.beginPath(); build(ctx); return undefined; }
@@ -236,33 +195,9 @@
     eye(ctx, 6, -1, 3.9, 4.5, eyesTarget, color); eye(ctx, 14, 1, 3.2, 3.8, eyesTarget, color); crack(ctx, DRONE_CRACK, color, 0.34, 1); glowCore(ctx, -6, 0, 1.8, color, 0.36); ctx.restore();
   }
 
-  function drawRunner(ctx, e, color, seed, t, target, facingX, facingY) {
-    const facing = smoothFacing(e, 'runner', runnerFacing(e, facingX, facingY), 0.34);
-    ctx.save(); ctx.rotate(facing); ctx.translate(-1, 0); ctx.rotate(Math.sin(t * 4.6 + seed) * 0.018);
-    for (let side = -1; side <= 1; side += 2) { ctx.beginPath(); ctx.moveTo(-20, side * 3); ctx.quadraticCurveTo(-34, side * 2, -49, side * (10 + Math.sin(t * 5 + side) * 1.2)); ctx.strokeStyle = rgba(color, 0.64); ctx.lineWidth = 2.7; ctx.lineCap = 'round'; ctx.stroke(); }
-    const body = commonPath(ctx, 'runner-body'); under(ctx, 5.6, body); darkFill(ctx, body); neon(ctx, color, 1.95, 3.8, 0.94, body);
-    const core = commonPath(ctx, 'runner-core'); under(ctx, 3.8, core); ctx.fillStyle = '#03060b'; fillPath(ctx, core); neon(ctx, color, 1.2, 2.2, 0.5, core);
-    for (let side = -1; side <= 1; side += 2) { ctx.beginPath(); ctx.moveTo(-2, side * 4); ctx.quadraticCurveTo(-14, side * (12 + Math.sin(t * 6 + side) * 1.2), -20, side * 21); ctx.quadraticCurveTo(-23, side * 26, -30, side * 15); ctx.strokeStyle = rgba(color, 0.8); ctx.lineWidth = 3.7; ctx.lineCap = 'round'; ctx.stroke(); ctx.beginPath(); ctx.moveTo(-27, side * 15); ctx.lineTo(-37, side * 14); ctx.lineTo(-31, side * 20); ctx.closePath(); ctx.fillStyle = rgba(color, 0.2); ctx.fill(); ctx.strokeStyle = rgba(color, 0.64); ctx.lineWidth = 1.1; ctx.stroke(); }
-    for (let side = -1; side <= 1; side += 2) { ctx.beginPath(); ctx.moveTo(14, side * 5); ctx.quadraticCurveTo(19, side * 8, 20, side * 12); ctx.strokeStyle = rgba(color, 0.46); ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.stroke(); }
-    const nose = commonPath(ctx, 'runner-nose'); under(ctx, 4.5, nose); ctx.fillStyle = '#05070d'; fillPath(ctx, nose); neon(ctx, color, 1.5, 2.9, 0.8, nose);
-    const eyesTarget = localTarget(ctx, target);
-    eye(ctx, 21, -5, 3.7, 4.1, eyesTarget, color); eye(ctx, 21, 5, 3.7, 4.1, eyesTarget, color); crack(ctx, RUNNER_CRACK_TOP, color, 0.34, 1); crack(ctx, RUNNER_CRACK_BOTTOM, color, 0.24, 1); glowCore(ctx, 0, 0, 1.6, color, 0.32); ctx.restore();
-  }
+  function drawRunner(ctx,e,color,seed,t,target,dx,dy){ NV.drawSingularityCommon?.(ctx,e,dx,dy,t); }
 
-  function drawTank(ctx, e, color, seed, t, target, facingX, facingY) {
-    // Tanque = silueta pesada y cañón legible. Evitamos halos/telemetría decorativa.
-    const bob = Math.sin(t * 0.8 + seed), recoil = Math.sin(t * 2 + seed) * 0.35;
-    ctx.save(); ctx.translate(-4, 10 + bob); ctx.fillStyle = 'rgba(0,0,0,.30)'; ctx.beginPath(); ctx.ellipse(4, 18, 40, 7, 0, 0, TAU); ctx.fill();
-    const body = commonPath(ctx, 'tank-body'); under(ctx, 7, body); darkFill(ctx, body); neon(ctx, color, 2.25, 4.1, 0.94, body);
-    const top = commonPath(ctx, 'tank-top'); under(ctx, 5.3, top); ctx.fillStyle = '#05070d'; fillPath(ctx, top); neon(ctx, color, 1.75, 3.2, 0.78, top);
-    ctx.save(); ctx.translate(8, -10); ctx.rotate(Math.atan2(facingY, facingX));
-    const turret = commonPath(ctx, 'tank-turret'); under(ctx, 4.8, turret); ctx.fillStyle = '#04070c'; fillPath(ctx, turret); neon(ctx, color, 1.55, 2.9, 0.72, turret);
-    ctx.save(); ctx.translate(10 - recoil, 0); const barrel = commonPath(ctx, 'tank-barrel'); under(ctx, 4.2, barrel); ctx.fillStyle = '#03060b'; fillPath(ctx, barrel); neon(ctx, color, 1.45, 2.8, 0.8, barrel); ctx.restore();
-    crack(ctx, TANK_CRACK_TURRET, color, 0.18, 1); ctx.restore();
-    const plate = commonPath(ctx, 'tank-plate'); under(ctx, 4.4, plate); ctx.fillStyle = '#04070c'; fillPath(ctx, plate); neon(ctx, color, 1.3, 2.6, 0.6, plate);
-    for (const x of TANK_FEET) { const foot = commonPath(ctx, 'tank-foot-' + x); under(ctx, 3.8, foot); ctx.fillStyle = '#04070c'; fillPath(ctx, foot); neon(ctx, color, 1.1, 2.2, 0.5, foot); }
-    ctx.restore();
-  }
+  function drawTank(ctx,e,color,seed,t,target,dx,dy){ NV.drawSingularityCommon?.(ctx,e,dx,dy,t); }
 
   function drawShielder(ctx, e, color, seed, t, target, facingX, facingY) {
     const active = e.shield !== false && !(e.shieldCd > 0), sway = Math.sin(t * 1.6 + seed) * 1.5, pulse = (Math.sin(t * 2.2 + seed) + 1) / 2;
@@ -279,36 +214,16 @@
     ctx.beginPath(); ctx.moveTo(9, 0); ctx.quadraticCurveTo(22, -3 - pulse * 0.8, 35, 0); ctx.strokeStyle = rgba(color, active ? 0.56 : 0.18); ctx.lineWidth = 1.5; ctx.stroke(); crack(ctx, SHIELDER_CRACK_CENTER, color, active ? 0.64 : 0.2, 1.3); crack(ctx, SHIELDER_CRACK_TOP, color, 0.24, 1); crack(ctx, SHIELDER_CRACK_BOTTOM, color, 0.24, 1); ctx.restore();
   }
 
-  function drawSwarmlet(ctx, e, color, seed, t, target) {
-    const orbit = t * SWARMLET_ORBIT_SPEED + seed;
-    if (e.swarmState === 'regroup') ctx.globalAlpha *= 0.62;
-    if (e.swarmReady) {
-      const readyPulse = 0.5 + Math.sin(t * 10 + seed) * 0.5;
-      ctx.beginPath(); ctx.arc(0, 0, 25 + readyPulse * 3, 0, TAU); ctx.strokeStyle = rgba(color, 0.46 + readyPulse * 0.24); ctx.lineWidth = 1.4; ctx.stroke();
-    } else if (e.swarmState === 'commit') {
-      const dirX = e.swarmCommitDirX || 0, dirY = e.swarmCommitDirY || 0;
-      ctx.beginPath(); ctx.moveTo(-dirX * 19, -dirY * 19); ctx.lineTo(-dirX * 43, -dirY * 43); ctx.strokeStyle = rgba(color, 0.64); ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.stroke();
-    }
-    for (let i = 0; i < 3; i++) { const a = orbit + i * TAU / 3, px = Math.cos(a) * 14, py = Math.sin(a * 1.1) * 9; ctx.save(); ctx.translate(px, py); ctx.rotate(a * 0.25 + i * 0.7); const body = commonPath(ctx, 'swarmlet-body'); under(ctx, 4, body); darkFill(ctx, body); neon(ctx, color, 1.4, 3, 0.9, body); eye(ctx, 2, 0, 2.5, 2.7, localTarget(ctx, target), color); ctx.beginPath(); ctx.moveTo(-7, 0); ctx.quadraticCurveTo(-13, 5 * Math.sin(t * 4 + i), -15, 0); ctx.strokeStyle = rgba(color, 0.55); ctx.lineWidth = 2.3; ctx.stroke(); ctx.restore(); }
+  function drawSwarmlet(ctx,e,color,seed,t){
+    if(e.swarmState==='regroup')ctx.globalAlpha*=.62;
+    if(e.swarmReady){const pulse=.5+Math.sin(t*10+seed)*.5;ctx.beginPath();ctx.arc(0,0,25+pulse*3,0,TAU);ctx.strokeStyle=rgba(color,.46+pulse*.24);ctx.lineWidth=1.4;ctx.stroke();}
+    NV.drawSingularityCommon?.(ctx,e,undefined,undefined,t);
   }
 
-  function drawSpitter(ctx, e, color, seed, t, target) {
-    const driftY = Math.sin(t * 1.8 + seed) * 2.4, sway = Math.sin(t * 1.1 + seed) * 1.6;
-    const state = e.intent && e.intent.state ? e.intent.state : e.spitState;
-    const windup = state === 'windup' ? clamp(1 - ((e.intent ? e.intent.stateTimer : e.spitTimer) || 0) / 0.6, 0, 1) : 0;
-    const firing = state === 'attack' || e.spitFired === true;
-    const pulse = clamp((Math.sin(t * 2.1 + seed) + 1) / 2 + windup * 0.7 + (firing ? 0.35 : 0), 0, 1.7);
-    ctx.save(); ctx.translate(sway, -3 + driftY);
-    const body = commonPath(ctx, 'spitter-body'); under(ctx, 6, body); darkFill(ctx, body); neon(ctx, color, 2.25, 4.2 + windup * 5, 0.92, body);
-    ctx.beginPath(); ctx.ellipse(0, -1, 16 + pulse * 2.2, 8 + pulse * 1.1, 0, 0, TAU); ctx.fillStyle = rgba(color, 0.13 + windup * 0.12); ctx.fill(); ctx.strokeStyle = rgba(color, 0.42 + windup * 0.25); ctx.lineWidth = 1.2; ctx.stroke();
-    const eyesTarget = localTarget(ctx, target);
-    for (const p of SPITTER_EYES) eye(ctx, p[0], p[1], p[2], p[3], eyesTarget, color);
-    for (const x of SPITTER_TENTACLES) { ctx.beginPath(); ctx.moveTo(x, 10); ctx.quadraticCurveTo(x + (x < 0 ? -2 : x > 0 ? 2 : 0), 17 + pulse * 2, x + (x < 0 ? -5 : x > 0 ? 5 : 0) + Math.sin(t * 2 + x) * 0.6, 24 + pulse * 0.8); ctx.strokeStyle = rgba(color, 0.48); ctx.lineWidth = 2.8; ctx.lineCap = 'round'; ctx.stroke(); }
-    const nozzle = commonPath(ctx, 'spitter-nozzle'); under(ctx, 5.2, nozzle); ctx.fillStyle = '#05070d'; fillPath(ctx, nozzle); neon(ctx, color, 1.95, 3.9 + windup * 6, 0.86, nozzle);
-    ctx.beginPath(); ctx.ellipse(0, 25, 7 + pulse * 2.1, 8 + pulse * 1.3, 0, 0, TAU); ctx.fillStyle = rgba(color, 0.18 + windup * 0.2); ctx.fill(); ctx.strokeStyle = rgba(color, 0.72 + windup * 0.2); ctx.lineWidth = 1.5; ctx.stroke(); glowCore(ctx, 0, 25, 3.1 + pulse, firing ? WARM_CORE : color, 0.78);
-    ctx.beginPath(); ctx.ellipse(0, 36, 5.6, 4.6, 0, 0, TAU); ctx.fillStyle = '#010204'; ctx.fill(); ctx.strokeStyle = rgba(color, 0.86); ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.beginPath(); ctx.ellipse(0, -37, 14 + pulse * 1.2, 5 + pulse * 0.4, 0, 0, TAU); fauxGlowStroke(ctx, color, 4.2 + windup * 3.2, windup >= 0.66 ? 0.32 : windup > 0 ? 0.24 : 0.18); ctx.strokeStyle = rgba(color, 0.36 + windup * 0.28); ctx.lineWidth = 1.5; ctx.stroke(); neutralShadow(ctx);
-    glowCore(ctx, -9, -37, 1.7, color, 0.42); glowCore(ctx, 9, -37, 1.7, color, 0.42); glowCore(ctx, -6, 43, 1.5, color, 0.34); glowCore(ctx, 6, 46, 1.4, color, 0.28); crack(ctx, SPITTER_CRACK_BODY, color, 0.28, 1); crack(ctx, SPITTER_CRACK_NOZZLE, color, 0.24, 1); ctx.restore();
+  function drawSpitter(ctx,e,color,seed,t){
+    // Retain visible drift; removed old eye, tentacle and nozzle calculations were never drawn.
+    ctx.save();ctx.translate(Math.sin(t*1.1+seed)*1.6,-3+Math.sin(t*1.8+seed)*2.4);
+    NV.drawSingularityCommon?.(ctx,e,undefined,undefined,t);ctx.restore();
   }
 
   function drawWisp(ctx, e, color, seed, t, target) {
@@ -316,6 +231,7 @@
     const state = e.wispPhaseState || 'drift';
     const invScale = 1 / color.scale;
     if (state === 'mark') {
+      if(NV.drawWispPhaseReticle&&NV.drawWispPhaseReticle(ctx,e,t,seed,invScale))return;
       const progress = clamp(1 - (e.wispPhaseTimer || 0) / 0.48, 0, 1);
       const mx = (e.wispTargetX - e.x) * invScale;
       const my = (e.wispTargetY - e.y) * invScale;
@@ -347,20 +263,12 @@
       ctx.strokeStyle = WISP_HOSTILE_MARK_COLOR; ctx.lineWidth = 2.4 * invScale;
       ctx.beginPath(); ctx.arc(0, 0, (68 - flash * 18) * invScale, 0, TAU); ctx.stroke();
     }
-    ctx.beginPath(); ctx.moveTo(-14, -5); ctx.quadraticCurveTo(-8, -20, 4, -20); ctx.quadraticCurveTo(17, -18, 18, -4); ctx.lineTo(17, 11); ctx.quadraticCurveTo(12, 6 + Math.sin(t * 3.5) * 1.5, 8, 14); ctx.quadraticCurveTo(3, 7, -2, 15); ctx.quadraticCurveTo(-8, 7, -13, 12 + Math.sin(t * 3.2 + 1.1) * 1.4); ctx.quadraticCurveTo(-17, 3, -14, -5); ctx.closePath(); under(ctx, 5); ctx.fillStyle = 'rgba(3,7,8,.82)'; ctx.fill(); neon(ctx, color, 1.8, 6, 0.88); eye(ctx, 3, -5, 6.4, 7.1, localTarget(ctx, target), color); ctx.beginPath(); ctx.moveTo(-8, 4); ctx.quadraticCurveTo(0, 10 + Math.sin(t * 3.3) * 1.2, 11, 4); ctx.strokeStyle = rgba(color, 0.22); ctx.lineWidth = 1.2; ctx.stroke(); ctx.restore();
+    NV.drawSingularityCommon?.(ctx,e,undefined,undefined,t);ctx.restore();
   }
 
-  function drawKamikaze(ctx, e, color, seed, t, target) {
-    const arm = e.armed ? clamp(1 - Math.max(e.fuse || 0, 0) / 0.8, 0, 1) : 0;
-    const flash = arm * (0.5 + 0.5 * Math.sin(t * (7 + arm * 10))), spread = 8 + arm * 8;
-    for (let i = 0; i < 3; i++) { const a = -Math.PI / 2 + i * TAU / 3; ctx.save(); ctx.translate(Math.cos(a) * spread, Math.sin(a) * spread); ctx.rotate(a * 0.1); const body = commonPath(ctx, 'kamikaze-body'); under(ctx, 5, body); darkFill(ctx, body); neon(ctx, color, 1.9, 3 + arm * 4, 0.95, body); ctx.restore(); }
-    const coreRadius = 7 + arm * 2 + flash * 1.6;
-    ctx.save(); neutralShadow(ctx); if (commonFauxGlowEnabled) { ctx.fillStyle = rgba(color, arm > 0.72 ? 0.36 : arm > 0 ? 0.28 : 0.18); ctx.beginPath(); ctx.arc(0, 0, coreRadius + 4 + arm * 4, 0, TAU); ctx.fill(); } ctx.fillStyle = arm > 0.72 ? 'rgba(255,245,232,' + (0.72 + flash * 0.25) + ')' : rgba(color, 0.78); ctx.beginPath(); ctx.arc(0, 0, coreRadius, 0, TAU); ctx.fill(); ctx.restore(); neutralShadow(ctx);
-    const eyesTarget = localTarget(ctx, target), eyeSpread = 1 + arm * 0.05;
-    for (const p of KAMIKAZE_EYES) eye(ctx, p[0] * eyeSpread, p[1] * eyeSpread, 3.5, 3.8, eyesTarget, color);
-    if (arm > 0) for (let i = 0; i < 6; i++) { const a = i * TAU / 6 + 0.2, cos = Math.cos(a), sin = Math.sin(a); ctx.beginPath(); ctx.moveTo(cos * 8, sin * 8); ctx.lineTo(cos * 14, sin * 14); ctx.lineTo(cos * 24, sin * 24); ctx.strokeStyle = rgba(WARM_CRACK, arm * 0.72); ctx.lineWidth = 1 + arm * 0.6; ctx.lineCap = 'round'; ctx.stroke(); }
-  }
+  function drawKamikaze(ctx,e,color,seed,t){ NV.drawSingularityCommon?.(ctx,e,undefined,undefined,t); }
 
+  const CANONICAL_BODY_IDS = new Set(['runner','tank','swarmlet','spitter','wisp','kamikaze']);
   const COMMON_DRAWERS = { drone: drawDrone, runner: drawRunner, tank: drawTank, shielder: drawShielder, swarmlet: drawSwarmlet, spitter: drawSpitter, wisp: drawWisp, kamikaze: drawKamikaze };
   NV.hasCommonEnemyVisual = function (enemyTypeId) { return COMMON_ENEMY_IDS.has(enemyTypeId); };
 
@@ -369,15 +277,16 @@
     if (!profile || !drawer) return false;
     // Diagnóstico 'legacy': no dibuja el body especializado; el fallback geométrico
     // previo (y los ojos genéricos) corren exactamente como antes de la integración.
-    if (commonDiagMode === 'legacy') return false;
+    const canonical=!e.isElite && CANONICAL_BODY_IDS.has(e.enemyTypeId);
+    if (!canonical && commonDiagMode === 'legacy') return false;
     // Tank no tiene ojos especializados: evita por completo getTransform/target.
-    const target = player && e.enemyTypeId !== 'tank'
+    const target = !canonical && player && e.enemyTypeId !== 'tank'
       ? canvasPoint(ctx, player.x - (e.x + offX), player.y - (e.y + offY))
       : null;
     const facingX = player ? player.x - e.x : 1;
     const facingY = player ? player.y - e.y : 0;
     const isSwarmlet = e.enemyTypeId === 'swarmlet';
-    const seed = isSwarmlet || (e.previewMotionPolish&&['spitter','wisp'].includes(e.enemyTypeId)) ? stableSwarmletSeed(e) : hash01(e, 5) * TAU;
+    const seed = isSwarmlet || (canonical&&['spitter','wisp'].includes(e.enemyTypeId)) ? stableSwarmletSeed(e) : hash01(e, 5) * TAU;
     const animationTime = isSwarmlet ? visualTimeSeconds : (frame || 0) / 60;
     const fauxGlowWasEnabled = commonFauxGlowEnabled;
     ctx.save();
@@ -430,6 +339,8 @@
   };
 
   NV.drawEnemy = function (ctx, e, frame, player, rhythm, visualTimeSeconds) {
+    if (!e || e.dead || e.waveCleanup) return;
+    if (NV.presentationClock) frame = NV.presentationClock.resolveFrame(frame);
     ctx.save();
     let rx = 0, ry = 0;
     if (rhythm && rhythm.enabled && rhythm.state === 'listening') {
@@ -487,6 +398,7 @@
     // kamikaze armado / mecha, jefe) donde de verdad aportan feedback.
     ctx.shadowBlur = e.isElite ? 8 : 4;
     ctx.shadowColor = e.color;
+    const bodyOpacityBeforeArmed = ctx.globalAlpha;
     // KAMIKAZE armado: parpadeo rápido + anillo de mecha expansivo (aviso claro de peligro)
     if (e.armed) {
       const blink = 0.45 + Math.sin(frame * 0.55) * 0.55;
@@ -497,6 +409,8 @@
       ctx.beginPath(); ctx.arc(0, 0, e.radius + 6 + (0.8 - Math.max(e.fuse, 0)) * 12, 0, Math.PI * 2); ctx.stroke();
       ctx.fillStyle = Math.sin(frame * 0.55) > 0 ? '#ffffff' : '#ff5f3d';
       ctx.shadowColor = '#ffffff';
+      // Keep the existing fuse-ring blink; the new core owns the body's cadence.
+      if (NV.hasSingularityCoreLight && NV.hasSingularityCoreLight(e)) ctx.globalAlpha = bodyOpacityBeforeArmed;
     }
 
     const r = e.radius;
@@ -583,30 +497,8 @@
       ctx.restore();
     }
 
-    // Tanque: un solo aviso de carga y una marca de impacto. No hay retículas,
-    // líneas largas ni anillos alrededor del cuerpo que parezcan telemetría.
-    if (e.enemyTypeId === 'tank' && !e.isElite && e.tankCannonState) {
-      ctx.save();
-      ctx.shadowBlur = 0;
-      if (e.tankCannonState === 'windup') {
-        const total = (NV.ENEMY_ROLE_REWORK && NV.ENEMY_ROLE_REWORK.tank.windup) || 0.9;
-        const progress = Math.max(0, Math.min(1, 1 - (e.tankCannonTimer || 0) / total));
-        const tx = (Number.isFinite(e.tankCannonTargetX) ? e.tankCannonTargetX : e.x) - e.x;
-        const ty = (Number.isFinite(e.tankCannonTargetY) ? e.tankCannonTargetY : e.y) - e.y;
-        const td = Math.max(1, Math.hypot(tx, ty));
-        // Carga sólo en el cañón: comunica el ataque sin invadir la pantalla.
-        ctx.fillStyle = 'rgba(255,98,104,' + (0.35 + progress * 0.55) + ')';
-        ctx.beginPath(); ctx.arc(tx / td * (r * 0.72), ty / td * (r * 0.72), 2 + progress * 2.5, 0, Math.PI * 2); ctx.fill();
-      }
-      if(e.atkFlash>0 && player) {
-        const angle=Math.atan2(player.y-e.y,player.x-e.x),flash=Math.min(1,e.atkFlash/.18);
-        ctx.rotate(angle);ctx.translate(r*.95,0);ctx.globalAlpha=flash;
-        ctx.fillStyle='#ffe3ae';ctx.beginPath();ctx.moveTo(-3,-3);
-        ctx.lineTo(12*flash,-5*flash);ctx.lineTo(8*flash,0);ctx.lineTo(12*flash,5*flash);
-        ctx.lineTo(-3,3);ctx.closePath();ctx.fill();
-      }
-      ctx.restore();
-    }
+    // Tank charge and stone-colored muzzle flame are aligned inside singularityFamily.
+    // No separate atkFlash wedge or displaced charge dot is drawn here.
 
     // Rally del comandante: feedback barato y común a cualquier aliado buffeado.
     if ((e.rallyTimer || 0) > 0) {
@@ -712,113 +604,35 @@
   };
 
   // Patrón de guiones del tether: constante de módulo (no se reasigna por frame).
-  const HOOK_TETHER_DASH = [14, 7];
-
-  // ===== F3: Hook/Pull rendering (Cheap O(1) visuals, world-space) =====
-  // Called from game.js world render flow AFTER enemies/player are drawn and
-  // BEFORE the world transform is restored. ctx já tiene setTransform(world).
-  // Visuales: windup telegraph, hook head + source line, tether source-player line.
-  // No particles, no gradients, no extra render pass. Legibilidad mejorada (misma
-  // cota O(1)): lineas mas gruesas/opacas, nucleo de carga en el archer, pua del
-  // gancho orientada por velocidad y tether GUIONADO animado sobre el jugador.
+  const HOOK_TETHER_DASH = [8, 6];
+  // Shared game/roster renderer: ivory shell, indigo tissue and golden energy.
+  // Fixed draw count, no particles, blur, gradients or frame-time canvas allocations.
   NV.drawHookEffects = function (ctx, hookSystem, player) {
-    if (!hookSystem || !hookSystem.srcEnemy || !player) return;
-    const B = NV.BALANCE;
-    ctx.save();
-    ctx.setLineDash([]);
-    ctx.lineDashOffset = 0;
-
-    // Windup telegraph: linea source->player + arco de carga + nucleo que crece.
-    if (hookSystem.phase === 'windup') {
-      const src = hookSystem.srcEnemy;
-      const w = Math.min(1, Math.max(0, 1 - (hookSystem.windupTimer || 0) / B.HOOK_WINDUP_TIME));
-      const aa = Math.atan2(player.y - src.y, player.x - src.x);
-      ctx.strokeStyle = 'rgba(255,178,74,' + (0.45 + w * 0.45).toFixed(3) + ')';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(src.x, src.y);
-      ctx.lineTo(player.x, player.y);
-      ctx.stroke();
-      const arcR = (src.radius || 12) + 16 + w * 10;
-      ctx.beginPath();
-      ctx.arc(src.x, src.y, arcR, aa - 0.55, aa + 0.55);
-      ctx.stroke();
-      // Nucleo de carga: crecimiento monótono con el progreso del windup.
-      ctx.fillStyle = 'rgba(255,210,140,' + (0.5 + w * 0.5).toFixed(3) + ')';
-      ctx.beginPath();
-      ctx.arc(src.x, src.y, 2.5 + w * 5, 0, Math.PI * 2);
-      ctx.fill();
+    if (!hookSystem || !hookSystem.srcEnemy || !player || hookSystem.phase === 'idle') return;
+    const src=hookSystem.srcEnemy, B=NV.BALANCE, phase=hookSystem.phase;
+    const end=phase==='projectile'?hookSystem.projectile:player;if(!end)return;
+    const dx=end.x-src.x,dy=end.y-src.y,d=Math.max(1,Math.hypot(dx,dy)),ux=dx/d,uy=dy/d;
+    // Rope emerges from the leading plate, rather than cutting across the body.
+    const x=src.x+ux*21,y=src.y+uy*21;
+    ctx.save();ctx.shadowBlur=0;ctx.lineCap='round';ctx.lineJoin='round';ctx.setLineDash([]);
+    if(phase==='windup'){
+      const p=Math.max(0,Math.min(1,1-hookSystem.windupTimer/B.HOOK_WINDUP_TIME));
+      ctx.globalAlpha*=.25+.40*p;ctx.strokeStyle='#f4cd40';ctx.lineWidth=1.2;ctx.setLineDash(HOOK_TETHER_DASH);
+      ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(player.x,player.y);ctx.stroke();
+    }else{
+      ctx.strokeStyle='#242039';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(end.x,end.y);ctx.stroke();
+      ctx.strokeStyle='#d8c3a1';ctx.lineWidth=2.7;ctx.stroke();
+      ctx.strokeStyle='#f4cd40';ctx.lineWidth=1.05;ctx.setLineDash(HOOK_TETHER_DASH);
+      ctx.lineDashOffset=phase==='tether'?(hookSystem.tetherTimer||0)*55:0;ctx.stroke();ctx.setLineDash([]);
+      ctx.translate(end.x,end.y);ctx.rotate(phase==='projectile'?Math.atan2(end.vy,end.vx):Math.atan2(-dy,-dx));
+      // Two curved ivory barbs cradle the glowing membrane, matching the creature's plates.
+      ctx.fillStyle='#e7d1ac';ctx.strokeStyle='#302942';ctx.lineWidth=1;
+      const barbs=phase==='tether'&&hookSystem.dashEscapeCount>0?1:2;
+      for(let i=0;i<barbs;i++){const side=i===0?-1:1;ctx.beginPath();ctx.moveTo(9,0);
+        ctx.quadraticCurveTo(-1,10*side,-9,6*side);ctx.quadraticCurveTo(-2,5*side,0,side);
+        ctx.closePath();ctx.fill();ctx.stroke();}
+      ctx.fillStyle='#f4cd40';ctx.beginPath();ctx.ellipse(0,0,3.1,1.7,0,0,Math.PI*2);ctx.fill();
     }
-
-    // Projectile: cabeza del gancho + linea source->projectile + pua orientada.
-    if (hookSystem.phase === 'projectile' && hookSystem.projectile) {
-      const p = hookSystem.projectile;
-      const src = hookSystem.srcEnemy;
-      ctx.strokeStyle = 'rgba(92,50,18,0.95)';
-      ctx.lineWidth = 5;
-      ctx.beginPath();
-      if (src) { ctx.moveTo(src.x, src.y); }
-      ctx.lineTo(p.x, p.y);
-      ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,178,74,0.98)';
-      ctx.lineWidth = 2.5;
-      ctx.setLineDash(HOOK_TETHER_DASH);
-      ctx.beginPath();
-      if (src) { ctx.moveTo(src.x, src.y); }
-      ctx.lineTo(p.x, p.y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      const sp = Math.hypot(p.vx || 0, p.vy || 0) || 1;
-      const ux = (p.vx || 0) / sp, uy = (p.vy || 0) / sp;
-      ctx.beginPath();
-      ctx.moveTo(p.x - ux * 7 - uy * 5, p.y - uy * 7 + ux * 5);
-      ctx.lineTo(p.x, p.y);
-      ctx.lineTo(p.x - ux * 7 + uy * 5, p.y - uy * 7 - ux * 5);
-      ctx.strokeStyle = '#ff3b4f';
-      ctx.lineWidth = 3;
-      ctx.stroke();
-      ctx.fillStyle = '#ff3b4f';
-      ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI * 2); ctx.fill();
-    }
-
-    // Tether: linea GUIONADA animada source->player + anillo y chevron en el jugador.
-    // O(1): 1 linea + 1 anillo + 1 chevron. Source VIVO (sigue al archer si se mueve).
-    if (hookSystem.phase === 'tether') {
-      const src = hookSystem.srcEnemy;
-      if (!src) return;
-      const tt = hookSystem.tetherTimer || 0;
-      ctx.strokeStyle = 'rgba(92,50,18,0.95)';
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.moveTo(src.x, src.y);
-      ctx.lineTo(player.x, player.y);
-      ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,178,74,0.98)';
-      ctx.lineWidth = 3.5;
-      ctx.setLineDash(HOOK_TETHER_DASH);
-      // El offset avanza con la cuenta atrás del tether: el flujo apunta al archer.
-      ctx.lineDashOffset = (tt * 60) % (HOOK_TETHER_DASH[0] + HOOK_TETHER_DASH[1]);
-      ctx.beginPath();
-      ctx.moveTo(src.x, src.y);
-      ctx.lineTo(player.x, player.y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.lineDashOffset = 0;
-      const pr = (player.radius || 20) + 5;
-      ctx.strokeStyle = '#ff3b4f';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(player.x, player.y, pr, 0, Math.PI * 2);
-      ctx.stroke();
-      const pa = Math.atan2(src.y - player.y, src.x - player.x);
-      const cx = Math.cos(pa), cy = Math.sin(pa);
-      ctx.beginPath();
-      ctx.moveTo(player.x + cx * pr - cy * 6, player.y + cy * pr + cx * 6);
-      ctx.lineTo(player.x + cx * (pr + 6), player.y + cy * (pr + 6));
-      ctx.lineTo(player.x + cx * pr + cy * 6, player.y + cy * pr - cx * 6);
-      ctx.stroke();
-    }
-
     ctx.restore();
   };
 
@@ -868,6 +682,7 @@
     const policy = (typeof NV.getVisualBudget === 'function') ? NV.getVisualBudget() : null;
     const runtime = (typeof NV.getRuntimeSnapshot === 'function') ? NV.getRuntimeSnapshot() : null;
     const medianRafMs = perf && perf.frame ? perf.frame.p50 : null;
+    const meanRafMs = perf && perf.frame ? perf.frame.mean : null;
     return {
       diagnosticMode: commonDiagMode,
       hydraDiagnosticMode: (typeof NV.getHydraDiagnosticMode === 'function') ? NV.getHydraDiagnosticMode() : null,
@@ -897,7 +712,9 @@
       worstSinceReset: perf ? perf.worstSinceReset : null,
       refresh: {
         medianRafMs: medianRafMs,
-        approximateHz: medianRafMs > 0 ? 1000 / medianRafMs : null,
+        approximateHz: meanRafMs > 0 ? 1000 / meanRafMs : null,
+        meanRafMs,
+        metric: 'raf-callbacks-not-display-refresh',
         pageHidden: (typeof document !== 'undefined') ? !!document.hidden : null,
         paused: runtime ? !!runtime.paused : null,
       },

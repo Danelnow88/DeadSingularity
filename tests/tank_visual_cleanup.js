@@ -9,11 +9,7 @@ if (tankStart < 0 || tankEnd < 0) throw new Error('No se encontró el renderer d
 if (tank.includes('TANK_CRACK_BODY')) throw new Error('El tanque todavía dibuja grietas decorativas en el cuerpo');
 if (tank.includes('const pulse =')) throw new Error('El tanque todavía conserva un pulso visual decorativo');
 
-const windupStart = source.indexOf("e.enemyTypeId === 'tank' && !e.isElite && e.tankCannonState");
-const windupEnd = source.indexOf('// Rally del comandante:', windupStart);
-const windup = source.slice(windupStart, windupEnd);
-if (windupStart < 0 || windupEnd < 0) throw new Error('No se encontró el telégrafo del cañón del tanque');
-if (windup.includes('setLineDash') || windup.includes('ctx.lineTo(x2, y2)')) throw new Error('El telégrafo del tanque sigue cubriendo la arena con una línea larga');
-if (windup.includes('const mark =') || !windup.includes('2 + progress * 2.5')) throw new Error('Debe cargar el cañón sin retícula de suelo');
-
-console.log('PASS limpieza visual: tanque con lectura compacta y sin telemetría sobrante');
+if (source.includes('ctx.translate(r*.95,0)') || source.includes('2 + progress * 2.5')) throw Error('Old displaced tank wedge/dot remains');
+const family=fs.readFileSync('js/render/singularityFamily.js','utf8');
+if(!family.includes('NV.drawTankMuzzleFlame(ctx, e)') || !family.includes('606 - sourceBounds.tank.y'))throw Error('Muzzle flame must use the actual sprite mouth');
+console.log('PASS tank: no displaced atkFlash wedge/dot; muzzle flame belongs to articulated sprite.');

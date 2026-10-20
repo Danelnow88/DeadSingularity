@@ -585,7 +585,7 @@
 
   // Capa decorativa de fondo. Debe llamarse después del fondo/starfield y antes de
   // entidades/jugabilidad. Usa alfa bajo y límites duros para no competir con HUD/combate.
-  NV.drawRhythmLayer = function (ctx, w, h, frame) {
+  function drawRhythmLayer(ctx, w, h, frame) {
     const r = NV.rhythm;
     if (!r || !r.enabled || r.state !== 'listening') return;
     const cap = r.intensityCap || 0.55;
@@ -668,6 +668,28 @@
       ctx.strokeRect(6, 6, w - 12, h - 12);
     }
     ctx.restore();
+  }
+
+  // A throttled layer must remain visible between rebuilds: clearing the main
+  // canvas and skipping its draw made it blink on alternating refreshes.
+  const rhythmLayerCache={canvas:null,w:0,h:0,sx:0,sy:0,step:0,time:-Infinity};
+  NV.drawRhythmLayer=function(ctx,w,h,frame,step=1){
+    if(NV.presentationClock)frame=NV.presentationClock.resolveFrame(frame);
+    const r=NV.rhythm;
+    if(!r||!r.enabled||r.state!=='listening'){rhythmLayerCache.time=-Infinity;return;}
+    if(step<=1||typeof document==='undefined'||!ctx.getTransform){drawRhythmLayer(ctx,w,h,frame);return;}
+    const transform=ctx.getTransform(),sx=Math.hypot(transform.a,transform.b),sy=Math.hypot(transform.c,transform.d);
+    const c=rhythmLayerCache,t=frame/60;
+    if(!c.canvas){c.canvas=document.createElement('canvas');}
+    if(c.w!==w||c.h!==h||c.sx!==sx||c.sy!==sy||c.step!==step){
+      c.w=w;c.h=h;c.sx=sx;c.sy=sy;c.step=step;c.time=-Infinity;
+      c.canvas.width=Math.max(1,Math.round(w*sx));c.canvas.height=Math.max(1,Math.round(h*sy));
+    }
+    if(t<c.time||t-c.time>=step/60){
+      const paint=c.canvas.getContext('2d');paint.resetTransform();paint.clearRect(0,0,c.canvas.width,c.canvas.height);
+      paint.scale(c.canvas.width/w,c.canvas.height/h);drawRhythmLayer(paint,w,h,frame);c.time=t;
+    }
+    ctx.save();ctx.globalCompositeOperation='screen';ctx.drawImage(c.canvas,0,0,w,h);ctx.restore();
   };
 
   function wrapHue(v) { return ((v % 360) + 360) % 360; }

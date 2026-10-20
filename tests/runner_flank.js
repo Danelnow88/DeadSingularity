@@ -18,12 +18,14 @@ const NV=setup();
 
 // Estado helper: entra RUNNER en COMMIT forzando condiciones.
 function forceCommit(e, st) {
-  e.x = 395; e.y = 295; e.flankSide = 1;
-  // Forzar state POSITIONING con timer=0 para que entre en COMMIT inmediatamente.
+  e.x = 230; e.y = 300; e.flankSide = 1;
+  // Complete the real feints, then exercise the stopped anticipation before COMMIT.
+  e.runnerFeintGoal=2;e.runnerFeints=2;
   e.intent = NV.enemyState.createIntent(e);
   e.intent.state = NV.enemyState.STATE.POSITIONING;
   e.intent.stateTimer = 0; // expira -> COMMIT
   NV.updateEnemies(0.016, st);
+  for(var i=0;i<40&&e.intent.state!=='attack';i++)NV.updateEnemies(0.016,st);
 }
 
 console.log('runner_flank:');
@@ -68,17 +70,17 @@ t('APPROACH target difiere de player.center',function(){
   if(!e.intent)throw new Error('no intent de F05');
 });
 
-t('RUNNER tiene intent de F05 con preferredRange=130',function(){
+t('RUNNER tiene intent de F05 con preferredRange=170',function(){
   var e=mkEnemy(100,100);var st=mkState([e]);
   NV.updateEnemies(0.016,st);
   if(!e.intent)throw new Error('no intent');
-  if(e.intent.preferredRange!==130)throw new Error('preferredRange='+e.intent.preferredRange)
+  if(e.intent.preferredRange!==170)throw new Error('preferredRange='+e.intent.preferredRange)
 });
 
 t('Transicion IDLE->ATTACK (COMMIT) con snapshot',function(){
-  var e=mkEnemy(380,290);e.flankSide=1;var st=mkState([e]);
+  var e=mkEnemy(230,300);e.flankSide=1;var st=mkState([e]);
   // Posicionarse cerca para forzar COMMIT
-  for(var i=0;i<90;i++){NV.updateEnemies(0.016,st);if(e.intent.state===NV.enemyState.STATE.ATTACK)break}
+  for(var i=0;i<240;i++){NV.updateEnemies(0.016,st);if(e.intent.state===NV.enemyState.STATE.ATTACK)break}
   if(e.intent.state!==NV.enemyState.STATE.ATTACK)throw new Error('never COMMIT: '+e.intent.state);
   // Snapshot debe estar presente
   if(typeof e.committedTargetX!=='number')throw new Error('no committedTargetX');
@@ -93,7 +95,7 @@ t('COMMIT frozen: player movement does not redirect Runner during COMMIT',functi
   e.intent.state=NV.enemyState.STATE.POSITIONING;
   e.intent.stateTimer=0;
   var st=mkState([e]);
-  NV.updateEnemies(0.016,st);
+  forceCommit(e,st);
   if(e.intent.state!==NV.enemyState.STATE.ATTACK)throw new Error('no COMMIT: '+e.intent.state);
   var snapDirX=e.commitDirX;var snapDirY=e.commitDirY;
   var snapTX=e.committedTargetX;var snapTY=e.committedTargetY;
@@ -110,7 +112,7 @@ t('Missed COMMIT enters RECOVERY',function(){
   e.intent.state=NV.enemyState.STATE.POSITIONING;
   e.intent.stateTimer=0;
   var st=mkState([e]);
-  NV.updateEnemies(0.016,st);
+  forceCommit(e,st);
   if(e.intent.state!==NV.enemyState.STATE.ATTACK)throw new Error('no COMMIT');
   e.intent.stateTimer=0;
   NV.updateEnemies(0.016,st);
@@ -123,7 +125,7 @@ t('Recovery creates separation',function(){
   e.intent.state=NV.enemyState.STATE.POSITIONING;
   e.intent.stateTimer=0;
   var st=mkState([e]);
-  NV.updateEnemies(0.016,st);
+  forceCommit(e,st);
   e.intent.stateTimer=0;
   NV.updateEnemies(0.016,st);
   var d1=Math.hypot(e.x-400,e.y-300);

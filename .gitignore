@@ -6,6 +6,14 @@ previews/*
 !previews/consumable-icons-integration-preview.html
 !previews/dimension-environments.html
 !previews/scenery-gallery.js
+!previews/black-holes.html
+!previews/black-holes-preview.js
+!previews/elite-readability.html
+!previews/refined-elites.html
+!previews/enemy-core-lighting.html
+!previews/tank-telescopic.html
+# Maqueta privada: el runtime generado de los jefes ya es autónomo.
+/PRUEBA DE CONCEPTO DE JEFES.html
 # Bocetos de trabajo: no pertenecen al código ni al paquete publicable.
 /MUESTRA BOCETO DE SPEAKER DANEL.txt
 *.log

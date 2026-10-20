@@ -9,7 +9,7 @@ if (result.error || result.status !== 0) {
   process.exit(1);
 }
 const files = [...new Set(result.stdout.split('\0').filter(Boolean))];
-const forbidden = /^(?:node_modules|local|releases)\/|\.lnk$|(?:^|\/)\.env(?:\.|$)|\.(?:pfx|p12|key)$/i;
+const forbidden = /^(?:node_modules|local|releases)\/|^PRUEBA DE CONCEPTO DE JEFES\.html$|\.lnk$|(?:^|\/)\.env(?:\.|$)|\.(?:pfx|p12|key)$/i;
 let bytes = 0;
 const failures = [];
 if (!files.includes('docs/releases/growth-1.manifest.json')) failures.push('Falta manifiesto de entrega en los archivos publicables');

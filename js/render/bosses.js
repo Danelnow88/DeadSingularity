@@ -4,9 +4,10 @@
   'use strict';
   const NV = window.NV;
 
-  NV.drawBoss = function (ctx, boss, frame) {
+  NV.drawBoss = function (ctx, boss, frame, player) {
+    if (NV.presentationClock) frame = NV.presentationClock.resolveFrame(frame);
     if (!boss || boss.dead) return;
-    if (NV.drawBossDesign && NV.drawBossDesign(ctx, boss, frame)) {
+    if (NV.drawBossDesign && NV.drawBossDesign(ctx, boss, frame, { player: player })) {
       if (NV.drawEnemyHitFeedback) {
         ctx.save(); ctx.translate(boss.x, boss.y);
         NV.drawEnemyHitFeedback(ctx, boss, boss.radius); ctx.restore();

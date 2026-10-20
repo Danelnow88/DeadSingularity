@@ -7,7 +7,7 @@ function extract(name){const a=source.indexOf('function '+name+'('),start=source
   for(let i=start;i<source.length;i++){if(source[i]==='{')depth++;if(source[i]==='}'&&--depth===0)return source.slice(a,i+1);}throw Error(name);}
 const state={...box,NV,wave:1,WEAPONS:NV.WEAPONS,player:{hp:100,maxHp:100},inventory:[NV.WEAPONS[0]],
  currentWeapon:NV.WEAPONS[0],economyStock:{consumables:['potion','shield'],premium:true,passiveBought:false,premiumBought:false,weaponId:NV.WEAPONS[0].id},
- weaponFus:{},MAX_WEAPON_FUSION:3,WEAPON_FUSION_DMG:.2,WEAPON_FUSE_PRICE:15,INVENTORY_SLOTS:6,
+ weaponFus:{},weaponLevels:{},weaponKills:{},WEAPON_KILLS_PER_LEVEL:6,MAX_WEAPON_FUSION:3,WEAPON_FUSION_DMG:.2,WEAPON_FUSE_PRICE:15,INVENTORY_SLOTS:6,
  CONSUMABLE_CAP:1,CONSUMABLE_STACK_CAP:3,CONSUMABLE_TYPE_SLOT_CAP:6,consumableBought:{},consumableItems:[],
  dom:{upgradesOffers:'passive',weaponOffers:'premium',shopFusionOffers:{classList:{toggle(){}}},consumableOffers:'consumables'},offers:{},
  renderOffers(slot,items){this.offers[slot]=items;},renderShopInspector(){},renderShopConsumableLoadout(){},renderUpgradeSlots(){},
@@ -16,7 +16,7 @@ state.renderOffers=(slot,items)=>{state.offers[slot===state.dom.shopFusionOffers
 state.weaponFusionLevel=id=>state.weaponFus[id]||0;
 state.tryWeaponFusion=w=>NV.fuseWeaponDuplicate(w,state.inventory,state.weaponFus,3);
 state.upgradeSlots=[];state.shopBought={};state.UPGRADE_SLOT_CAP=6;
-state.UPGRADE_LEVELS={hp:6,speed:6,armor:5,luck:6};state.SHOP_CAPS={hp:8,armor:5,luck:7};
+state.UPGRADE_LEVELS={hp:6,speed:Math.min(6,Math.ceil((NV.BALANCE.MAX_AGILITY-1)/NV.BALANCE.AGILITY_PER_UPGRADE)),armor:5,luck:6};state.SHOP_CAPS={hp:8,armor:5,luck:7};
 state.MAX_AGILITY=2;state.AGILITY_PER_UPGRADE=.2;
 state.player.agility=1;state.player.armor=0;state.player.luck=0;
 vm.createContext(state);for(const name of ['upgradeLevel','runUpgradeOffers','generateOffers'])vm.runInContext(extract(name),state);
@@ -58,6 +58,11 @@ for(const icon of ['hp','speed','armor','luck']) {
 assert.equal(state.player.maxHp,250);assert.equal(state.player.armor,15);assert.equal(state.player.luck,12);
 assert(state.player.agility<=state.MAX_AGILITY);
 assert.equal(state.upgradeSlots.filter(u=>u.icon==='hp').length,6);
+assert.equal(state.upgradeSlots.filter(u=>u.icon==='speed').length,5,'sixth agility purchase has no meaningful effect');
+assert.equal(state.player.agility,2);
+state.player.agility=1.9999999999999998;
+assert.equal(state.runUpgradeOffers().find(o=>o.metaIcon==='speed').buy(),false,'saved rounding residue must not allow a sixth purchase');
+state.player.agility=2;
 console.log('PASS restored upgrades: effects, levels, maximums and stale-card guards');
 state.inventory=NV.WEAPONS.slice();for(const w of state.inventory)state.weaponFus[w.id]=3;
 state.economyStock={consumables:['potion','shield'],premium:false,basicWeaponId:'none',basicWeaponIds:[],basicBought:false};
@@ -75,3 +80,20 @@ for(const [nextWave,capacity] of [[2,2],[4,2],[5,3],[9,3],[10,4],[14,4],[15,5],[
  assert(state.offers.premium.every(o=>o.disabled));
 }
 console.log('PASS armory progression: all thresholds, 6 real offers, stable stock, single choice');
+
+// Preview, purchase and retained mastery use the same entry level.
+assert.equal(NV.weaponPurchaseLevel({},'rifle'),1);
+assert.equal(NV.weaponPurchaseLevel({pistol:51},'rifle'),41);
+assert.equal(NV.weaponPurchaseLevel({pistol:100},'rifle'),80);
+assert.equal(NV.weaponPurchaseLevel({pistol:100,rifle:94},'rifle'),94);
+state.inventory=[NV.weaponById('pistol')];state.weaponFus={};
+state.weaponLevels={pistol:100};state.weaponKills={pistol:800};
+state.economyStock={consumables:['potion','shield'],premium:false,basicWeaponId:'rifle',basicWeaponIds:['rifle'],basicBought:false};
+state.generateOffers();
+const catchup=state.offers.premium.find(o=>o.weapon.id==='rifle');
+assert(catchup.badge.includes('80')&&catchup.desc.includes('nivel 80'));
+assert(catchup.buy());assert.equal(state.weaponLevels.rifle,80);
+assert.equal(state.weaponKills.rifle,79*6,'new weapon must not repay the catch-up XP');
+assert.equal(state.weaponLevels.pistol,100);assert.equal(state.weaponFus.rifle,undefined);
+assert.equal(catchup.buy(),false);assert.equal(state.inventory.length,2);
+console.log('PASS purchased alternatives: visible level, 80% catch-up capped at 80, preserved mastery, XP floor and no free fusion.');

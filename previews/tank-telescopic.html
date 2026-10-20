@@ -1,0 +1,19 @@
+<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tanque · cañón telescópico</title>
+<style>body{margin:0;background:#070e1c;color:#e6edf6;font:16px system-ui;padding:26px}main{max-width:1000px;margin:auto}a{color:#8ae4f5}canvas{display:block;width:100%;background:#090f1c;border:1px solid #243b50;border-radius:12px;margin-top:20px}button{background:#20354c;color:white;border:1px solid #536b81;padding:10px;border-radius:8px;cursor:pointer}p{color:#b7c8dc}#phase{color:#ffbd74;min-height:24px}</style>
+<main><h1>Tanque · cañón telescópico</h1><p>Cañón guardado al moverse → despliegue → pulso naranja → disparo → retroceso y retracción.</p><a href="enemy-roster-canonical.html">Volver al registro</a> · <button id="pause">Pausar</button><p id="phase">Cargando…</p><canvas id="view" width="1200" height="600"></canvas><p>Arriba: vista ampliada. Abajo: escala de combate. Los tiempos de carga y recuperación son los del juego.</p></main>
+<script>window.NV={settings:{graphics:{heavyVfx:true}}};</script>
+<script src="../js/render/projectiles.js?nv=tank-telescope-v1"></script>
+<script src="../js/render/singularityCoreLight.js?nv=archer-hook-v1"></script>
+<script src="../js/render/tankArticulation.js?nv=tank-sync-v2"></script>
+<script src="../js/render/singularityFamily.js?nv=enemy-cleanup-v1"></script>
+<script>
+(()=>{const c=document.getElementById('view').getContext('2d'),phase=document.getElementById('phase');let time=0,last,play=true;
+ document.getElementById('pause').onclick=e=>{play=!play;e.target.textContent=play?'Pausar':'Reanudar';};
+ function sample(t){t%=4.35;const e={enemyTypeId:'tank',x:0,y:0};if(t<2.4){e.tankCannonState='approach';return{e,label:'Se mueve · cañón guardado',shift:Math.sin(t/2.4*Math.PI*2)*45};}if(t<3.3){e.tankCannonState='windup';e.tankCannonTimer=3.3-t;return{e,label:t<2.98?'Despliega los tramos':'Pulso de luz · prepara el disparo',shift:0};}e.tankCannonState='recovery';e.tankCannonShotEmitted=true;e.tankCannonTimer=4.35-t;return{e,label:t<3.5?'Dispara · retroceso':'Retrae y guarda el cañón',shift:0,shot:t-3.3};}
+ function render(t){c.clearRect(0,0,1200,600);const s=sample(t);phase.textContent=s.label;const stats=NV.singularityFamilyStats().species.find(s=>s.id==='tank');
+  c.fillStyle='#a4b7d2';c.font='16px system-ui';c.fillText('Vista ampliada',40,40);c.fillText('Escala de combate',40,365);
+  for(const [y,z]of [[200,4],[470,1]]){c.save();c.translate(460+s.shift*z,y);c.scale(z,z);c.scale(.5,.5);NV.drawSingularityCommon(c,s.e,1,0,t);c.restore();if(s.shot!==undefined&&s.shot<.85){c.save();c.translate(460,y);c.scale(z,z);NV.drawHostileProjectile(c,{projectileStyle:'tankShell',x:26+s.shot*250,y:-3.3,vx:250,vy:0,radius:9});c.restore();}}
+  return{...s,pose:NV.tankArticulationPose(s.e),ready:stats?.tankAnimationReady};}
+ window.tankAnimationPreview={render,sample};function frame(now){requestAnimationFrame(frame);if(last!==undefined&&play)time+=Math.min(.05,(now-last)/1000);last=now;render(time);}requestAnimationFrame(frame);
+})();
+</script></html>

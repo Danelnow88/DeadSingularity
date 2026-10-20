@@ -31,7 +31,7 @@ app.whenReady().then(async()=>{
   await win.reload();await wait(900);assert(await evaluate('NV.settings.graphics.showFPS&&document.getElementById("settingsShowFPS").checked&&!document.getElementById("fpsCounter").hidden'));
   await evaluate(`NV.settingsUI.open();document.getElementById('tabGraphics').click();document.getElementById('settingsShowFPS').click();`);
   assert(await evaluate('!NV.settings.graphics.showFPS&&document.getElementById("fpsCounter").hidden'));
-  await evaluate(`window.qaLegacy={NV:{}};(function(window){${legacy}})(qaLegacy);`);
+  await evaluate(`window.qaLegacy={NV:{presentationClock:NV.presentationClock}};(function(window){${legacy}})(qaLegacy);`);
   const pixels=await evaluate(`(()=>{const results=[];for(const wave of [1,6,11,16]){
     const a=document.createElement('canvas'),b=document.createElement('canvas');a.width=b.width=1280;a.height=b.height=800;
     const ca=a.getContext('2d',{willReadFrequently:true}),cb=b.getContext('2d',{willReadFrequently:true});
@@ -41,7 +41,7 @@ app.whenReady().then(async()=>{
     for(let i=0;i<p.length;i++){const d=Math.abs(p[i]-q[i]);max=Math.max(max,d);sum+=d;}results.push({wave,maxChannelError:max,meanChannelError:sum/p.length});
    }return results;})()`);
   assert(pixels.every(p=>p.maxChannelError<=4),'background batching changes material: '+JSON.stringify(pixels));
-  await evaluate(`window.qaVector={NV:{}};(function(window){${legacyEnemies}})(qaVector);true;`);
+  await evaluate(`window.qaVector={NV:{presentationClock:NV.presentationClock}};(function(window){${legacyEnemies}})(qaVector);true;`);
   const vectorPixels=await evaluate(`(()=>{const results=[];
     for(const id of ['drone','runner'])for(const scale of [.65,1,1.5,2.5]){
       const a=document.createElement('canvas'),b=document.createElement('canvas');a.width=b.width=a.height=b.height=240;

@@ -1,0 +1,36 @@
+<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DEADSINGULARITY · Legibilidad de élites</title>
+<style>html,body{margin:0;background:#080e18;color:#d4e0eb;font:14px system-ui}main{max-width:1100px;margin:auto;padding:20px}h1{font-size:21px;margin:0 0 8px}p{color:#a9bdcb}canvas{width:100%;border:1px solid #344254;border-radius:12px}button{background:#223047;color:white;border:1px solid #566780;border-radius:6px;padding:9px 12px;margin:10px 8px 0 0;cursor:pointer}iframe{position:absolute;width:1px;height:1px;visibility:hidden;pointer-events:none}</style>
+<main><h1>DEADSINGULARITY · LEGIBILIDAD DE ÉLITES</h1>
+<p>En cada pareja: ACTUAL a la izquierda, PROPUESTA a la derecha. Mismo tamaño y ojos aprobados. Arriba: ampliación; abajo: escala de combate. Mové el cursor para mirar.</p>
+<canvas id="view" width="1100" height="650"></canvas>
+<button id="pause">Pausar</button><button id="move">Persecución: activa</button><button id="pose">Postura nueva: activa</button><button id="combat">Ruido de combate: activo</button>
+<p id="status">Cargando…</p></main><iframe id="game" src="../index.html?fresh=1"></iframe>
+<script>
+(()=>{'use strict';const c=document.getElementById('view'),ctx=c.getContext('2d'),frame=document.getElementById('game');
+let N,types,actors,time=0,last=0,paused=false,moving=true,pose=true,combat=true,ready=false,mouse={x:550,y:320};
+c.onpointermove=e=>{const r=c.getBoundingClientRect();mouse.x=(e.clientX-r.left)*1100/r.width;mouse.y=(e.clientY-r.top)*650/r.height;};
+for(const [id,toggle,label] of [['pause',()=>paused=!paused,()=>paused?'Reanudar':'Pausar'],['move',()=>moving=!moving,()=>`Persecución: ${moving?'activa':'quieta'}`],['pose',()=>pose=!pose,()=>`Postura nueva: ${pose?'activa':'desactivada'}`],['combat',()=>combat=!combat,()=>`Ruido de combate: ${combat?'activo':'desactivado'}`]])document.getElementById(id).onclick=e=>{toggle();e.target.textContent=label();};
+frame.onload=()=>{N=frame.contentWindow.NV;N.prewarmRefinedElites();N.prewarmRefinedEliteReadability();
+types=N.dimensionBaselineRoster().elites.filter(t=>['elite_predator','elite_phantom','elite_titan'].includes(t.visualId));
+actors=types.map(type=>({...type,isElite:true,x:0,y:0,hp:100,maxHp:100,dead:false}));
+const wait=()=>{const a=N.refinedEliteRenderStats().species,b=N.refinedEliteReadabilityStats().species;
+if([...a,...b].some(s=>s.error)){document.getElementById('status').textContent='No se pudo cargar una textura.';return;}
+if(a.length!==3||b.length!==3||![...a,...b].every(s=>s.ready)){setTimeout(wait,50);return;}
+ready=true;document.getElementById('status').textContent='Propuesta aislada: no cambia la partida normal. El ruido es ilustrativo, no una medición de FPS.';requestAnimationFrame(tick);};wait();};
+function tick(now){const dt=last&&!paused?Math.min(.05,(now-last)/1000):0;last=now;time+=dt;
+ctx.fillStyle='#08111d';ctx.fillRect(0,0,1100,650);ctx.textAlign='center';
+for(let i=0;i<3;i++){const cx=183+i*367,e=actors[i];if(moving){const blend=1-Math.exp(-dt*4);e.x+=(Math.max(-18,Math.min(18,(mouse.x-cx)*.18))-e.x)*blend;e.y+=(Math.max(-14,Math.min(14,(mouse.y-465)*.12))-e.y)*blend;}
+ctx.fillStyle='#253748';if(i)ctx.fillRect(cx-183,10,1,620);ctx.font='bold 18px system-ui';ctx.fillStyle=types[i].color;ctx.fillText(types[i].name,cx,30);
+for(let col=0;col<2;col++){const x=cx+(col?86:-86);ctx.font='12px system-ui';ctx.fillStyle='#a9bdcb';ctx.fillText(col?'PROPUESTA':'ACTUAL',x,56);
+N.__eliteReadability=!!col;N.__eliteChasePose=pose;
+for(const [y,scale]of [[200,1.38],[465,.5525*(1920/900)]]){const ox=y===465?e.x:0,oy=y===465?e.y:0;ctx.save();ctx.translate(x+ox,y+oy);ctx.scale(scale,scale);N.drawRefinedEliteBody(ctx,e,time,types[i].color,(mouse.x-x-ox)/scale,(mouse.y-y-oy)/scale);ctx.restore();}
+// Same faint background and trajectories for both versions, no threat-colored glow over eyes.
+if(combat){ctx.save();ctx.beginPath();ctx.rect(x-78,375,156,195);ctx.clip();
+for(let j=0;j<14;j++){const p=(time*(18+j%4*6)+j*47)%190,px=x-78+(j*61)%156,py=375+p;ctx.fillStyle=j%3?'#91afb85c':'#ca96665c';ctx.fillRect(px,py,j%3?2:4,2);}
+for(let j=0;j<3;j++){const py=390+(j*53+time*73)%160;ctx.strokeStyle='#8bd1d780';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x-68,py);ctx.lineTo(x-58,py-5);ctx.stroke();}ctx.restore();}
+}
+ctx.fillStyle='#a9bdcb';ctx.font='12px system-ui';ctx.fillText('REFERENCIA 1080p · CÁMARA BASE · SIN ZOOM',cx,352);ctx.fillText('No se agregan blur, partículas ni capas al enemigo',cx,613);}
+delete N.__eliteReadability;delete N.__eliteChasePose;requestAnimationFrame(tick);}
+window.refinedElitePreview=()=>({ready,species:types&&types.map(t=>t.visualId),time,paused,attack:false,readability:true});
+})();</script></html>

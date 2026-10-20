@@ -257,9 +257,10 @@
   // ===== LENGUAJE DE PROYECTIL HOSTIL =====
   // ROJO = dano hostil · AMARILLO secundario = posibilidad de stun · SHAPE = familia
   // (projectileStyle, estampado al spawn y estable durante todo el vuelo).
-  // Solo dos clases semanticas. NO existe una tercera.
+  // Excepción artística explícita: ESCOPURAS usa moco verde, conservando acento stun.
   const HOSTILE_DAMAGE_COLOR = '#ff3b4f';
   const HOSTILE_STUN_COLOR = '#ffd84a';
+  const COSMIC_SPIT_COLOR = '#71d693';
   const HOSTILE_PROJECTILE_STYLES = Object.freeze([
     'genericBolt', 'spectralArrowhead', 'stunDroplet', 'coreSpike', 'voidStunNucleus', 'tankShell',
     'bossRepeater', 'bossHeavyShell', 'bossSpreadDisc', 'bossChargedLance',
@@ -289,7 +290,9 @@
 
   // El cuerpo siempre comunica dano. El stun ocupa solo un canal de acento secundario.
   // b.color (identidad de cuerpo del enemigo) queda ignorado como color primario.
-  NV.hostileProjectileSemanticColor = function () { return HOSTILE_DAMAGE_COLOR; };
+  NV.isCosmicSpit = function (b) { return !!b && b.sourceType === 'spitter' && b.projectileStyle === 'stunDroplet'; };
+  NV.hostileProjectileSemanticColor = function (b) { return NV.isCosmicSpit(b) ? COSMIC_SPIT_COLOR : HOSTILE_DAMAGE_COLOR; };
+  NV.COSMIC_SPIT_COLOR = COSMIC_SPIT_COLOR;
   NV.hasHostileStunAccent = function (b) {
     const sc = b ? b.stunChance : 0;
     return Number.isFinite(sc) && sc > 0;
@@ -350,7 +353,7 @@
     ctx.stroke();
   }
 
-  function hostileDroplet(ctx, r, hasStun) {
+  function hostileDroplet(ctx, r, hasStun, cosmic) {
     ctx.beginPath();
     ctx.moveTo(r * 1.5, 0);
     ctx.quadraticCurveTo(r * 0.45, -r * 1.1, -r * 0.5, -r * 0.9);
@@ -359,6 +362,11 @@
     ctx.quadraticCurveTo(r * 0.45, r * 1.1, r * 1.5, 0);
     ctx.closePath();
     ctx.fill();
+    if(cosmic){
+      // Compact wet highlight on the existing droplet; no extra particles, blur or trail.
+      ctx.strokeStyle='#d9ffe7';ctx.lineWidth=Math.max(1,r*.22);ctx.beginPath();
+      ctx.moveTo(-r*.66,-r*.48);ctx.quadraticCurveTo(-r*.05,-r*.70,r*.62,-r*.35);ctx.stroke();
+    }
     ctx.fillStyle = hasStun ? HOSTILE_STUN_COLOR : '#ff99a8';
     ctx.beginPath();
     ctx.ellipse(r * 0.25, 0, r * 0.42, r * 0.32, 0, 0, Math.PI * 2);
@@ -437,19 +445,20 @@
   // Proyectil del Tanque común: masa compacta de cañón con punta frontal.
   // Se diferencia del obús de jefe para que el jugador reconozca su fuente.
   function hostileTankShell(ctx, r, hasStun) {
-    ctx.beginPath();
-    ctx.moveTo(r * 1.6, 0);
-    ctx.lineTo(r * 0.55, -r * 1.05);
-    ctx.lineTo(-r * 0.95, -r * 0.72);
-    ctx.lineTo(-r * 1.45, 0);
-    ctx.lineTo(-r * 0.95, r * 0.72);
-    ctx.lineTo(r * 0.55, r * 1.05);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = hasStun ? HOSTILE_STUN_COLOR : '#ffb36b';
-    ctx.beginPath();
-    ctx.arc(r * 0.15, 0, r * 0.42, 0, Math.PI * 2);
-    ctx.fill();
+    // Rounded ogive and a flat rear collar; width 8.1 world px for the normal r=9 shell.
+    // The cannon mouth is ~7.2 px. Collision, speed and damage remain simulation-owned.
+    const h = r * .40;
+    ctx.shadowBlur = 0;
+    ctx.beginPath();ctx.moveTo(-r * .78, -h);ctx.lineTo(r * .08, -h);
+    ctx.bezierCurveTo(r * .97, -h, r * .97, h, r * .08, h);
+    ctx.lineTo(-r * .78, h);ctx.closePath();ctx.fill();
+    ctx.strokeStyle = '#2b203a';ctx.lineWidth = .9;ctx.stroke();
+    ctx.fillStyle = '#52243e';ctx.fillRect(-r * .89, -h, r * .25, h * 2);
+    ctx.fillStyle = hasStun ? HOSTILE_STUN_COLOR : '#ffb084';
+    ctx.fillRect(-r * .67, -h * .87, r * .12, h * 1.74);
+    ctx.strokeStyle = '#ffe8cf';ctx.lineWidth = Math.max(.8, r * .11);
+    ctx.beginPath();ctx.moveTo(-r * .42, -h * .63);
+    ctx.bezierCurveTo(-r * .08, -h * .72, r * .24, -h * .64, r * .39, -h * .25);ctx.stroke();
   }
 
   function hostileSpreadDisc(ctx, r, hasStun) {
@@ -585,18 +594,19 @@
     const color = NV.hostileProjectileSemanticColor(b);
     const hasStun = NV.hasHostileStunAccent(b);
     const style = NV.hostileProjectileStyle(b);
+    const cosmicSpit = NV.isCosmicSpit(b);
     ctx.save();
     ctx.translate(b.x, b.y);
     ctx.rotate(Math.atan2(b.vy || 0, b.vx || 0));
     ctx.fillStyle = color;
     ctx.strokeStyle = color;
     ctx.lineWidth = 1;
-    ctx.shadowColor = HOSTILE_DAMAGE_COLOR;
-    ctx.shadowBlur = r >= 8 ? 6 : 5;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = cosmicSpit ? 0 : r >= 8 ? 6 : 5;
 
     switch (style) {
       case 'spectralArrowhead': hostileArrowhead(ctx, r, hasStun); break;
-      case 'stunDroplet': hostileDroplet(ctx, r, hasStun); break;
+      case 'stunDroplet': hostileDroplet(ctx, r, hasStun, cosmicSpit); break;
       case 'coreSpike': hostileCoreSpike(ctx, r, hasStun); break;
       case 'voidStunNucleus': hostileVoidNucleus(ctx, r, hasStun); break;
       case 'tankShell': hostileTankShell(ctx, r, hasStun); break;

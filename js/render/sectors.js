@@ -72,6 +72,12 @@
   }
   NV.preloadDimensionScenery=function(indices){for(const index of indices||[])if(Number.isInteger(index)&&PROFILES[index])requestArt(index);};
   NV.dimensionSceneryStatus=()=>Array.from(artCache.values(),e=>({id:e.id,file:e.file,ready:e.ready,error:e.error,width:e.image.naturalWidth||0,height:e.image.naturalHeight||0}));
+  // Share the approved, bounded source cache with the living-sky renderer.
+  // No second Image loader, canvas readback, or camera-sized texture cache.
+  NV.getDimensionScenerySource=function(id){
+    const index=PROFILES.findIndex(p=>p.id===id);
+    return index<0?null:requestArt(index);
+  };
 
   // Nubes elípticas orgánicas: sus centros/radios nunca dependen de viewX/Y.
   function cloud(ctx, x, y, rx, ry, rotation, rgb, alpha) {
@@ -433,6 +439,7 @@
   NV.DIMENSION_VISUALS = PROFILES;
   NV.sectorVisualForWave = (wave,options) => activeProfile(sectorIndex(wave,options&&options.preview));
   NV.drawSectorBackdrop = function (ctx, W, H, frame, wave, options) {
+    if (NV.presentationClock) frame = NV.presentationClock.resolveFrame(frame);
     if (!ctx || !Number.isFinite(W) || !Number.isFinite(H) || W <= 0 || H <= 0) return null;
     const variant = options && Number.isFinite(options.variant) ? options.variant >>> 0 : 0;
     const index = sectorIndex(wave,options&&options.preview), tier = tierOf(options), texture = prepare(W, H, index, variant,options&&options.preview);

@@ -146,6 +146,7 @@ function bossLabHarness(production = false) {
     ${section('  function enterDimensionField()', '\n  function pickWaveEvent()')}
     ${section('  function triggerWaveVictory(', '\n  function triggerFlash(')}
     ${section('  function updateBoss(dt)', '\n  function updateBossChests(')}
+    ${section('  function dimensionHostileLimit()', '\n  function spawnEnemy(')}
     ${section('  function spawnBossProj(', '\n  function updateBullets(')}
     const updateTime = ${section('  function update(dt)', "    if (NV.SPECTER_ENABLED === false)")} };
     installCombatLabRuntime();

@@ -1,0 +1,11 @@
+'use strict';
+const fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const manifestPath=path.join(root,'assets/singularity-family/manifest.json');
+const manifest=JSON.parse(fs.readFileSync(manifestPath));
+manifest.coreLighting={version:'core-light-v1',maps:'lighting/manifest.json',cadences:'js/render/singularityCoreLight.js',preview:'previews/enemy-core-lighting.html',guide:'docs/art-direction/NUCLEOS_ILUMINACION_V1.md',sourceSpritesUnchanged:true};
+fs.writeFileSync(manifestPath,JSON.stringify(manifest,null,2)+'\n');
+const ref=path.join(root,'docs/art-direction/iluminacion-ambiental/README.md');
+const note='\n## Primera aplicación: núcleos de enemigos\n\nSe implementó una primera etapa limitada a los nueve núcleos de la familia marfil: [cadencias, señales y rendimiento](../NUCLEOS_ILUMINACION_V1.md). La iluminación de fondos y ambiente global sigue pendiente. Las capturas originales y la intención de esta referencia permanecen vigentes.\n';
+const text=fs.readFileSync(ref,'utf8');if(!text.includes('## Primera aplicación: núcleos de enemigos'))fs.writeFileSync(ref,text+note);
+console.log('Lighting provenance and project design notes updated.');

@@ -20,7 +20,7 @@ function health(){return new Promise(resolve=>{
     for(let i=0;i<30;i++){await new Promise(resolve=>setTimeout(resolve,200));status=await health();if(status!=='absent')break;}
     if(status!=='ready')throw new Error('El servidor no arrancó. Revisá local/logs/server.log.');
   }
-  const url='http://127.0.0.1:8091/index.html';
+  const url='http://127.0.0.1:8091/index.html'+(process.argv.includes('--fresh')?'?fresh=1':'');
   const child=spawn('cmd.exe',['/d','/c','start','',url],{windowsHide:true,stdio:'ignore'});child.on('error',error=>console.error(error.message));
   console.log(url);
 })().catch(error=>{console.error(error.message);process.exitCode=1;});

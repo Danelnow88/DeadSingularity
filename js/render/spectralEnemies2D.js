@@ -172,6 +172,15 @@
   const HYDRA_DETAIL_FULL_REDUCED_VFX = Object.freeze({ simplified: false, medium: false, particles: true, particleScale: 0.4, jitterScale: 0, secondaryInk: false, glowBlur: 0, fauxGlow: true, deterministicEyes: true, eyeFauxGlow: true, particleFauxGlow: true });
   const HYDRA_DETAIL_MEDIUM = Object.freeze({ simplified: false, medium: true, particles: true, particleScale: 0.3, jitterScale: 0, secondaryInk: false, glowBlur: 0, fauxGlow: true, deterministicEyes: true, eyeFauxGlow: true, particleFauxGlow: true });
   const HYDRA_DETAIL_MEDIUM_NO_PARTICLES = Object.freeze({ simplified: false, medium: true, particles: false, particleScale: 0, jitterScale: 0, secondaryInk: false, glowBlur: 0, fauxGlow: true, deterministicEyes: true, eyeFauxGlow: true, particleFauxGlow: true });
+  const hydraLobeDetails=new WeakMap();
+  function hydraLobeDetail(detail){
+    // Keep the main energy outline and eyes; secondary lobes need one crisp
+    // outline, without three repeated glow/inner-ink pairs. False is QA reference.
+    if(NV.__subtleHydra===false||!detail||typeof detail!=='object')return detail;
+    let side=hydraLobeDetails.get(detail);
+    if(!side){side=Object.freeze({...detail,secondaryInk:false,fauxGlow:false});hydraLobeDetails.set(detail,side);}
+    return side;
+  }
   const BLOB_ANGLE_COUNTS = [4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18];
   const BLOB_ANGLES = Object.create(null);
   for (const count of BLOB_ANGLE_COUNTS) {
@@ -976,9 +985,10 @@
           drawHydraSimplified(ctx, adjCx, adjCy, adjTx, adjTy, time, enemyColor, hydraAccentLum);
           break;
         }
-        drawHandDrawnLiquidBlob(ctx, adjCx - 30, adjCy + 35, 15, 8, 12, 1.6, 60, enemyColor, time, detail, hydraAccentLum);
-        drawHandDrawnLiquidBlob(ctx, adjCx, adjCy + 45, 18, 8, 14, 1.8, 65, enemyColor, time, detail, hydraAccentLum);
-        drawHandDrawnLiquidBlob(ctx, adjCx + 30, adjCy + 35, 15, 8, 12, 1.6, 70, enemyColor, time, detail, hydraAccentLum);
+        const sideDetail=hydraLobeDetail(detail);
+        drawHandDrawnLiquidBlob(ctx, adjCx - 30, adjCy + 35, 15, 8, 12, 1.6, 60, enemyColor, time, sideDetail, hydraAccentLum);
+        drawHandDrawnLiquidBlob(ctx, adjCx, adjCy + 45, 18, 8, 14, 1.8, 65, enemyColor, time, sideDetail, hydraAccentLum);
+        drawHandDrawnLiquidBlob(ctx, adjCx + 30, adjCy + 35, 15, 8, 12, 1.6, 70, enemyColor, time, sideDetail, hydraAccentLum);
         drawHandDrawnLiquidBlob(ctx, adjCx, adjCy - 10, 45, 18, 12, 1.1, 75, enemyColor, time, detail, hydraAccentLum);
         if (!detail || detail.particles !== false) {
           const particleScale = detail && typeof detail.particleScale === 'number' ? detail.particleScale : 1;
@@ -1371,7 +1381,11 @@
           : activeGraphicsPolicy.particles
             ? (reducedVfx ? DETAIL_FULL_REDUCED_VFX : DETAIL_FULL)
             : DETAIL_FULL_NO_PARTICLES;
-    drawLabEnemyModel(ctx, poseIdx, 0, 0, 1, lookX, lookY, (frame || 0) * 0.03, enemyColor, detail);
+    const refined = e.isElite && (NV.__refinedEliteBody === true || (e.refinedEliteBody && NV.__refinedEliteBody !== false)) && NV.drawRefinedEliteBody
+      && NV.drawRefinedEliteBody(ctx,e,(frame || 0)/60,enemyColor,
+        (lookX*Math.cos(predatorPoseRotation)+lookY*Math.sin(predatorPoseRotation))/(labScale*predatorPoseScaleX*goliathPoseScaleX),
+        (-lookX*Math.sin(predatorPoseRotation)+lookY*Math.cos(predatorPoseRotation))/(labScale*predatorPoseScaleY*goliathPoseScaleY));
+    if(!refined)drawLabEnemyModel(ctx, poseIdx, 0, 0, 1, lookX, lookY, (frame || 0) * 0.03, enemyColor, detail);
     NV.drawEnemyHitFeedback(ctx, e, MODEL_INTRINSIC_RADII[modelIdx]);
     ctx.restore();
   }
@@ -1826,17 +1840,22 @@
       ctx.globalAlpha = 1;
     }
     if (e.isElite) {
-      const r = e.radius * (profile.radiusMul || 1);
-      const pulse = 0.6 + Math.sin(frame * (profile.haloPulse || 0.12)) * 0.3;
-      ctx.globalAlpha = pulse;
-      // Halo principal específico del tipo de élite
-      ctx.strokeStyle = profile.haloColor || '#ffd700';
-      ctx.lineWidth = profile.haloWidth || 2.5;
-      ctx.beginPath(); ctx.arc(0, 0, e.radius + 5, 0, Math.PI * 2); ctx.stroke();
-      // Anillo exterior tenue
-      ctx.globalAlpha = pulse * 0.4;
-      ctx.lineWidth = (profile.haloWidth || 2.5) * 0.6;
-      ctx.beginPath(); ctx.arc(0, 0, e.radius + 9, 0, Math.PI * 2); ctx.stroke();
+      // The three painted elites need no permanent decorative rings.
+      // Their state-based attack/phase telegraphs remain on their own paths.
+      if (!['elite_predator', 'elite_phantom', 'elite_titan'].includes(e.visualId)) {
+        const r = e.radius * (profile.radiusMul || 1);
+        const pulse = 0.6 + Math.sin(frame * (profile.haloPulse || 0.12)) * 0.3;
+        ctx.globalAlpha = pulse;
+        // Halo principal específico del tipo de élite
+        ctx.strokeStyle = profile.haloColor || '#ffd700';
+        ctx.lineWidth = profile.haloWidth || 2.5;
+        ctx.beginPath(); ctx.arc(0, 0, e.radius + 5, 0, Math.PI * 2); ctx.stroke();
+        // Anillo exterior tenue
+        ctx.globalAlpha = pulse * 0.4;
+        ctx.lineWidth = (profile.haloWidth || 2.5) * 0.6;
+        ctx.beginPath(); ctx.arc(0, 0, e.radius + 9, 0, Math.PI * 2); ctx.stroke();
+
+      }
       ctx.globalAlpha = 1;
     }
     if ((e.fusionInterruptFlash || 0) > 0) {
@@ -1935,11 +1954,21 @@
     ctx.restore();
   }
 
-  NV.drawSpectralEnemy2D = function (ctx, e, frame, player, rhythm) {
-    if (!e || e.dead) return false;
+  NV.drawSpectralEnemy2D = function (ctx, e, frame, player, rhythm, hookSystem) {
+    if (NV.presentationClock) frame = NV.presentationClock.resolveFrame(frame);
+    if (!e || e.dead || e.waveCleanup) return false;
     if (e.visualId === 'elite_phantom' && (e.phantomState === 'possessed' || e.phantomState === 'cleanup')) return false;
     const profile = resolveProfile(e);
     ctx.save();
+    if (!e.isElite && (e.enemyTypeId==='specter_archer'||e.enemyTypeId==='specter_guard'||e.enemyTypeId==='specter_core')) {
+      NV.drawSingularitySpecter?.(ctx,e,player,(frame||0)/60,hookSystem);
+      { // Functional telegraphs remain available while an image is still loading.
+        drawSpecterGuardProtectionTelegraph(ctx,e,frame,0,0);
+        ctx.save();ctx.translate(e.x,e.y);drawStatusLayers(ctx,e,frame,player,profile);
+        NV.drawEnemyHitFeedback(ctx,e,e.radius*(profile.radiusMul||1));ctx.restore();
+      }
+      ctx.restore();return true;
+    }
     let rx = 0, ry = 0;
     if (rhythm && rhythm.enabled && rhythm.state === 'listening') {
       const sig = Math.min(1, (rhythm.bass || 0) * 0.5 + (rhythm.kick || 0) * 0.7);
@@ -2341,6 +2370,7 @@
     ctx.globalAlpha = 1;
   }
   NV.drawSpectralBoss2D = function (ctx, boss, frame, player, rhythm) {
+    if (NV.presentationClock) frame = NV.presentationClock.resolveFrame(frame);
     if (!boss || boss.dead) return false;
     const profile = resolveBossProfile(boss);
     if (boss.visual && NV.drawBossDesign) {
@@ -2352,7 +2382,7 @@
         ctx.beginPath(); ctx.arc(0,0,boss.radius + 12 + Math.sin(frame*.1)*3,0,Math.PI*2); ctx.stroke();
       }
       ctx.restore();
-      NV.drawBossDesign(ctx, boss, frame);
+      NV.drawBossDesign(ctx, boss, frame, { player: player });
       ctx.save(); ctx.translate(boss.x, boss.y);
       NV.drawEnemyHitFeedback(ctx, boss, boss.radius); ctx.restore();
       return true;

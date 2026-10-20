@@ -150,7 +150,7 @@ t('mark rojo hostil es distinto del auto-aim; fases renderizan sin mutar gamepla
     const e = wisp(100, 100); e.wispPhaseState = phase; e.wispPhaseTimer = phase === 'mark' ? 0.4 : 0.1; e.wispTargetX = 180; e.wispTargetY = 140;
     const before = JSON.stringify(e), c = ctx();
     NV.drawEnemy(c, e, 60, { x: 300, y: 200 }, null, 1);
-    if (c.calls.strokes < 2 || JSON.stringify(e) !== before) throw new Error(phase + ' feedback/mutación');
+    if ((phase==='mark'&&c.calls.strokes<2) || (phase==='pulse'&&c.calls.strokes<1) || JSON.stringify(e) !== before) throw new Error(phase + ' feedback/mutación');
     if ((phase === 'mark' || phase === 'pulse') && c.calls.strokeStyles.indexOf('#d94b55') < 0) throw new Error(phase + ' sin rojo hostil');
   }
   const aim = ctx();

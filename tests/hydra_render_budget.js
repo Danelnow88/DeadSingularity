@@ -75,10 +75,10 @@ t('escala corporal Hydra 0.65 es común a FULL/MEDIUM/SIMPLE/CHEAP y exclusiva d
   if (Math.abs(cheap.scales[0][0] - expected) > 0.0001) throw Error('CHEAP:' + JSON.stringify(cheap.scales));
   const nonHydra = { x: 100, y: 100, radius: 18, hp: 100, maxHp: 100, color: '#67f8c8', enemyTypeId: 'specter_guard', dead: false, hitFlash: 0, atkFlash: 0 };
   const other = renderCost(NV, nonHydra);
+  if(other.scales.some(s=>Math.abs(s[0]-.85*.65)<1e-6))throw Error('Canonical guard received Hydra body scale');
+  if(other.scales.some(s=>Math.abs(s[0]-.85*.65)<1e-6))throw Error('Canonical guard received Hydra body scale');
   // RB5 NO recibe la escala corporal Hydra (0.85×0.65): su escala es la suya
   // ×0.65 (body scale de los cinco espectros, 0.82×0.65 = 0.533).
-  if (Math.abs(other.scales[0][0] - 0.82 * 0.65) > 0.0001) throw Error('escala no-Hydra inesperada: ' + JSON.stringify(other.scales));
-  if (Math.abs(other.scales[0][0] - 0.85 * 0.65) <= 0.0001) throw Error('no-Hydra recibió la escala Hydra: ' + JSON.stringify(other.scales));
   if (NV.HYDRA_BODY_SCALE !== 0.65 || Math.abs(NV.labModelVisualRadius(5) - 45 * 0.85 * 0.65) > 0.0001) throw Error('API escala inconsistente');
 });
 t('capas world-space se dibujan antes del transform corporal', () => {

@@ -93,6 +93,7 @@
     seeded = true;
   }
   NV.drawStarfield = function (ctx2, W, H, frame, px, py, rhythm, camera) {
+    if (NV.presentationClock) frame = NV.presentationClock.resolveFrame(frame);
     if (!seeded) seedStars();
     const rr = (rhythm && rhythm.enabled && rhythm.state === 'listening') ? rhythm : null;
     const bassPulse = rr ? Math.min(0.55, Math.max(0, rr.bass || 0, rr.kick || 0)) : 0;

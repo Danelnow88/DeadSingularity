@@ -37,7 +37,7 @@
   let fieldEventSession = null;
   let coreEncounterSchedule = null;
   const audioPerimeterFrame={active:false,paused:false,hidden:false};
-  const sceneryOptions={preview:dimensionContentEnabled},starCamera={x:0,y:0};
+  const sceneryOptions={preview:dimensionContentEnabled,routes:dimensionContentEnabled},starCamera={x:0,y:0};
   NV.dimensionIllustratedScenery=dimensionContentEnabled;
   NV.dimensionSceneryTrial=dimensionEventPreview;
   let dimensionExperiment = null, dimensionPursuit = null, experimentPreviousPlayer = null;
@@ -122,6 +122,7 @@
 
   // === ESTADO ===
   let state = 'menu', frame = 0, lastTime = 0, visualTimeSeconds = 0;
+  let lobbyVisualTimeSeconds = 0;
   let shake = 0, hitstop = 0, flashColor = null, flashAlpha = 0, specialVFX = null;
   let consumableVfx = [];
   function spawnConsumableVfx(type, opts) {
@@ -151,10 +152,7 @@
   }
   const DEATH_TRANSITION_DURATION = 0.82;
   const WAVE_END_DURATION = 2.10;
-  const WAVE_CLEANUP_DURATION = 0.4;
   // #10 micro-feedback visual del cleanup: pop inicial + dispersión render-only.
-  const WAVE_CLEANUP_POP_T = 0.08;
-  const WAVE_CLEANUP_POP_SCALE = 1.08;
   // #2 muerte del personaje: composición completa en tiempo absoluto.
   // La muerte visual manda el timing; FIN espera 0.12s después del último residuo.
   const PLAYER_DEATH_IMPACT_END = 0.06;
@@ -531,7 +529,7 @@
   const UPGRADE_LEVEL_CAP = 6; // nivel máximo por mejora
   const UPGRADE_LEVELS = {
     hp: Math.min(SHOP_CAPS.hp, UPGRADE_LEVEL_CAP),
-    speed: UPGRADE_LEVEL_CAP,
+    speed: Math.min(UPGRADE_LEVEL_CAP, Math.ceil((NV.BALANCE.MAX_AGILITY - 1) / NV.BALANCE.AGILITY_PER_UPGRADE)),
     armor: Math.min(SHOP_CAPS.armor, UPGRADE_LEVEL_CAP),
     luck: Math.min(SHOP_CAPS.luck, UPGRADE_LEVEL_CAP),
   };
@@ -793,6 +791,9 @@
 
   // === ÉLITES (8 tipos) ===
   const ELITE_TYPES = trialEnemyRoster ? trialEnemyRoster.elites : NV.ELITE_TYPES;
+  if (dimensionContentEnabled && NV.prewarmRefinedEliteReadability) NV.prewarmRefinedEliteReadability();
+  // Read-only access for the spectral visual rig; keep the established draw API intact.
+  NV.getCosmicSpecterHook = () => hookSystem;
 
   // === BOSSES (10 tipos) ===
     const BOSS_TYPES = NV.BOSS_TYPES;
@@ -1899,7 +1900,7 @@
       loadout: combatLabState.loadout ? Object.assign({}, combatLabState.loadout) : null,
       telemetry: combatLabState.encounterMode === 'boss' && NV.playtest ? NV.playtest.snapshot() : null,
       player: { characterId: player.character, hp: player.hp, maxHp: player.maxHp },
-      fps: perf && perf.frame && perf.frame.p50 > 0 ? 1000 / perf.frame.p50 : null,
+      fps: perf && perf.frame && perf.frame.mean > 0 ? 1000 / perf.frame.mean : null,
       error: combatLabState.error ? combatLabState.error.slice() : null,
     };
   }
@@ -2277,6 +2278,26 @@
     }
     triggerFlash(NV.BLACK_HOLE_MODELS[dimensionRun.depth - 1].color);
     followPlayerCamera(); updateHUD();
+    if (dimensionRun.routeChoices) showBanner(dimensionRun.activeRoute === 'chaos'
+      ? 'RUTA CAÓTICA · MÁS PELIGRO · +' + NV.dimensionRouteBonus(dimensionRun) + ' ◆ AL VENCER'
+      : 'RUTA ESTABLE · PROGRESO NORMAL', dimensionRun.activeRoute === 'chaos' ? '#ffc08b' : '#a2ffe4');
+  }
+
+  function awardDimensionRouteReward() {
+    const bonus = NV.claimDimensionRouteReward(dimensionRun);
+    if (bonus > 0) { shards += bonus; addFloatText(player.x, player.y - 45, '+' + bonus + ' ◆ RUTA CAÓTICA', '#ffc08b'); }
+  }
+
+  function prepareDimensionCrossing() {
+    NV.activateNormalShardMagnetPull(pickups, player);
+    enemies = []; bullets = []; flameZones = []; meteors = []; drones = [];
+    wavePressure = NV.createWavePressure ? NV.createWavePressure() : null;
+    pendingBombImpacts = []; currentAutoTarget = null;
+    if (NV.clearHazards) NV.clearHazards(hazards, minefieldState, sectorEncounterState);
+    if (hookSystem && NV.resetHookSystem) NV.resetHookSystem(hookSystem);
+    if (NV.clearPhantomPossession) NV.clearPhantomPossession(player, true);
+    player.stun = 0; player.stunReapplyLockout = 0;
+    stopCurrentWeaponAudio();
   }
 
   function pickWaveEvent() {
@@ -2300,6 +2321,7 @@
   function triggerWaveVictory(isBoss, bossName, bossColor) {
     if (state === 'player_dying' || state === 'gameover' || state === 'wave_end' || state === 'shop_enter' || state === 'shop') return false;
     if (player.hp <= 0) { gameOver(); return false; }
+    if (typeof dimensionRun !== 'undefined' && NV.claimDimensionRouteReward) awardDimensionRouteReward();
     if (isBoss && NV.playtest) NV.playtest.bossEnd(playtestWeaponStates());
     if (NV.expedition && !combatLabMode && expeditionRun) shards += NV.expedition.finishWave(expeditionRun, wave, isBoss);
     // Hazards no bloquean ni dañan durante la transición a tienda.
@@ -2312,14 +2334,9 @@
     player.stun = 0; player.stunReapplyLockout = 0; // F4: sin stun residual entre oleadas
     state = 'wave_end';
     NV.activateNormalShardMagnetPull(pickups, player);
-    // #10: restos visuales, no derribos. El boss conserva su transición propia.
-    if (!isBoss) {
-      for (const e of enemies) {
-        if (e.dead || e.isBoss) continue;
-        e.waveCleanup = true;
-        e.waveCleanupT = 0;
-      }
-    }
+    // #10: victory removes every enemy immediately, including dead entries and boss minions.
+    // Dropping references avoids kills, rewards, death explosions and obsolete cleanup bodies.
+    enemies = [];
     presentation.kind = 'wave_end';
     presentation.elapsed = 0;
     presentation.duration = isBoss ? BOSS_WAVE_END_DURATION : WAVE_END_DURATION;
@@ -2513,8 +2530,9 @@
         slot.innerHTML = `
           <div class="inv-icon"><canvas width="32" height="32" aria-label="${weapon.name}"></canvas></div>
           <div class="inv-name">${weapon.name}</div>
-          ${fusLevel > 0 ? `<div class="inv-fuse"><span class="inv-fuse-label">Fusión </span>Nv${fusLevel}</div>` : ''}
+          ${NV.weaponFusionBadgeHTML ? NV.weaponFusionBadgeHTML(fusLevel) : ''}
         `;
+        if (NV.applyWeaponFusionPresentation) NV.applyWeaponFusionPresentation(slot, fusLevel);
         drawWeaponCanvas(slot.querySelector('canvas'), weapon, 32, 26);
         if (weapon === currentWeapon) {
           slot.classList.add('equipped');
@@ -2527,6 +2545,8 @@
           slot.title = 'Origen del intercambio (click en otra arma para intercambiar)';
         }
         slot.title += ' · Nivel ' + (weaponLevels[weapon.id] || 1) + ' · ' + weapon.pro;
+        if (fusLevel > 0) slot.title += ' · Arma fusionada: ' + fusLevel + '/' + MAX_WEAPON_FUSION;
+        slot.setAttribute('aria-label', slot.title);
         if (fusLevel >= 2 && NV.weaponFusionTrait) slot.title += ' · ' + NV.weaponFusionTrait(weapon.id,fusLevel);
 
         // Click = seleccionar para intercambiar / equipar
@@ -2704,12 +2724,14 @@
       if (owned && fus >= MAX_WEAPON_FUSION && !bought) return;
       const canFuse = owned && fus < MAX_WEAPON_FUSION;
       const invFull = !canFuse && inventory.length >= INVENTORY_SLOTS;
+      const entryLevel = NV.weaponPurchaseLevel(weaponLevels, w.id);
       weapons.push({
         kind: 'weapon', premium:!!premium, name: canFuse ? 'Fusión · '+w.name : w.name, weapon: w, rarity: w.rarity,
-        badge:basic ? (bought ? 'Elección realizada' : 'Elegí una por visita') : 'Componente raro',
+        fusionPreviewLevel: canFuse ? fus + 1 : 0,
+        badge:basic ? (bought ? 'Elección realizada' : canFuse ? 'Elegí una por visita' : 'Entra Nv. ' + entryLevel) : 'Componente raro',
         desc: canFuse
           ? ('FUSIÓN ' + (fus + 1) + '/' + MAX_WEAPON_FUSION + ' · +' + Math.round(WEAPON_FUSION_DMG * 100) + '% daño' + (fus >= 1 && NV.weaponFusionTrait ? ' · ' + NV.weaponFusionTrait(w.id,fus+1) : ''))
-          : ((w.pro || '') + ' · ' + (w.con || '')),
+          : ('Entra a nivel ' + entryLevel + ' · ' + (w.pro || '') + ' · ' + (w.con || '')),
         price: canFuse && NV.weaponFusionShopPrice ? NV.weaponFusionShopPrice(fus) : (canFuse ? WEAPON_FUSE_PRICE : 25),
         // Inventario lleno: oferta bloqueada (misma regla que los pickups: sin auto-equipar).
         disabled: invFull || bought,
@@ -2721,6 +2743,9 @@
             addFloatText(arenaW() / 2, arenaH() / 2, w.name + ' FUSIONADO → Nv' + (fus + 1), '#ffd700');
             sfx.fuse(fus + 1);
           } else if (inventory.length < INVENTORY_SLOTS) {
+            const level = NV.weaponPurchaseLevel(weaponLevels, w.id);
+            weaponLevels[w.id] = level;
+            weaponKills[w.id] = Math.max(weaponKills[w.id] || 0, (level - 1) * WEAPON_KILLS_PER_LEVEL);
             inventory.push(w);
             addFloatText(arenaW()/2, arenaH()/2, '¡' + w.name + '!', RARITY_COLORS[w.rarity]);
             sfx.shopBuy();
@@ -2802,7 +2827,7 @@
   function runUpgradeOffers() {
     const defs = [
       {icon:'hp',name:'+25 HP',desc:'Vida máxima +25',rarity:'common',price:15,apply:()=>{player.maxHp+=25;player.hp+=25;}},
-      {icon:'speed',name:'Agilidad',desc:'Acelera y frena mejor (máx +100%)',rarity:'rare',price:15,apply:()=>{player.agility=Math.min(MAX_AGILITY,player.agility+AGILITY_PER_UPGRADE);}},
+      {icon:'speed',name:'Agilidad',desc:'Acelera y frena mejor (máx +100%)',rarity:'rare',price:15,apply:()=>{player.agility=Math.min(MAX_AGILITY,Math.round((player.agility+AGILITY_PER_UPGRADE)*1000)/1000);}},
       {icon:'armor',name:'Armadura',desc:'+3 armadura',rarity:'epic',price:20,apply:()=>{player.armor+=3;}},
       {icon:'luck',name:'Suerte',desc:'+2 suerte',rarity:'rare',price:20,apply:()=>{player.luck+=2;}},
     ];
@@ -2903,6 +2928,15 @@
       container.appendChild(el);
       const c = el.querySelector("canvas");
       if (c && item.weapon) drawWeaponCanvas(c, item.weapon, 64, 50);
+      if (c && item.weapon && NV.applyWeaponFusionPresentation) {
+        const tier = item.fusionPreviewLevel || weaponFusionLevel(item.weapon.id);
+        const icon = c.parentElement;
+        NV.applyWeaponFusionPresentation(icon, tier);
+        if (tier > 0) {
+          icon.insertAdjacentHTML('beforeend', NV.weaponFusionBadgeHTML(tier));
+          icon.title = NV.weaponFusionPresentation(tier).label;
+        }
+      }
       if (c && item.consumableType) drawConsumableCanvas(c, item.consumableType, 64, 48);
       if (c && item.metaIcon) drawMetaSkillCanvas(c, item.metaIcon, 64, 48);
     });
@@ -2925,9 +2959,15 @@
       const ctx = canvas.getContext && canvas.getContext('2d');
       if (ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (NV.applyWeaponFusionPresentation) NV.applyWeaponFusionPresentation(canvas, 0);
         if (item.weapon) drawWeaponCanvas(canvas, item.weapon, 48, 36);
         else if (item.consumableType) drawConsumableCanvas(canvas, item.consumableType, 48, 36);
         else if (item.metaIcon) drawMetaSkillCanvas(canvas, item.metaIcon, 48, 36);
+        if (item.weapon && NV.applyWeaponFusionPresentation) {
+          const tier = item.fusionPreviewLevel || weaponFusionLevel(item.weapon.id);
+          NV.applyWeaponFusionPresentation(canvas, tier);
+          if (tier > 0) NV.drawWeaponFusionBadge(canvas.getContext('2d'), 2, 2, 14, tier);
+        }
       }
     }
     dom.shopInspector.classList.toggle('is-blocked', !!item.disabled);
@@ -3033,6 +3073,7 @@
 
   function beginShopEntrance() {
     if (state !== 'wave_end') return;
+    enemies = [];
     if (NV.clearPhantomPossession) NV.clearPhantomPossession(player, true);
     const result = NV.collectRemainingNormalShards(pickups);
     pickups = result.pickups;
@@ -3102,13 +3143,7 @@
     shockwaves = NV.updateShockwaves(dt, shockwaves);
 
     if (state === 'wave_end') {
-      if (!presentation.isBoss) {
-        // Sólo tiempo visual: no AI, colisiones, burns ni lógica de muerte.
-        for (const e of enemies) {
-          if (e.waveCleanup) e.waveCleanupT = Math.min(WAVE_CLEANUP_DURATION, e.waveCleanupT + dt);
-        }
-        enemies = enemies.filter((e) => !e.waveCleanup || e.waveCleanupT < WAVE_CLEANUP_DURATION);
-      }
+      enemies = []; // Defensive boundary: no late callback may revive an enemy during victory.
       NV.updatePlayerMovement(player, combatIntent.moveX, combatIntent.moveY, dt);
       player.x = Math.max(20, Math.min(arenaW() - 20, player.x));
       player.y = Math.max(30, Math.min(arenaH() - 20, player.y));
@@ -3292,7 +3327,7 @@
     if (dimensionRun && dimensionRun.arrival > 0) dimensionRun.arrival = Math.max(0, dimensionRun.arrival - dt);
 
     if (!combatLabMode && dimensionRun && dimensionRun.phase !== 'combat' &&
-      ((!dimensionExperiment && !inertiaField) || dimensionRun.phase==='transit')) {
+      (dimensionRun.routeChoices || (!dimensionExperiment && !inertiaField) || dimensionRun.phase==='transit')) {
       const arrived = NV.stepDimensionPortal(dimensionRun, player, dt);
       updatePickups(dt); updateWeaponPickups(dt); updateParticles(dt); updateFloatTexts(dt); updateTrails(dt);
       if (arrived) enterDimensionField();
@@ -3371,9 +3406,13 @@
       // creciente de la oleada (NV.softHostileTarget); MAX_HOSTILES queda como techo
       // duro de emergencia. Lote con techo 5 + piso de reposición 0.35s:
       // matar crea una reducción real y temporal de la presión del enjambre.
-      const perWave = boss ? (NV.runDifficulty === 'hard' ? 2 : 1) : NV.fieldSpawnBatch(wave);
+      const routeDeployment = NV.dimensionRouteDeployment(dimensionRun,
+        boss ? (NV.runDifficulty === 'hard' ? 2 : 1) : NV.fieldSpawnBatch(wave),
+        boss ? NV.bossSupportTarget(wave, NV.runDifficulty) : NV.fieldHostileTarget(wave, NV.runDifficulty, NV.worldMetrics),
+        NV.spawnRefillInterval(wave, waveEvent, !!boss, NV.runDifficulty, NV.worldMetrics), dimensionHostileLimit());
+      const perWave = routeDeployment.batch;
       const budget = NV.getHostileBudget({ enemies, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES });
-      const softTarget = boss ? NV.bossSupportTarget(wave, NV.runDifficulty) : NV.fieldHostileTarget(wave, NV.runDifficulty, NV.worldMetrics);
+      const softTarget = routeDeployment.target;
       if (budget.remainingHostiles > 0 && budget.hostiles < softTarget) {
         // Top-up HASTA el objetivo blando (nunca por encima del soft target).
         const normalAttempts = Math.min(perWave, budget.remainingHostiles, Math.max(0, softTarget - budget.hostiles));
@@ -3393,7 +3432,7 @@
         }
       }
       // Eventos compensan sólo parte del tiempo extra y conservan actividad adicional.
-      spawnTimer = NV.spawnRefillInterval(wave, waveEvent, !!boss, NV.runDifficulty, NV.worldMetrics);
+      spawnTimer = routeDeployment.refill;
       if (!boss && !weaponPickups.some(p=>!p.dead) && Math.random() < NV.weaponDropChanceForInterval(spawnTimer)) spawnWeaponPickup();
     }
 
@@ -3410,7 +3449,12 @@
     }
     updateHazards(dt);
     if (state !== 'playing') return;
+    if (dimensionRun && dimensionRun.routeChoices && dimensionRun.phase === 'combat') {
+      for (const enemy of enemies) NV.applyDimensionRoute(enemy, dimensionRun);
+      NV.applyDimensionRoute(boss, dimensionRun);
+    }
     updateEnemies(dt); // F3: NV.updateEnemies ya ejecuta la state machine del hook
+    if (state !== 'playing') return;
     if (state !== 'playing') return;
     if (!combatLabMode && !dimensionExperiment && NV.updateWavePressure) NV.updateWavePressure(dt, {
       state: wavePressure, wave, boss, active: true, difficulty: NV.runDifficulty,
@@ -3433,13 +3477,9 @@
         if (player.hp <= 0) { gameOver(); return; }
         const remainingHostiles = enemies.reduce((count, enemy) => count + (!enemy.dead ? 1 : 0), 0);
         if (NV.waveClearReady(waveTimer, waveSpawned, remainingHostiles, waveGoal)) {
+          awardDimensionRouteReward();
           if (dimensionRun && NV.openDimensionPortal(dimensionRun, arenaW(), arenaH())) {
-            NV.activateNormalShardMagnetPull(pickups, player);
-            enemies = []; bullets = []; flameZones = []; meteors = []; drones = [];
-            wavePressure = NV.createWavePressure ? NV.createWavePressure() : null;
-            pendingBombImpacts = [];
-            if (NV.clearHazards) NV.clearHazards(hazards, minefieldState, sectorEncounterState);
-            stopCurrentWeaponAudio();
+            prepareDimensionCrossing();
             showBanner('CAMPO DESPEJADO · ABRIENDO CRUCE ' + (dimensionRun.depth + 1) + '/3', NV.BLACK_HOLE_MODELS[dimensionRun.depth].color);
             if (sfx.waveClear) sfx.waveClear();
             return;
@@ -3507,7 +3547,7 @@
             if(NV.Pursuit.safePosition(point,placement)){position=point;break;}
           }
           if(!position)return false;
-          return NV.spawnProductionEnemy({enemies,player,boss:null,MAX_HOSTILES,MAX_HEAVY_HOSTILES,
+          return NV.spawnProductionEnemy({enemies,player,boss:null,MAX_HOSTILES:dimensionHostileLimit(),MAX_HEAVY_HOSTILES,
             wave,W:arenaW(),H:arenaH(),announceSpawn:true},id,{position}).ok;
         };
         context.emit=(core,angles)=>{
@@ -3524,11 +3564,20 @@
           const progress=fieldClock.objectiveView();
           if(!progress.complete)showBanner('NÚCLEO '+progress.collected+'/'+progress.required+' DESTRUIDO',WAVE_EVENTS['museum-time'].color);
         }
+        NV.applyDimensionRoute(fieldClock.combatTarget(), dimensionRun);
         if (fieldClock.objectiveReady()) {
+          awardDimensionRouteReward();
           waveTimer=0;
           if (NV.openDimensionPortal(dimensionRun,arenaW(),arenaH())) {
+            if (dimensionRun.routeChoices) prepareDimensionCrossing();
             showBanner('NÚCLEO DESTRUIDO · ALCANZÁ EL CRUCE',WAVE_EVENTS['museum-time'].color);
             if(sfx.waveClear)sfx.waveClear();
+          } else if (dimensionRun.depth === 3) {
+            // El último universo no tiene otro cruce: completar su núcleo
+            // cierra la oleada mediante la misma victoria que un campo normal.
+            shards += 8 + wave * 2;
+            triggerWaveVictory(false, null, null);
+            return;
           }
         }
       } else {
@@ -3653,15 +3702,18 @@
     }
   }
 
+  function dimensionHostileLimit() {
+    return NV.dimensionRouteHostileLimit(dimensionRun, NV.deploymentHostileLimit(combatLabMode), MAX_HOSTILES);
+  }
   function spawnEnemy(plannedTypeId, spawnPosition) {
-    if (NV.spawnEnemy({ enemies, player, boss, MAX_HOSTILES: NV.deploymentHostileLimit(combatLabMode), MAX_HEAVY_HOSTILES, wave, ENEMY_TYPES, W: arenaW(), H: arenaH(), waveEvent, allowBossSupport: !!boss && !combatLabMode, announceSpawn: !combatLabMode, spawnPosition, forceTypeId: plannedTypeId || forceSpecterType })) {
+    if (NV.spawnEnemy({ enemies, player, boss, MAX_HOSTILES: dimensionHostileLimit(), MAX_HEAVY_HOSTILES, wave, ENEMY_TYPES, W: arenaW(), H: arenaH(), waveEvent, allowBossSupport: !!boss && !combatLabMode, announceSpawn: !combatLabMode, spawnPosition, forceTypeId: plannedTypeId || forceSpecterType })) {
       if (!combatLabMode && !boss) waveSpawned++;
     }
   }
 
   function spawnElite(remainingSoftSlots) {
     const before = enemies.length;
-    NV.spawnElite({ enemies, player, boss, MAX_HOSTILES: NV.deploymentHostileLimit(combatLabMode), MAX_HEAVY_HOSTILES, wave, ELITE_TYPES, W: arenaW(), H: arenaH(), waveEvent,
+    NV.spawnElite({ enemies, player, boss, MAX_HOSTILES: dimensionHostileLimit(), MAX_HEAVY_HOSTILES, wave, ELITE_TYPES, W: arenaW(), H: arenaH(), waveEvent,
       announceSpawn: !combatLabMode,
       maxCount: remainingSoftSlots == null ? Infinity : remainingSoftSlots });
     if (!combatLabMode && !boss) waveSpawned += Math.max(0, enemies.length - before);
@@ -3680,6 +3732,7 @@
   }
 
   function killEnemy(e, damageSource) {
+    if (typeof state !== 'undefined' && (state === 'wave_end' || state === 'shop_enter' || state === 'shop')) return;
     if(e.isDimensionCore){e.dead=true;e.killResolved=true;return;}
     if (e.killResolved || e.waveCleanup) return;
     if (typeof dimensionExperiment !== 'undefined' && dimensionExperiment) {
@@ -3709,6 +3762,7 @@
   }
 
   function updateEnemies(dt) {
+    if (state === 'wave_end' || state === 'shop_enter' || state === 'shop') { enemies=[]; return; }
     const experimental=typeof dimensionExperiment!=='undefined'&&dimensionExperiment;
     const guardians=experimental ? enemies.filter(e=>e.dimensionGuarding&&!e.dead) : [];
     const res = NV.updateEnemies(dt, {
@@ -3729,6 +3783,7 @@
       if (typeof NV.resetHookState === 'function') NV.resetHookState(hookSystem);
       else if (typeof NV.resetHookSystem === 'function') NV.resetHookSystem(hookSystem);
     }
+    if (state === 'wave_end' || state === 'shop_enter' || state === 'shop') { enemies=[]; return; }
     enemies = guardians.length ? res.enemies.concat(guardians) : res.enemies; shake = res.shake;
     if (NV.observeEnemyAudio) NV.observeEnemyAudio(enemies, arenaW());
 
@@ -3740,6 +3795,7 @@
   }
 
   function updateBoss(dt) {
+    const shardBalanceBefore = shards;
     const res = NV.updateBoss(dt, {
       boss, player, enemies, bullets, W: arenaW(), H: arenaH(),
       sectorPressureActive: hazards.some(h => h.type === 'sectorHazard' && (h.state === 'telegraph' || h.state === 'active')),
@@ -3751,7 +3807,10 @@
       onPlayerKilled: () => { if (state === 'playing') gameOver(); },
       spawnBossProj, spawnMinion, runBossAttack, spawnBossChest,
     });
-    score = res.score; shards = res.shards; wave = res.wave; shake = res.shake; boss = res.boss;
+    // Los callbacks de victoria pueden pagar premios. No sobrescribirlos al
+    // recuperar los primitivos del motor (incluido el bonus de ruta caótica).
+    const callbackShards = shards - shardBalanceBefore;
+    score = res.score; shards = res.shards + callbackShards; wave = res.wave; shake = res.shake; boss = res.boss;
   }
 
   // Cofre de jefe: queda en el campo hasta que el jugador lo toque.
@@ -3823,7 +3882,8 @@
     if (opts.enemy) event.enemy = opts.enemy;
     if (opts.projectile) event.projectile = opts.projectile;
     if (opts.hazard) event.hazard = opts.hazard;
-    const r = NV.applyPlayerDamage(base, {
+    const routeBase = NV.dimensionRouteDamage ? NV.dimensionRouteDamage(base, dimensionRun) : base;
+    const r = NV.applyPlayerDamage(routeBase, {
       player, CHARACTERS, calcEnemyDamage, addFloatText, sfx,
       cause: opts.cause, allowCrit: opts.allowCrit, allowDodge: opts.allowDodge,
       respectInvulnerability: opts.respectInvulnerability,
@@ -3843,13 +3903,13 @@
 
   // Esbirros invocados (funciona incluso durante la pelea con un jefe)
   function spawnMinion(x, y, summonVariant) {
-    return NV.spawnMinion(x, y, { enemies, player, boss, wave, W: arenaW(), H: arenaH(), ENEMY_TYPES, MAX_HOSTILES: NV.deploymentHostileLimit(combatLabMode), MAX_HEAVY_HOSTILES, announceSpawn: !combatLabMode }, summonVariant);
+    return NV.spawnMinion(x, y, { enemies, player, boss, wave, W: arenaW(), H: arenaH(), ENEMY_TYPES, MAX_HOSTILES: dimensionHostileLimit(), MAX_HEAVY_HOSTILES, announceSpawn: !combatLabMode }, summonVariant);
   }
 
   function runBossAttack(b, dt) {
     return NV.runBossAttack(b, dt, {
       player, enemies, bullets, sfx, triggerFlash, addFloatText,
-      boss, MAX_HOSTILES: NV.deploymentHostileLimit(combatLabMode), MAX_HEAVY_HOSTILES, MAX_BULLETS, MAX_ENEMY_BULLETS, enemyBulletCount,
+      boss, MAX_HOSTILES: dimensionHostileLimit(), MAX_HEAVY_HOSTILES, MAX_BULLETS, MAX_ENEMY_BULLETS, enemyBulletCount,
       spawnBossProj, spawnMinion,
     });
   }
@@ -4084,7 +4144,7 @@
     const hostileBudget = NV.getHostileBudget({ enemies, boss, MAX_HOSTILES, MAX_HEAVY_HOSTILES });
     const hostileSaturation = Math.min(1, hostileBudget.hostiles / hostileBudget.maxHostiles);
     const metaRenderEnv = {
-      t: (typeof performance !== 'undefined' && typeof performance.now === 'function') ? performance.now() / 1000 : frame / 60,
+      t: visualTimeSeconds,
       saturation: hostileSaturation,
       urgency: (player.hp > 0 && player.hp / player.maxHp <= 0.3) ? 1 : 0,
       gain: 1,
@@ -4095,14 +4155,27 @@
     // hereda el presupuesto visual; nunca altera gameplay ni world metrics.
     const visualWave = !combatLabMode && dimensionRun ? 1 + dimensionRun.environments[dimensionRun.depth] * 5 : wave;
     const sectorVisual = NV.sectorVisualForWave ? NV.sectorVisualForWave(visualWave,sceneryOptions) : null;
+    const spatialStyle=drawBackgroundEffects&&(state==='playing'||state==='wave_end'||state==='player_dying'||state==='gameover')&&NV.spaceEnvironment&&NV.spaceEnvironment.isRequested(sectorVisual);
+    const liveEnvironment=spatialStyle?NV.spaceEnvironment:NV.foundryAtmosphere;
+    if(spatialStyle&&NV.foundryAtmosphere)NV.foundryAtmosphere.hide();
+    if(!spatialStyle&&NV.spaceEnvironment)NV.spaceEnvironment.hide();
+    const foundryActive=liveEnvironment&&liveEnvironment.render({
+      enabled:drawBackgroundEffects&&(state==='playing'||state==='wave_end'||state==='player_dying'||state==='gameover'),
+      id:sectorVisual&&sectorVisual.id,time:visualTimeSeconds,W:arenaW(),H:arenaH(),
+      variant:dimensionRun&&dimensionRun.depth>0?dimensionRun.seed+dimensionRun.depth*7919:0,
+      sx:worldScaleX,sy:worldScaleY,ox:worldOffsetX,oy:worldOffsetY,player,
+      enemies,bullets,meteors,boss,paused:paused||state!=='playing',
+    });
+    if(foundryActive){ctx.save();ctx.resetTransform();ctx.clearRect(0,0,canvas.width,canvas.height);ctx.restore();}
     ctx.fillStyle = sectorVisual ? sectorVisual.background : '#01030d';
-    ctx.fillRect(cameraLeft, cameraTop, cameraW, cameraH);
+    if(!foundryActive)ctx.fillRect(cameraLeft, cameraTop, cameraW, cameraH);
     if (drawBackgroundEffects) {
       ctx.save();
       ctx.translate(cameraLeft, cameraTop);
       // El arte de bordes pertenece a la arena, no al rectángulo de la cámara.
       ctx.save(); ctx.translate(-cameraLeft, -cameraTop);
-      if (NV.drawSectorBackdrop) NV.drawSectorBackdrop(ctx, arenaW(), arenaH(), frame, visualWave, {
+      if(spatialStyle&&!foundryActive)NV.spaceEnvironment.drawFallback(ctx,arenaW(),arenaH(),sectorVisual.id,visualTimeSeconds);
+      if (!spatialStyle&&!foundryActive&&NV.drawSectorBackdrop) NV.drawSectorBackdrop(ctx, arenaW(), arenaH(), frame, visualWave, {
         tier: vbp ? vbp.tier : 'full',
         preview: dimensionContentEnabled,
         variant: dimensionRun && dimensionRun.depth > 0 ? dimensionRun.seed + dimensionRun.depth * 7919 : 0,
@@ -4110,15 +4183,23 @@
       ctx.restore();
       if (drawStarfield&&(!sectorVisual||sectorVisual.starfield!==false)) {
         starCamera.x=cameraLeft;starCamera.y=cameraTop;
-        NV.drawStarfield(ctx, cameraW, cameraH, frame, player.x - cameraLeft, player.y - cameraTop, frameVisualRhythm,dimensionContentEnabled?starCamera:null);
+        if(spatialStyle)NV.spaceEnvironment.drawTravelStars(ctx,cameraW,cameraH,visualTimeSeconds,cameraLeft,cameraTop);
+        else NV.drawStarfield(ctx, cameraW, cameraH, frame, player.x - cameraLeft, player.y - cameraTop, frameVisualRhythm,dimensionContentEnabled?starCamera:null);
       }
       if (drawRhythmBackground && NV.drawRhythmLayer) {
         // P2: capa rítmica de fondo es decorativa — se throttlea por tier.
         const rbDetail = vbp ? vbp.rhythmBackgroundDetail : 1;
         const rbStep = rbDetail >= 1 ? 1 : rbDetail >= 0.5 ? 2 : 4;
-        if (frame % rbStep === 0) NV.drawRhythmLayer(ctx, cameraW, cameraH, frame);
+        NV.drawRhythmLayer(ctx, cameraW, cameraH, frame, rbStep);
       }
       ctx.restore();
+    }
+
+    if(foundryActive||spatialStyle)liveEnvironment.drawBehind(ctx,visualTimeSeconds,player);
+
+    if(NV.spaceTrails){
+      NV.spaceTrails.update({enabled:state==='playing'||state==='wave_end'||state==='player_dying'||state==='gameover',id:sectorVisual&&sectorVisual.id,time:visualTimeSeconds,W:arenaW(),H:arenaH(),bullets,meteors,enemies,paused:paused||state!=='playing'});
+      NV.spaceTrails.draw(ctx);
     }
 
     if (flashAlpha > 0 && flashColor) {
@@ -4131,7 +4212,7 @@
     if (state === 'playing' && !combatLabMode && dimensionRun) {
       const portal = dimensionRun.portal;
       if (portal) {
-        const progress = dimensionRun.phase === 'transit' ? dimensionRun.transit / 1.15 : 0;
+        const progress = dimensionRun.phase === 'transit' && dimensionRun.chosenRoute !== 'stable' ? dimensionRun.transit / 1.15 : 0;
         const opening = Math.min(1, dimensionRun.age / 1.2);
         NV.drawBlackHole(ctx, portal.x, portal.y, portal.radius * (0.15 + 0.85 * opening) * (1 + progress * 1.4), dimensionRun.age, portal.model, { reduced: vbp && vbp.tier !== 'full' });
         ctx.save(); ctx.font = '12px system-ui'; ctx.textAlign = 'center';
@@ -4139,13 +4220,14 @@
         ctx.fillText('UNIVERSO ' + (dimensionRun.depth + 2), portal.x, portal.y + 78);
         ctx.restore();
       }
+      if (dimensionRun.stablePortal) NV.drawStablePortal(ctx, dimensionRun.stablePortal, dimensionRun, vbp && vbp.tier !== 'full');
     }
 
     // META-VIS-02b: neblina de densidad (capa 1, bajo entidades). Contexto
     // compartido de render: t, saturación por cantidad viva, urgencia por HP.
     if (drawMetaOverlays && NV.drawDensityFog && densityField) {
       NV.drawDensityFog(ctx, enemies, densityField.info, {
-        t: performance.now() / 1000,
+        t: visualTimeSeconds,
         saturation: hostileSaturation,
         urgency: (player.hp > 0 && player.hp / player.maxHp <= 0.3) ? 1 : 0,
       });
@@ -4275,7 +4357,7 @@
     // hacia el jugador y se achica levemente; es el MISMO objeto/render de siempre.
     for (const c of bossChests) {
       if (c.dead) continue;
-      const pulse = 0.6 + Math.sin(frame * 0.15) * 0.4;
+      const pulse = 0.6 + Math.sin(visualTimeSeconds * 60 * 0.15) * 0.4;
       // Tarea #8c: la escala la calcula la animación (completa al inicio,
       // reducción sólo en el tramo final del vuelo). Sin animación: escala 1.
       const scale = c.autoCollect ? (c.autoScale != null ? c.autoScale : 1) : 1;
@@ -4447,6 +4529,7 @@
       if (presentation.elapsed < PLAYER_DEATH_POOF_T) drawPlayer();
       if (presentation.elapsed >= PLAYER_DEATH_POOF_T) drawPlayerDeathPuff(ctx);
     } else drawPlayer();
+    if(foundryActive||spatialStyle)liveEnvironment.drawFront(ctx,visualTimeSeconds,player);
     // F3: Hook visuals (world transform activo) — tras enemigos/jugador, ANTES del restore.
     if (NV.drawHookEffects && hookSystem) NV.drawHookEffects(ctx, hookSystem, player);
     if (state === 'playing' && dimensionRun && dimensionRun.phase === 'opening') {
@@ -4458,7 +4541,7 @@
     if (drawMetaOverlays && NV.drawDamageFeedback) NV.drawDamageFeedback(ctx, player, damageFeedback, metaRenderEnv);
     ctx.setTransform(scaleX, 0, 0, scaleY, -vx * scaleX, -vy * scaleY);
     // Retícula Canvas barata: geometría fija, sin glow, partículas ni DOM por frame.
-    if (state === 'playing' && !combatLabMode && dimensionRun && dimensionRun.portal) {
+    if (state === 'playing' && !combatLabMode && dimensionRun && dimensionRun.portal && !dimensionRun.routeChoices) {
       const p = dimensionRun.portal, color = NV.BLACK_HOLE_MODELS[p.model].color;
       ctx.save();
       const targetX = vx + (worldScaleX * p.x + worldOffsetX) / scaleX;
@@ -4481,6 +4564,10 @@
       ctx.fillText(dimensionRun.phase === 'opening' ? 'La singularidad se está abriendo…' : dimensionRun.phase === 'transit' ? 'Atravesando hacia otro universo…' : 'Dirigite a la singularidad para continuar', vx + vw / 2, panelY + 34);
       ctx.restore();
     }
+    if (state === 'playing' && !combatLabMode && dimensionRun && dimensionRun.routeChoices) NV.drawDimensionRouteArrows(ctx, dimensionRun,
+      {vx,vy,vw,vh,scaleX,scaleY,worldScaleX,worldScaleY,worldOffsetX,worldOffsetY});
+    if (state === 'playing' && !combatLabMode && dimensionRun && dimensionRun.routeChoices) NV.drawDimensionRouteHints(ctx, dimensionRun,
+      {vx,vy,vw,vh,scaleX,scaleY,worldScaleX,worldScaleY,worldOffsetX,worldOffsetY});
     if (state === 'playing' && !paused && NV.input.getEffectiveFirePolicy() === 'manual' && combatIntent.aimActive) {
       const ax = combatIntent.aimWorldX, ay = combatIntent.aimWorldY;
       ctx.save();
@@ -4777,92 +4864,24 @@
   }
 
   function drawEnemy(e) {
-    if (e.arrival && (state !== 'playing' || e.waveCleanup)) return;
+    if (!e || e.dead || e.waveCleanup || state === 'wave_end' || state === 'shop_enter' || state === 'shop') return;
+    if (e.arrival && state !== 'playing') return;
     if (NV.drawEnemyArrival && NV.drawEnemyArrival(ctx, e)) return;
-    // Solo ocultar Canvas2D cuando el mesh WebGL de ESTE enemigo ya existe.
-    // Durante carga, fallo o flag apagado, el render original sigue intacto.
     if ((NV.SPECTER_ENABLED === false && e.shape === 'specter') || isEnemyRenderedByLite(e)) return;
-    let renderCtx = ctx;
-    let cleanupProgress = 0;
-    let cleanupPuffAlpha = 0;
-    let cleanupPuffScale = 0.55;
-    let drawCleanupBody = true;
-    if (e.waveCleanup) {
-      const progress = Math.max(0, Math.min(1, e.waveCleanupT / WAVE_CLEANUP_DURATION));
-      if (progress >= 1) return;
-      // #10: sustitución cartoon a 0.105 s; el cleanup funcional sigue en 0.4 s.
-      const poofT = 0.105;
-      const popT = 0.06;
-      const popP = Math.max(0, Math.min(1, e.waveCleanupT / popT));
-      const bodyCollapseP = Math.max(0, Math.min(1, (e.waveCleanupT - popT) / (poofT - popT)));
-      const bodyScale = e.waveCleanupT < popT
-        ? 1 + (WAVE_CLEANUP_POP_SCALE - 1) * popP
-        : WAVE_CLEANUP_POP_SCALE - (WAVE_CLEANUP_POP_SCALE - 0.82) * bodyCollapseP;
-      const bodyDimP = Math.max(0, Math.min(1, (e.waveCleanupT - popT) / (poofT - popT)));
-      const bodyAlpha = e.waveCleanupT >= poofT ? 0 : ctx.globalAlpha * (1 - bodyDimP * 0.22);
-      const puffInP = Math.max(0, Math.min(1, (e.waveCleanupT - 0.09) / (poofT - 0.09)));
-      const puffOutP = Math.max(0, Math.min(1, (WAVE_CLEANUP_DURATION - e.waveCleanupT) / 0.18));
-      const puffIn = puffInP * puffInP * (3 - 2 * puffInP);
-      const puffOut = puffOutP * puffOutP * (3 - 2 * puffOutP);
-      cleanupPuffAlpha = ctx.globalAlpha * 0.96 * puffIn * puffOut;
-      cleanupPuffScale = e.waveCleanupT <= 0.23
-        ? 0.72 + 0.43 * Math.max(0, Math.min(1, (e.waveCleanupT - poofT) / (0.23 - poofT)))
-        : 1.15 + 0.1 * Math.min(1, (e.waveCleanupT - 0.23) / 0.17);
-      cleanupProgress = progress;
-      drawCleanupBody = bodyAlpha > 0;
-      ctx.save();
-      ctx.translate(e.x, e.y);
-      ctx.scale(bodyScale, bodyScale);
-      ctx.translate(-e.x, -e.y);
-      ctx.globalAlpha = bodyAlpha;
-      // Los renderizadores reasignan globalAlpha (ojos, halos, status).
-      // Multiplicar TODAS sus escrituras mantiene el fade del objeto completo,
-      // sin modificar sus modelos ni el renderer del boss. Métodos ligados al
-      // contexto nativo: Canvas2D exige su receiver real.
-      renderCtx = new Proxy(ctx, {
-        get(target, key) {
-          if (key === 'globalAlpha') return bodyAlpha > 0 ? target.globalAlpha / bodyAlpha : 0;
-          const value = target[key];
-          return typeof value === 'function' ? value.bind(target) : value;
-        },
-        set(target, key, value) {
-          target[key] = key === 'globalAlpha' ? value * bodyAlpha : value;
-          return true;
-        }
-      });
-    }
-    try {
-      if (drawCleanupBody) {
-        const ctx = renderCtx;
-        if (NV.drawDimensionalThreatBody && NV.drawDimensionalThreatBody(ctx, e)) {
-          // Modelo compacto propio; geometría de amenaza dibujada debajo del roster.
-        } else if (typeof NV.hasCommonEnemyVisual === 'function' && NV.hasCommonEnemyVisual(e.enemyTypeId)) {
-          NV.drawEnemy(ctx, e, frame, player, frameVisualRhythm, visualTimeSeconds);
-        } else if (NV.SPECTRAL_ENEMY_MODE && typeof NV.drawSpectralEnemy2D === 'function') {
-          NV.drawSpectralEnemy2D(ctx, e, frame, player, frameVisualRhythm);
-        } else {
-          NV.drawEnemy(ctx, e, frame, player, frameVisualRhythm, visualTimeSeconds);
-        }
-      }
-    } finally {
-      if (e.waveCleanup) {
-        // Restaurar primero desacopla el puff del alpha y la escala del cuerpo.
-        ctx.restore();
-        ctx.save();
-        drawCleanupPuff(ctx, e, cleanupProgress, cleanupPuffAlpha, cleanupPuffScale);
-        ctx.restore();
-      }
-    }
+    if (NV.drawDimensionalThreatBody && NV.drawDimensionalThreatBody(ctx, e)) return;
+    if (typeof NV.hasCommonEnemyVisual === 'function' && NV.hasCommonEnemyVisual(e.enemyTypeId)) {
+      NV.drawEnemy(ctx, e, frame, player, frameVisualRhythm, visualTimeSeconds);
+    } else if (NV.SPECTRAL_ENEMY_MODE && typeof NV.drawSpectralEnemy2D === 'function') {
+      NV.drawSpectralEnemy2D(ctx, e, frame, player, frameVisualRhythm, hookSystem);
+    } else NV.drawEnemy(ctx, e, frame, player, frameVisualRhythm, visualTimeSeconds);
   }
-
-
 
   function drawBoss() {
     if (NV.SPECTRAL_ENEMY_MODE && typeof NV.drawSpectralBoss2D === 'function') {
       NV.drawSpectralBoss2D(ctx, boss, frame, player, NV.rhythm);
       return;
     }
-    NV.drawBoss(ctx, boss, frame);
+    NV.drawBoss(ctx, boss, frame, player);
   }
 
 
@@ -4950,7 +4969,7 @@
   let perfPrevNow = 0, vbEvalTimer = 0;
   const measurePhases = NV.RuntimeTools ? NV.RuntimeTools.measurePhases(() => performance.now()) : null;
   function applyScreenShake() {
-    if (shake > 0 && (state === 'playing' || state === 'player_dying' || state === 'wave_end')) {
+    if (!paused && shake > 0 && (state === 'playing' || state === 'player_dying' || state === 'wave_end')) {
       const deathMult = state === 'player_dying' ? 0.7 : 1;
       const comfort = NV.settings && NV.settings.gameplay && NV.settings.gameplay.reducedEffects ? 0 : 1;
       const sx = (Math.random() - 0.5) * 8 * shake * deathMult * comfort;
@@ -4963,6 +4982,7 @@
     }
   }
   function loop(now) {
+    const callbackStarted = performance.now();
     if (NV.events) NV.events.beginFrame();
     // Vertical en móvil es una pantalla de orientación, no una partida a medias:
     // no avanzamos simulación, VFX ni timers hasta que vuelva el paisaje.
@@ -4972,11 +4992,15 @@
       // El lobby sí puede explorarse en vertical; sólo dibujamos su piloto.
       // La simulación de la partida y sus timers siguen bloqueados.
       if (isLobbyPreviewActive()) {
+        const lobbyDelta = lastTime ? Math.min(0.03, Math.max(0, (now - lastTime) / 1000)) : 0;
+        lobbyVisualTimeSeconds += lobbyDelta;
+        if (NV.presentationClock) NV.presentationClock.beginFrame(lobbyVisualTimeSeconds, lobbyDelta);
         frame++;
         drawLobbyPreview();
       }
       lastTime = now;
       if (NV.updateFpsCounter) NV.updateFpsCounter(now);
+      if (NV.performanceMonitor && NV.performanceMonitor.recordCallback) NV.performanceMonitor.recordCallback(performance.now() - callbackStarted);
       requestAnimationFrame(loop);
       return;
     }
@@ -4995,6 +5019,7 @@
 
     if (hitstop > 0) { hitstop = Math.max(0, hitstop - dt); dt = 0; }
     if (!paused) visualTimeSeconds += dt;
+    if (NV.presentationClock) NV.presentationClock.beginFrame(visualTimeSeconds, paused ? 0 : dt);
     updateHudReveal(dt);
     if (NV.rhythmTick) {
       const rhythmNow = now / 1000;
@@ -5013,6 +5038,8 @@
     if ((state === 'menu' || state === 'shop' || state === 'shop_enter') && !paused) runMusic(dt);
     // El tiempo visual del piloto avanza solo mientras el lobby es la vista activa.
     if (isLobbyPreviewActive()) {
+      lobbyVisualTimeSeconds += dt;
+      if (NV.presentationClock) NV.presentationClock.beginFrame(lobbyVisualTimeSeconds, dt);
       frame++;
       drawLobbyPreview();
     }
@@ -5049,7 +5076,7 @@
     updateEspectroBridge(dt);
     if (NV.webgpuPresentation) NV.webgpuPresentation.present(canvas);
     if (NV.updateFpsCounter) NV.updateFpsCounter(now);
-
+    if (NV.performanceMonitor && NV.performanceMonitor.recordCallback) NV.performanceMonitor.recordCallback(performance.now() - callbackStarted);
     requestAnimationFrame(loop);
   }
 
@@ -5207,7 +5234,10 @@
     arena: { width: arenaW(), height: arenaH() },
     dimension: dimensionRun ? { depth: dimensionRun.depth, phase: dimensionRun.phase,
       duration: dimensionRun.duration, environment: dimensionRun.environments[dimensionRun.depth], seed: dimensionRun.seed, arrival: dimensionRun.arrival || 0,
-      bossWave: dimensionRun.bossWave, portal: dimensionRun.portal ? Object.assign({}, dimensionRun.portal) : null } : null,
+      bossWave: dimensionRun.bossWave, portal: dimensionRun.portal ? Object.assign({}, dimensionRun.portal) : null,
+      routeChoices: dimensionRun.routeChoices, stablePortal: dimensionRun.stablePortal ? Object.assign({},dimensionRun.stablePortal) : null,
+      activeRoute: dimensionRun.activeRoute, chosenRoute: dimensionRun.chosenRoute, hoverRoute: dimensionRun.hoverRoute,
+      activation: dimensionRun.activation, bonus: NV.dimensionRouteBonus(dimensionRun) } : null,
     objective: waveGoal ? {
       defeats: waveDefeats, spawned: waveSpawned,
       cleared: Math.max(0, waveSpawned - enemies.filter(enemy => !enemy.dead).length),

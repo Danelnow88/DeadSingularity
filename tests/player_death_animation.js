@@ -39,7 +39,7 @@ t('1 timeline total 0.82s, visual-end 0.70s y respiracion 0.12s', () => {
   assert.ok(fin >= 0.75 && fin <= 0.95, 'fuera de rango');
   assert.ok(fin > visualEnd, 'FIN no espera');
   assert.ok(fin - visualEnd >= 0.08 && fin - visualEnd <= 0.15, 'respiracion=' + (fin - visualEnd));
-  assert.strictEqual(numConst('WAVE_CLEANUP_DURATION'), 0.4, '#10 tocado');
+  assert(!game.includes('WAVE_CLEANUP_DURATION'),'retired enemy exit timer returned');
 });
 t('2 gameOver entra una vez y finishPlayerDeath esta protegido', () => {
   const start = functionBlock('gameOver', 'finishPlayerDeath');
@@ -114,8 +114,10 @@ t('10 render separa cuerpo y puff, wrapper es determinista', () => {
   assert.ok(helper.includes('vis.shockAlpha') && helper.includes('vis.miniPuffAlpha') && helper.includes('vis.accentAlpha'), 'faltan capas');
   assert.ok(!helper.includes('Math.random') && !helper.includes('particles.push'), 'wrapper no determinista');
 });
-t('11 #10 conserva helper, constantes y ruta exacta', () => {
-  for (const s of ['function drawCleanupPuff(c2, e, progress, puffAlpha, puffScale)', 'const WAVE_CLEANUP_POP_T = 0.08;', 'const WAVE_CLEANUP_POP_SCALE = 1.08;', 'const poofT = 0.105;', 'drawCleanupPuff(ctx, e, cleanupProgress, cleanupPuffAlpha, cleanupPuffScale);']) assert.ok(game.includes(s), '#10 modificado: ' + s);
+t('11 player death keeps its shared puff while enemies vanish immediately', () => {
+  assert(game.includes('function drawCleanupPuff(c2, e, progress, puffAlpha, puffScale)'));
+  assert(functionBlock('drawPlayerDeathPuff','drawEnemy').includes('drawCleanupPuff(c2,'));
+  assert(!functionBlock('drawEnemy','drawBoss').includes('drawCleanupPuff'));
 });
 t('12 no hay transformaciones de muerte durante gameplay normal', () => {
   const style = functionBlock('playerPresentationStyle', 'syncGameState');

@@ -1,0 +1,186 @@
+{
+  "revision": "ivory-nine-v2-file",
+  "tool": "built-in image_gen",
+  "reference": "approved-reference.png",
+  "animation": "Tank: stowed travel, 0.58s extension, separate 0.32s core charge, one synchronized discharge, 0.12s ivory muzzle flame and smooth retraction. Early-wave artillery shares the same windup.",
+  "sprites": [
+    {
+      "id": "runner",
+      "name": "CORREDOR",
+      "file": "runner.png",
+      "referenceCell": "top left",
+      "color": "cyan",
+      "previousVisibleSize": 45.5,
+      "extractionPrompt": "Extract and faithfully refine ONE production game sprite from the attached approved concept sheet: ONLY the LARGE CORREDOR creature in the top left cell. Ignore all other cells and ignore the tiny thumbnail. Subject: cyan membrane, rounded asymmetric orb with three curved ivory plates and four short radial fins, two uneven hollow openings. This is a faithful cutout / resolution refinement of the selected design, NOT a redesign. Match its original silhouette, pose, orientation, number and arrangement of plates/fins, proportions, openings, colors, matte warm ivory shell and dark indigo organic flesh, painted 2D volume and texture quality. Preserve the original body asymmetry and local lighting. Remove only tiny accidental noise, keep broad readable planes. Full creature centered filling about 85 percent of a square image with even modest transparent margin, no clipping. ONE isolated creature only, no labels, letters, grid, tiny copies, drop shadow, backdrop, halo or added props. TRUE TRANSPARENT background alpha. Empty THROUGH-openings between shell structures should reveal transparency, not a patch of navy background; deep anatomical recesses such as cannon bore or funnel interior remain naturally dark. Keep internal colored membranes solid, their reference hue and brightness, no bloom. Do not add eyes, teeth, faces, anatomy, extra holes, extra fins, cracks or details. Production-ready PNG sprite on transparent background, sharp clean anti-aliased edges without dark background fringe. It will be displayed very small in a busy roguelite. Maintain identity exactly; do not simplify to vector or add new design elements.",
+      "sourceBounds": {
+        "x": 72,
+        "y": 80,
+        "width": 1152,
+        "height": 1058,
+        "sourceWidth": 1254,
+        "sourceHeight": 1254,
+        "transparent": 0.5602512152499561
+      }
+    },
+    {
+      "id": "tank",
+      "name": "TANQUE",
+      "file": "tank.png",
+      "referenceCell": "top center",
+      "color": "orange",
+      "previousVisibleSize": 51,
+      "extractionPrompt": "Extract and faithfully refine ONE production game sprite from the attached approved concept sheet: ONLY the LARGE TANQUE creature in the top center cell. Ignore all other cells and ignore the tiny thumbnail. Subject: orange membrane, heavy two-plate armored closed orb with one short extended telescopic cannon pointing left. This is a faithful cutout / resolution refinement of the selected design, NOT a redesign. Match its original silhouette, pose, orientation, number and arrangement of plates/fins, proportions, openings, colors, matte warm ivory shell and dark indigo organic flesh, painted 2D volume and texture quality. Preserve the original body asymmetry and local lighting. Remove only tiny accidental noise, keep broad readable planes. Full creature centered filling about 85 percent of a square image with even modest transparent margin, no clipping. ONE isolated creature only, no labels, letters, grid, tiny copies, drop shadow, backdrop, halo or added props. TRUE TRANSPARENT background alpha. Empty THROUGH-openings between shell structures should reveal transparency, not a patch of navy background; deep anatomical recesses such as cannon bore or funnel interior remain naturally dark. Keep internal colored membranes solid, their reference hue and brightness, no bloom. Do not add eyes, teeth, faces, anatomy, extra holes, extra fins, cracks or details. Production-ready PNG sprite on transparent background, sharp clean anti-aliased edges without dark background fringe. It will be displayed very small in a busy roguelite. Maintain identity exactly; do not simplify to vector or add new design elements.",
+      "sourceBounds": {
+        "x": 73,
+        "y": 45,
+        "width": 1394,
+        "height": 930,
+        "sourceWidth": 1536,
+        "sourceHeight": 1024,
+        "transparent": 0.4281241099039714
+      }
+    },
+    {
+      "id": "swarmlet",
+      "name": "ENJAMBRITO",
+      "file": "swarmlet.png",
+      "referenceCell": "top right",
+      "color": "rose pink",
+      "previousVisibleSize": 29,
+      "extractionPrompt": "Extract and faithfully refine ONE production game sprite from the attached approved concept sheet: ONLY the LARGE ENJAMBRITO creature in the top right cell. Ignore all other cells and ignore the tiny thumbnail. Subject: rose pink inner membrane and TWO swept short side fins, compact pointed ivory carapace, single dark opening. This is a faithful cutout / resolution refinement of the selected design, NOT a redesign. Match its original silhouette, pose, orientation, number and arrangement of plates/fins, proportions, openings, colors, matte warm ivory shell and dark indigo organic flesh, painted 2D volume and texture quality. Preserve the original body asymmetry and local lighting. Remove only tiny accidental noise, keep broad readable planes. Full creature centered filling about 85 percent of a square image with even modest transparent margin, no clipping. ONE isolated creature only, no labels, letters, grid, tiny copies, drop shadow, backdrop, halo or added props. TRUE TRANSPARENT background alpha. Empty THROUGH-openings between shell structures should reveal transparency, not a patch of navy background; deep anatomical recesses such as cannon bore or funnel interior remain naturally dark. Keep internal colored membranes solid, their reference hue and brightness, no bloom. Do not add eyes, teeth, faces, anatomy, extra holes, extra fins, cracks or details. Production-ready PNG sprite on transparent background, sharp clean anti-aliased edges without dark background fringe. It will be displayed very small in a busy roguelite. Maintain identity exactly; do not simplify to vector or add new design elements.",
+      "sourceBounds": {
+        "x": 61,
+        "y": 196,
+        "width": 1173,
+        "height": 923,
+        "sourceWidth": 1254,
+        "sourceHeight": 1254,
+        "transparent": 0.6665744577479656
+      }
+    },
+    {
+      "id": "spitter",
+      "name": "ESCOPURAS",
+      "file": "spitter.png",
+      "referenceCell": "middle left",
+      "color": "chartreuse lime",
+      "previousVisibleSize": 52,
+      "extractionPrompt": "Extract and faithfully refine ONE production game sprite from the attached approved concept sheet: ONLY the LARGE ESCOPURAS creature in the middle left cell. Ignore all other cells and ignore the tiny thumbnail. Subject: bright chartreuse LIME GREEN inner funnel and fin membrane, thick organic side-projecting funnel pointing LEFT. This is a faithful cutout / resolution refinement of the selected design, NOT a redesign. Match its original silhouette, pose, orientation, number and arrangement of plates/fins, proportions, openings, colors, matte warm ivory shell and dark indigo organic flesh, painted 2D volume and texture quality. Preserve the original body asymmetry and local lighting. Remove only tiny accidental noise, keep broad readable planes. Full creature centered filling about 85 percent of a square image with even modest transparent margin, no clipping. ONE isolated creature only, no labels, letters, grid, tiny copies, drop shadow, backdrop, halo or added props. TRUE TRANSPARENT background alpha. Empty THROUGH-openings between shell structures should reveal transparency, not a patch of navy background; deep anatomical recesses such as cannon bore or funnel interior remain naturally dark. Keep internal colored membranes solid, their reference hue and brightness, no bloom. Do not add eyes, teeth, faces, anatomy, extra holes, extra fins, cracks or details. Production-ready PNG sprite on transparent background, sharp clean anti-aliased edges without dark background fringe. It will be displayed very small in a busy roguelite. Maintain identity exactly; do not simplify to vector or add new design elements.",
+      "sourceBounds": {
+        "x": 108,
+        "y": 115,
+        "width": 1329,
+        "height": 817,
+        "sourceWidth": 1536,
+        "sourceHeight": 1024,
+        "transparent": 0.5711085001627604
+      }
+    },
+    {
+      "id": "wisp",
+      "name": "ESPÍRITU",
+      "file": "wisp.png",
+      "referenceCell": "middle center",
+      "color": "ice white",
+      "previousVisibleSize": 44.25,
+      "extractionPrompt": "Extract and faithfully refine ONE production game sprite from the attached approved concept sheet: ONLY the LARGE ESPÍRITU creature in the middle center cell. Ignore all other cells and ignore the tiny thumbnail. Subject: neutral ICE WHITE inner membrane, rounded two sweeping ivory mantle lobes, no pointed radial fins. This is a faithful cutout / resolution refinement of the selected design, NOT a redesign. Match its original silhouette, pose, orientation, number and arrangement of plates/fins, proportions, openings, colors, matte warm ivory shell and dark indigo organic flesh, painted 2D volume and texture quality. Preserve the original body asymmetry and local lighting. Remove only tiny accidental noise, keep broad readable planes. Full creature centered filling about 85 percent of a square image with even modest transparent margin, no clipping. ONE isolated creature only, no labels, letters, grid, tiny copies, drop shadow, backdrop, halo or added props. TRUE TRANSPARENT background alpha. Empty THROUGH-openings between shell structures should reveal transparency, not a patch of navy background; deep anatomical recesses such as cannon bore or funnel interior remain naturally dark. Keep internal colored membranes solid, their reference hue and brightness, no bloom. Do not add eyes, teeth, faces, anatomy, extra holes, extra fins, cracks or details. Production-ready PNG sprite on transparent background, sharp clean anti-aliased edges without dark background fringe. It will be displayed very small in a busy roguelite. Maintain identity exactly; do not simplify to vector or add new design elements.",
+      "sourceBounds": {
+        "x": 226,
+        "y": 42,
+        "width": 1113,
+        "height": 887,
+        "sourceWidth": 1536,
+        "sourceHeight": 1024,
+        "transparent": 0.5553029378255209
+      }
+    },
+    {
+      "id": "kamikaze",
+      "name": "KAMIKAZE",
+      "file": "kamikaze.png",
+      "referenceCell": "middle right",
+      "color": "coral red",
+      "previousVisibleSize": 27.75,
+      "extractionPrompt": "Extract and faithfully refine ONE production game sprite from the attached approved concept sheet: ONLY the LARGE KAMIKAZE creature in the middle right cell. Ignore all other cells and ignore the tiny thumbnail. Subject: coral RED inner tissue, FIVE heavy hooked ivory star arms surrounding a triangular hole. This is a faithful cutout / resolution refinement of the selected design, NOT a redesign. Match its original silhouette, pose, orientation, number and arrangement of plates/fins, proportions, openings, colors, matte warm ivory shell and dark indigo organic flesh, painted 2D volume and texture quality. Preserve the original body asymmetry and local lighting. Remove only tiny accidental noise, keep broad readable planes. Full creature centered filling about 85 percent of a square image with even modest transparent margin, no clipping. ONE isolated creature only, no labels, letters, grid, tiny copies, drop shadow, backdrop, halo or added props. TRUE TRANSPARENT background alpha. Empty THROUGH-openings between shell structures should reveal transparency, not a patch of navy background; deep anatomical recesses such as cannon bore or funnel interior remain naturally dark. Keep internal colored membranes solid, their reference hue and brightness, no bloom. Do not add eyes, teeth, faces, anatomy, extra holes, extra fins, cracks or details. Production-ready PNG sprite on transparent background, sharp clean anti-aliased edges without dark background fringe. It will be displayed very small in a busy roguelite. Maintain identity exactly; do not simplify to vector or add new design elements.",
+      "sourceBounds": {
+        "x": 61,
+        "y": 57,
+        "width": 1145,
+        "height": 1102,
+        "sourceWidth": 1254,
+        "sourceHeight": 1254,
+        "transparent": 0.5216557414996096
+      },
+      "visualScale": 1.1
+    },
+    {
+      "id": "specter_archer",
+      "name": "ESPECTRO ARQUERO",
+      "file": "specter_archer.png",
+      "referenceCell": "bottom left",
+      "color": "golden yellow",
+      "previousVisibleSize": 44.5,
+      "extractionPrompt": "Extract and faithfully refine ONE production game sprite from the attached approved concept sheet: ONLY the LARGE ESPECTRO ARQUERO creature in the bottom left cell. Ignore all other cells and ignore the tiny thumbnail. Subject: golden YELLOW inner tissue, compact asymmetric directional wedge with short thick front ivory horn pointing LEFT. This is a faithful cutout / resolution refinement of the selected design, NOT a redesign. Match its original silhouette, pose, orientation, number and arrangement of plates/fins, proportions, openings, colors, matte warm ivory shell and dark indigo organic flesh, painted 2D volume and texture quality. Preserve the original body asymmetry and local lighting. Remove only tiny accidental noise, keep broad readable planes. Full creature centered filling about 85 percent of a square image with even modest transparent margin, no clipping. ONE isolated creature only, no labels, letters, grid, tiny copies, drop shadow, backdrop, halo or added props. TRUE TRANSPARENT background alpha. Empty THROUGH-openings between shell structures should reveal transparency, not a patch of navy background; deep anatomical recesses such as cannon bore or funnel interior remain naturally dark. Keep internal colored membranes solid, their reference hue and brightness, no bloom. Do not add eyes, teeth, faces, anatomy, extra holes, extra fins, cracks or details. Production-ready PNG sprite on transparent background, sharp clean anti-aliased edges without dark background fringe. It will be displayed very small in a busy roguelite. Maintain identity exactly; do not simplify to vector or add new design elements.",
+      "sourceBounds": {
+        "x": 46,
+        "y": 112,
+        "width": 1467,
+        "height": 830,
+        "sourceWidth": 1536,
+        "sourceHeight": 1024,
+        "transparent": 0.6019121805826823
+      },
+      "visualScale": 1.15
+    },
+    {
+      "id": "specter_guard",
+      "name": "ESPECTRO GUARDIA",
+      "file": "specter_guard.png",
+      "referenceCell": "bottom center",
+      "color": "emerald green",
+      "previousVisibleSize": 56.75,
+      "extractionPrompt": "Extract and faithfully refine ONE production game sprite from the attached approved concept sheet: ONLY the LARGE ESPECTRO GUARDIA creature in the bottom center cell. Ignore all other cells and ignore the tiny thumbnail. Subject: emerald GREEN tissue, broad rounded embracing ivory mantle and two inward-curving side flanges, exposed lower indigo mass. This is a faithful cutout / resolution refinement of the selected design, NOT a redesign. Match its original silhouette, pose, orientation, number and arrangement of plates/fins, proportions, openings, colors, matte warm ivory shell and dark indigo organic flesh, painted 2D volume and texture quality. Preserve the original body asymmetry and local lighting. Remove only tiny accidental noise, keep broad readable planes. Full creature centered filling about 85 percent of a square image with even modest transparent margin, no clipping. ONE isolated creature only, no labels, letters, grid, tiny copies, drop shadow, backdrop, halo or added props. TRUE TRANSPARENT background alpha. Empty THROUGH-openings between shell structures should reveal transparency, not a patch of navy background; deep anatomical recesses such as cannon bore or funnel interior remain naturally dark. Keep internal colored membranes solid, their reference hue and brightness, no bloom. Do not add eyes, teeth, faces, anatomy, extra holes, extra fins, cracks or details. Production-ready PNG sprite on transparent background, sharp clean anti-aliased edges without dark background fringe. It will be displayed very small in a busy roguelite. Maintain identity exactly; do not simplify to vector or add new design elements.",
+      "sourceBounds": {
+        "x": 67,
+        "y": 98,
+        "width": 1140,
+        "height": 998,
+        "sourceWidth": 1254,
+        "sourceHeight": 1254,
+        "transparent": 0.46187892523828056
+      }
+    },
+    {
+      "id": "specter_core",
+      "name": "ESPECTRO NÚCLEO",
+      "file": "specter_core.png",
+      "referenceCell": "bottom right",
+      "color": "purple",
+      "previousVisibleSize": 50.5,
+      "extractionPrompt": "Extract and faithfully refine ONE production game sprite from the attached approved concept sheet: ONLY the LARGE ESPECTRO NÚCLEO creature in the bottom right cell. Ignore all other cells and ignore the tiny thumbnail. Subject: PURPLE inner circular tissue around round dark hole, three ivory curved arcs and small original external fins. This is a faithful cutout / resolution refinement of the selected design, NOT a redesign. Match its original silhouette, pose, orientation, number and arrangement of plates/fins, proportions, openings, colors, matte warm ivory shell and dark indigo organic flesh, painted 2D volume and texture quality. Preserve the original body asymmetry and local lighting. Remove only tiny accidental noise, keep broad readable planes. Full creature centered filling about 85 percent of a square image with even modest transparent margin, no clipping. ONE isolated creature only, no labels, letters, grid, tiny copies, drop shadow, backdrop, halo or added props. TRUE TRANSPARENT background alpha. Empty THROUGH-openings between shell structures should reveal transparency, not a patch of navy background; deep anatomical recesses such as cannon bore or funnel interior remain naturally dark. Keep internal colored membranes solid, their reference hue and brightness, no bloom. Do not add eyes, teeth, faces, anatomy, extra holes, extra fins, cracks or details. Production-ready PNG sprite on transparent background, sharp clean anti-aliased edges without dark background fringe. It will be displayed very small in a busy roguelite. Maintain identity exactly; do not simplify to vector or add new design elements.",
+      "sourceBounds": {
+        "x": 84,
+        "y": 43,
+        "width": 1090,
+        "height": 1159,
+        "sourceWidth": 1254,
+        "sourceHeight": 1254,
+        "transparent": 0.39069236815396474
+      }
+    }
+  ],
+  "coreLighting": {
+    "version": "core-light-v2",
+    "maps": "lighting/manifest.json",
+    "cadences": "js/render/singularityCoreLight.js",
+    "preview": "previews/enemy-core-lighting.html",
+    "guide": "docs/art-direction/NUCLEOS_ILUMINACION_V1.md",
+    "sourceSpritesUnchanged": true
+  },
+  "tankAnimation": {
+    "version": "tank-sync-v2",
+    "assets": "tank-animation/",
+    "guide": "docs/art-direction/TANQUE_TELESCOPICO.md",
+    "sourceSpriteUnchanged": true
+  }
+}

@@ -300,12 +300,13 @@
   NV.dimensionBaselineRoster = function () {
     const removed = new Set(['drone', 'shielder', 'specter_lite', 'specter_grunt']);
     const enemies = NV.ENEMY_TYPES.filter(t => !removed.has(t.id)).map(t => {
-      if(t.id === 'swarmlet') return Object.assign({},t,{minWave:1,speed:140,weight:1.6,previewAgileSwarm:true});
+      if(t.id === 'swarmlet') return Object.assign({},t,{minWave:1,speed:140,weight:1.6,previewAgileSwarm:true,paintedSwarmlet:true});
       if(t.id === 'specter_archer') return Object.assign({},t,{rosterVisualId:'specter_lite',previewHook:true});
       if(['spitter','wisp'].includes(t.id)) return Object.assign({},t,{previewMotionPolish:true});
       return Object.assign({},t);
     });
-    return {enemies,elites:NV.ELITE_TYPES.filter(t=>!['elite_velocity','elite_specter_void'].includes(t.visualId)).map(t=>Object.assign({},t))};
+    return {enemies,elites:NV.ELITE_TYPES.filter(t=>['elite_predator','elite_phantom','elite_titan'].includes(t.visualId))
+      .map(t=>Object.assign({},t,{refinedEliteBody:true,refinedEliteReadability:true}))};
   };
   NV.dimensionTrialRoster = function () { return NV.dimensionBaselineRoster(); };
 })();

@@ -1,6 +1,6 @@
 // ===== Lenguaje de proyectil hostil: ROJO = dano, AMARILLO = stun, SHAPE = familia =====
 // Contrato de presentacion (sin gameplay): todo proyectil hostil conserva un
-// cuerpo rojo dominante y stunChance habilita solo un acento amarillo.
+// cuerpo rojo dominante salvo el moco verde de ESCOPURAS; stun conserva acento amarillo.
 const fs = require('fs'), vm = require('vm');
 let pass = 0, fail = 0;
 function t(name, fn) { try { fn(); pass++; console.log('  ok  ' + name); } catch (e) { fail++; console.log('  FAIL ' + name + ' -> ' + e.message); } }
@@ -44,6 +44,8 @@ function recorder() {
     moveTo(x, y) { record('moveTo')(x, y); point(x, y); },
     lineTo(x, y) { record('lineTo')(x, y); point(x, y); },
     quadraticCurveTo(cpx, cpy, x, y) { record('quadraticCurveTo')(cpx, cpy, x, y); point(cpx, cpy); point(x, y); },
+    bezierCurveTo(a,b,c,d,x,y) { record('bezierCurveTo')(a,b,c,d,x,y); point(a,b); point(c,d); point(x,y); },
+    fillRect(x,y,w,h) { record('fillRect')(x,y,w,h); point(x,y); point(x+w,y+h); paints.push({op:'fill',color:store.fillStyle}); },
     arc(x, y, r, a0, a1) { record('arc')(x, y, r, a0, a1); point(x - r, y - r); point(x + r, y + r); },
     ellipse(x, y, rx, ry, rot, a0, a1) { record('ellipse')(x, y, rx, ry, rot, a0, a1); point(x - rx, y - ry); point(x + rx, y + ry); },
     fill() { record('fill')(); paints.push({ op: 'fill', color: store.fillStyle }); },
@@ -267,23 +269,20 @@ t('radio por defecto seguro y radio 9 respetado (dibuja siempre)', () => {
 });
 
 // ================= COMMON / SPECTRAL FAMILIES =================
-t('spitter estampa stunDroplet rojo con acento amarillo (stun 0.5)', () => {
+t('spitter estampa moco verde stunDroplet con acento amarillo (stun 0.5)', () => {
   const NV = sandbox();
   const b = fireRanged(NV, 'spitter');
   if (!b) throw new Error('sin bala');
   if (b.projectileStyle !== 'stunDroplet') throw new Error('style=' + b.projectileStyle);
   if (b.stunChance !== 0.5) throw new Error('stunChance=' + b.stunChance);
   const env = draw(NV, b);
-  if (!painted(env, DAMAGE) || !painted(env, STUN)) throw new Error('color');
+  if (!painted(env, NV.COSMIC_SPIT_COLOR) || !painted(env, STUN) || painted(env,DAMAGE)) throw new Error('color');
+  if(env.store.shadowBlur!==0)throw new Error('moco agrega blur por cuadro');
+  if(Math.abs(Math.hypot(b.vx,b.vy)-325)>1e-6)throw new Error('velocidad Escopuras');
 });
 
-t('specter_archer estampa spectralArrowhead y se ve rojo (sin stun)', () => {
-  const NV = sandbox();
-  const b = fireRanged(NV, 'specter_archer');
-  if (!b) throw new Error('sin bala');
-  if (b.projectileStyle !== 'spectralArrowhead') throw new Error('style=' + b.projectileStyle);
-  if ((b.stunChance || 0) !== 0) throw new Error('no deberia stunear: ' + b.stunChance);
-  if (!painted(draw(NV, b), DAMAGE)) throw new Error('color');
+t('specter_archer no longer emits generic ammunition', () => {
+  const NV=sandbox(),b=fireRanged(NV,'specter_archer');if(b)throw Error('Hook-only archer fired a normal bullet');
 });
 
 t('specter_core: mapea a coreSpike y se veria rojo (sin stun)', () => {
@@ -439,13 +438,24 @@ t('escala: estilos radius-5 recuperan presencia y no exceden 16 px', () => {
   const NV = sandbox();
   const directional = new Set(['genericBolt', 'spectralArrowhead', 'stunDroplet', 'bossRepeater', 'bossVolleyDart', 'bossSplitShard']);
   for (const style of NV.HOSTILE_PROJECTILE_STYLES) {
-    if (style === 'bossChargedLance') continue;
+    if (style === 'bossChargedLance' || style === 'tankShell') continue;
     const s = size(draw(NV, bullet({ projectileStyle: style, radius: 5, stunChance: 0.35 })));
     const major = Math.max(s.width, s.height), minor = Math.min(s.width, s.height);
     if (major < 10 || minor < 9.5) throw new Error(style + ' demasiado pequeno ' + s.width + 'x' + s.height);
     if (major > 16.01) throw new Error(style + ' excede 16 px: ' + major);
     if (directional.has(style) && s.width < 14) throw new Error(style + ' longitud=' + s.width);
   }
+});
+
+t('escala: tankShell radius-9 es una ojiva apenas mayor que la boca del canon', () => {
+  const NV = sandbox(), b = Object.freeze(bullet({projectileStyle:'tankShell',radius:9,stunChance:0}));
+  const before=JSON.stringify(b),env=draw(NV,b),s=size(env);
+  if(s.width<14||s.width>18)throw Error('longitud='+s.width);
+  // Geometry is 7.2 px tall + 0.9 px outline: ~8.1 px vs the 7.2 px muzzle.
+  if(s.height<7.1||s.height>7.3)throw Error('grosor='+s.height);
+  if(!env.sig.some(p=>p.startsWith('bezierCurveTo')))throw Error('sin punta redondeada');
+  if(!env.sig.some(p=>p.startsWith('fillRect')))throw Error('sin collar de base');
+  if(JSON.stringify(b)!==before)throw Error('renderer cambia la bala');
 });
 
 t('escala: charged lance radius-9 queda dentro de 27x18', () => {

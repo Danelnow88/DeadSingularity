@@ -1,0 +1,24 @@
+<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DEADSINGULARITY · Criaturas élite</title>
+<style>html,body{margin:0;background:#080e18;color:#d4e0eb;font:15px system-ui}main{max-width:1100px;margin:auto;padding:24px}h1{font-size:22px;margin:0 0 8px}p{color:#99b1c4;margin:8px 0 16px}canvas{width:100%;border:1px solid #344254;border-radius:14px;background:#0c1724}button{background:#223047;color:#fff;border:1px solid #566780;border-radius:7px;padding:9px 16px;margin:12px 8px 0 0;cursor:pointer}iframe{position:absolute;width:1px;height:1px;visibility:hidden;pointer-events:none}</style>
+<main><h1>DEADSINGULARITY · CRIATURAS ÉLITE</h1><p>Diseños nuevos con el acabado pintado de los núcleos. Mové el cursor: sus ojos te siguen.</p>
+<canvas id="view" width="1100" height="570"></canvas><button id="pause">Pausar animación</button><p id="status">Cargando las criaturas…</p></main>
+<iframe id="game" src="../index.html?fresh=1"></iframe>
+<script>
+(()=>{const c=document.getElementById('view'),ctx=c.getContext('2d'),frame=document.getElementById('game');let N,types,time=0,last=0,paused=false,mouse={x:550,y:300};
+c.addEventListener('pointermove',e=>{const r=c.getBoundingClientRect();mouse={x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height};});
+document.getElementById('pause').onclick=e=>{paused=!paused;e.target.textContent=paused?'Reanudar animación':'Pausar animación';};
+frame.onload=()=>{N=frame.contentWindow.NV;types=N.dimensionBaselineRoster().elites.filter(t=>['elite_predator','elite_phantom','elite_titan'].includes(t.visualId));N.setGraphicsQuality('high');N.resetVisualBudget();N.prewarmRefinedElites();const ready=()=>{const s=N.refinedEliteRenderStats().species;if(s.some(s=>s.error)){document.getElementById('status').textContent='No se pudo cargar un sprite.';return;}if(s.length!==3||!s.every(s=>s.ready)){setTimeout(ready,50);return;}document.getElementById('status').textContent='Cuerpos pintados reutilizables · respiración continua · pupilas con seguimiento · prototipo aislado';window.paintedEliteAssetsReady=true;requestAnimationFrame(tick);};ready();};
+function tick(now){if(last&&!paused)time+=Math.min(.05,(now-last)/1000);last=now;ctx.fillStyle='#0c1724';ctx.fillRect(0,0,c.width,c.height);ctx.textAlign='center';
+const captions=['Depredador afilado · caza y ejecución','Presencia espectral · posesión','Criatura acorazada · impacto sísmico'];
+for(let i=0;i<types.length;i++){const type=types[i],x=185+i*365,e={...type,isElite:true,x:0,y:0,hp:100,maxHp:100,dead:false};
+ctx.fillStyle='#223147';if(i)ctx.fillRect(x-185,22,1,520);ctx.font='bold 20px system-ui';ctx.fillStyle=['#d399e8','#cceef1','#eea0c3'][i];ctx.fillText(type.name,x,42);
+ctx.font='12px system-ui';ctx.fillStyle='#90a8bb';ctx.fillText(captions[i],x,67);
+N.__refinedEliteBody=true;ctx.save();ctx.translate(x,235);ctx.scale(3.1,3.1);N.drawRefinedEliteBody(ctx,e,time,type.color,(mouse.x-x)/3.1,(mouse.y-235)/3.1);ctx.restore();
+ctx.font='12px system-ui';ctx.fillStyle='#90a8bb';ctx.fillText('TAMAÑO APROXIMADO EN PARTIDA',x,421);
+ctx.save();ctx.translate(x,470);ctx.scale(.5525,.5525);N.drawRefinedEliteBody(ctx,e,time,type.color,(mouse.x-x)/.5525,(mouse.y-470)/.5525);ctx.restore();
+ctx.font='11px system-ui';ctx.fillText('Tres ojos animados · sin brazos ni patas',x,535);}
+requestAnimationFrame(tick);}
+window.refinedElitePreview=()=>({ready:!!N&&!!window.paintedEliteAssetsReady,species:types&&types.map(t=>t.visualId),time,paused,attack:false});
+})();
+</script></html>

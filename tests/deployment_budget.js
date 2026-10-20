@@ -29,5 +29,6 @@ st.spawnMinion=(x,y)=>NV.spawnMinion(x,y,st);
 NV.runBossAttack(b,0,st);assert(!b.split);assert.equal(st.enemies.length,cap-3,'summon batch is atomic when only two slots remain');
 st.enemies[0].dead=true;NV.runBossAttack(b,0,st);assert(b.split);assert.equal(NV.getHostileBudget(st).hostiles,cap);
 const game=fs.readFileSync('js/game.js','utf8');
-assert.equal((game.match(/MAX_HOSTILES: NV\.deploymentHostileLimit\(combatLabMode\)/g)||[]).length,4,'all production spawn wrappers and boss batch checks use deployment admission');
+assert.equal((game.match(/MAX_HOSTILES: dimensionHostileLimit\(\)/g)||[]).length,4,'all production spawn wrappers and boss batch checks use route-aware deployment admission');
+assert(game.includes('NV.dimensionRouteHostileLimit(dimensionRun, NV.deploymentHostileLimit(combatLabMode), MAX_HOSTILES)'),'base and hard caps remain authoritative');
 console.log('PASS bounded production deployment, intact enemy stats, world-size independence, atomic boss summons and uncapped Lab up to 30/7.');

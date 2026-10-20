@@ -49,11 +49,19 @@
     return atlas;
   }
   function frameBitmap(image,left,right,width) {
+    const materialFilter=NV.cachedBasaltMaterialFilter?.('core');
+    function paint(c,...args){
+      const ready=!!materialFilter&&typeof c.filter==='string';
+      if(ready)c.filter=materialFilter;
+      c.drawImage(image,...args);
+      if(ready)c.filter='none';
+      return ready;
+    }
     // Trim the sheet's transparent margins once; the saved art is unchanged.
     const sourceX=Math.round(image.naturalWidth*left),sourceW=Math.round(image.naturalWidth*right)-sourceX;
     const scan=document.createElement('canvas');scan.width=width;scan.height=Math.max(1,Math.round(width*image.naturalHeight/sourceW));
     const c=scan.getContext('2d');if(!c)return null;
-    c.drawImage(image,sourceX,0,sourceW,image.naturalHeight,0,0,scan.width,scan.height);
+    scan.materialReady=paint(c,sourceX,0,sourceW,image.naturalHeight,0,0,scan.width,scan.height);
     // Browsers may prohibit pixel readback when opening the roster via file://.
     // Keep the current cropped sprite usable even when automatic alpha trimming fails.
     let pixels;
@@ -68,7 +76,7 @@
     trimmed.height=Math.max(1,Math.round(width*(y1-y0+1)/(x1-x0+1)));
     const t=trimmed.getContext('2d');if(!t)return scan;
     t.imageSmoothingQuality='high';
-    t.drawImage(image,sourceX+x0*sourceW/scan.width,y0*image.naturalHeight/scan.height,
+    trimmed.materialReady=paint(t,sourceX+x0*sourceW/scan.width,y0*image.naturalHeight/scan.height,
       (x1-x0+1)*sourceW/scan.width,(y1-y0+1)*image.naturalHeight/scan.height,0,0,trimmed.width,trimmed.height);
     return trimmed;
   }
@@ -140,6 +148,7 @@
   };
   NV.inertiaSpriteStatus=()=>spriteDefinitions.map((def,i)=>({file:def.file,
     ready:!!(spriteCache[i]&&spriteCache[i].ready),error:!!(spriteCache[i]&&spriteCache[i].error),
+    materialReady:!!(spriteCache[i]?.bitmap?.materialReady&&(!def.split||spriteCache[i]?.pod?.materialReady)),
     articulated:!!(spriteCache[i]&&spriteCache[i].pod),rotors:spriteDefinitions[i].thrusters.length}));
   function drawSprite(ctx,view) {
     const target=view.target;

@@ -30,10 +30,12 @@
     ];
   }
   function render() {
-    card.hidden = !active || completed || !hudVisible;
+    card.hidden = !active || completed || !hudVisible || !guidesEnabled();
     if (card.hidden) return;
     progress.textContent = (step + 1) + '/4'; copy.textContent = instructions()[step];
   }
+  function guidesEnabled() { return !NV.settings || !NV.settings.gameplay || NV.settings.gameplay.showGuides !== false; }
+  if (NV.onSettingsChange) NV.onSettingsChange(render);
   function finish() {
     completed = true; active = false; card.hidden = true;
     try { localStorage.setItem(KEY, 'done'); } catch (_) {}
@@ -47,7 +49,7 @@
     const original = NV.input[name]; if (typeof original !== 'function') return;
     NV.input[name] = function (...args) {
       const value = original.apply(this, args);
-      if (active && args.some(Boolean)) { actions[action] = true; advance(); }
+      if (active && guidesEnabled() && args.some(Boolean)) { actions[action] = true; advance(); }
       return value;
     };
   }
@@ -61,7 +63,7 @@
   let last = performance.now();
   function poll(now) {
     const dt = Math.min(0.1, Math.max(0, (now - last) / 1000)); last = now;
-    if (active && step === 2 && NV.input.getEffectiveFirePolicy && NV.input.getEffectiveFirePolicy() === 'legacy-auto') {
+    if (active && guidesEnabled() && step === 2 && NV.input.getEffectiveFirePolicy && NV.input.getEffectiveFirePolicy() === 'legacy-auto') {
       autoTimer += dt; if (autoTimer >= 1.4) { actions.fire = true; advance(); }
     }
   }

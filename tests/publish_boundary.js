@@ -1,0 +1,10 @@
+'use strict';
+const fs=require('node:fs'),assert=require('node:assert/strict');
+const ignore=fs.readFileSync('.gitignore','utf8'),html=fs.readFileSync('index.html','utf8');
+assert(ignore.split(/\r?\n/).includes('/PRUEBA DE CONCEPTO DE JEFES.html'),'Private boss mockup must be excluded');
+assert(!html.includes('PRUEBA DE CONCEPTO'),'Production must never load the mockup');
+assert(fs.readFileSync('tools/check-repository.cjs','utf8').includes('PRUEBA DE CONCEPTO DE JEFES'),'Forced staging of private mockup must fail hygiene');
+const build=fs.readFileSync('tools/build-web.cjs','utf8');
+assert(build.includes("['index.html','css','js','assets','AVISOS.md']"));
+assert(html.includes('js/render/cosmicBossArt.js')&&html.includes('js/ui/weaponFusionPresentation.js'));
+console.log('PASS publication boundary: private boss mockup excluded and forbidden, independent runtime, production-only Pages payload');
